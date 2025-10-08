@@ -1,4 +1,3 @@
-
 import React, { ReactNode, ErrorInfo } from 'react';
 
 const ApiConfigurationGuide = () => {
@@ -65,16 +64,12 @@ interface State {
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
-  // FIX: Removed redundant redeclaration of the 'state' property.
-  // The 'state' property is already inherited from React.Component and correctly typed via the generic arguments.
-  // Redeclaring it was causing TypeScript to incorrectly infer the component's type, losing access to 'this.props'.
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-    };
-  }
+  // FIX: Refactored state initialization to a class property to resolve typing issues
+  // where `this.props` and `this.state` were not being recognized on the component instance.
+  public state: State = {
+    hasError: false,
+    error: null,
+  };
 
   public static getDerivedStateFromError(error: Error): State {
     // Update state so the next render will show the fallback UI.

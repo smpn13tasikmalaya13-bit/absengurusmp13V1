@@ -1,5 +1,5 @@
 import { Class, Eskul, LessonSchedule, EskulSchedule } from '../types';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 
@@ -69,6 +69,20 @@ export const getAllClasses = async (): Promise<Class[]> => {
     } catch (error) {
         console.error("Error fetching classes:", error);
         return [];
+    }
+};
+
+// Add a new class to Firestore
+export const addClass = async (name: string, grade: number): Promise<void> => {
+    if (!name || !grade) {
+        throw new Error("Class name and grade are required.");
+    }
+    try {
+        const classesCol = collection(db, 'classes');
+        await addDoc(classesCol, { name, grade });
+    } catch (error) {
+        console.error("Error adding class:", error);
+        throw new Error("Failed to add new class. Please try again.");
     }
 };
 
