@@ -38,14 +38,14 @@ export const MOCK_ESKULS: Omit<Eskul, 'id'>[] = [
 ];
 
 export const MOCK_LESSON_SCHEDULE: Omit<LessonSchedule, 'id'>[] = [
-  { day: 'Senin', time: '08:00 - 08:40', teacher: 'Suherlan', subject: 'PP', class: 'IX I', period: 1 },
-  { day: 'Senin', time: '08:40 - 09:20', teacher: 'Suherlan', subject: 'PP', class: 'IX I', period: 2 },
+  { day: 'Senin', time: '08:00 - 08:40', teacher: 'Suherlan', subject: 'PP', class: 'IX A', period: 1 },
+  { day: 'Senin', time: '08:40 - 09:20', teacher: 'Suherlan', subject: 'PP', class: 'IX A', period: 2 },
   { day: 'Senin', time: '09:00 - 10:40', teacher: 'Alita Yatnikasari Putri', subject: 'IPA', class: 'VII J', period: 2 },
-  { day: 'Senin', time: '09:40 - 10:20', teacher: 'Suherlan', subject: 'PP', class: 'IX K', period: 3 },
-  { day: 'Senin', time: '10:20 - 11:00', teacher: 'Suherlan', subject: 'PP', class: 'IX K', period: 4 },
+  { day: 'Senin', time: '09:40 - 10:20', teacher: 'Suherlan', subject: 'PP', class: 'IX F', period: 3 },
+  { day: 'Senin', time: '10:20 - 11:00', teacher: 'Suherlan', subject: 'PP', class: 'IX F', period: 4 },
   { day: 'Senin', time: '10:40 - 11:20', teacher: 'Alita Yatnikasari Putri', subject: 'IPA', class: 'VII H', period: 4 },
-  { day: 'Senin', time: '11:00 - 11:40', teacher: 'Suherlan', subject: 'PP', class: 'IX G', period: 5 },
-  { day: 'Senin', time: '12:30 - 13:10', teacher: 'Suherlan', subject: 'PP', class: 'IX G', period: 6 },
+  { day: 'Senin', time: '11:00 - 11:40', teacher: 'Suherlan', subject: 'PP', class: 'IX F', period: 5 },
+  { day: 'Senin', time: '12:30 - 13:10', teacher: 'Suherlan', subject: 'PP', class: 'IX F', period: 6 },
 ];
 
 export const MOCK_EXTRA_SCHEDULE: Omit<EskulSchedule, 'id'>[] = [
