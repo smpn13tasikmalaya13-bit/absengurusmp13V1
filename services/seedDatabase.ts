@@ -25,7 +25,7 @@ export const seedDatabase = async (): Promise<void> => {
   console.log(`${MOCK_ESKULS.length} eskuls added to batch.`);
 
   // Seed Lesson Schedules
-  const lessonSchedulesCol = collection(db, 'lessonSchedules');
+  const lessonSchedulesCol = collection(db, 'schedules');
   MOCK_LESSON_SCHEDULE.forEach(scheduleData => {
     const docRef = doc(lessonSchedulesCol);
     batch.set(docRef, scheduleData);
