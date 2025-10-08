@@ -49,3 +49,12 @@ export interface EskulSchedule {
   coach: string;
   activity: string;
 }
+
+export interface StudentAbsenceRecord {
+  id: string;
+  studentName: string;
+  class: string;
+  date: string;
+  reason: 'Sakit' | 'Izin' | 'Alpa';
+  reportedBy: string; // Teacher's name
+}
