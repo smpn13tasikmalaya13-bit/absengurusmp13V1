@@ -6,7 +6,7 @@ import {
   signOut,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, getDocs, deleteDoc } from 'firebase/firestore';
 
 // Login user with Firebase Auth
 export const login = async (email: string, pass: string): Promise<FirebaseUser> => {
@@ -103,3 +103,19 @@ export const getAllUsers = async (): Promise<User[]> => {
         return [];
     }
 }
+
+// Delete a user's profile from Firestore
+// Note: This does not delete the user from Firebase Authentication, as that
+// requires admin privileges typically handled by a backend/cloud function.
+export const deleteUser = async (uid: string): Promise<void> => {
+    if (!uid) {
+        throw new Error("User ID is required to delete.");
+    }
+    try {
+        const userDocRef = doc(db, 'users', uid);
+        await deleteDoc(userDocRef);
+    } catch (error) {
+        console.error("Error deleting user profile:", error);
+        throw new Error("Failed to delete the user profile. Please try again.");
+    }
+};
