@@ -27,7 +27,7 @@ export interface Class {
   grade: number;
 }
 
-export interface Extracurricular {
+export interface Eskul {
   id: string;
   name: string;
 }
@@ -42,7 +42,7 @@ export interface LessonSchedule {
   period: number;
 }
 
-export interface ExtracurricularSchedule {
+export interface EskulSchedule {
   id: string;
   day: string;
   time: string;

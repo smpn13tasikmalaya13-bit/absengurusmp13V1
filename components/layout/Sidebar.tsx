@@ -15,9 +15,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate }) => {
     { label: 'Data Guru & Pembina', page: 'manageTeachers' },
     { label: 'Data Admin', page: 'manageAdmins' },
     { label: 'Data Kelas', page: 'manageClasses' },
-    { label: 'Data Ekstrakurikuler', page: 'manageExtracurriculars' },
+    { label: 'Data Eskul', page: 'manageEskuls' },
     { label: 'Jadwal Pelajaran', page: 'manageLessonSchedule' },
-    { label: 'Jadwal Ekstrakurikuler', page: 'manageExtraSchedule' },
+    { label: 'Jadwal Eskul', page: 'manageEskulSchedule' },
     { label: 'Laporan Absensi Guru', page: 'reportTeacherAttendance' },
     { label: 'Laporan Siswa Absen', page: 'reportStudentAbsence' },
   ];

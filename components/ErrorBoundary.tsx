@@ -14,9 +14,9 @@ interface State {
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
-  // FIX: Property 'props' does not exist on type 'ErrorBoundary'.
-  // Switched state initialization to the constructor to ensure `this.props` is correctly
-  // available throughout the component lifecycle, which can resolve this type of error.
+  // FIX: Initialize state in the constructor to resolve property access errors.
+  public readonly state: State;
+
   constructor(props: Props) {
     super(props);
     this.state = {

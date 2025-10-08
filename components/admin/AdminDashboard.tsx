@@ -3,9 +3,9 @@ import Sidebar from '../layout/Sidebar';
 import DashboardContent from './DashboardContent';
 import ManageUsers from './ManageUsers';
 import ManageClasses from './ManageClasses';
-import ManageExtracurriculars from './ManageExtracurriculars';
+import ManageEskuls from './ManageExtracurriculars';
 import ManageLessonSchedule from './ManageLessonSchedule';
-import ManageExtracurricularSchedule from './ManageExtracurricularSchedule';
+import ManageEskulSchedule from './ManageExtracurricularSchedule';
 import TeacherAttendanceReportPage from './TeacherAttendanceReportPage';
 import StudentAbsenceReportPage from './StudentAbsenceReportPage';
 
@@ -14,9 +14,9 @@ export type AdminPage =
   | 'manageTeachers'
   | 'manageAdmins'
   | 'manageClasses'
-  | 'manageExtracurriculars'
+  | 'manageEskuls'
   | 'manageLessonSchedule'
-  | 'manageExtraSchedule'
+  | 'manageEskulSchedule'
   | 'reportTeacherAttendance'
   | 'reportStudentAbsence';
 
@@ -33,12 +33,12 @@ const AdminDashboard: React.FC = () => {
         return <ManageUsers mode="admins" />;
       case 'manageClasses':
         return <ManageClasses />;
-      case 'manageExtracurriculars':
-        return <ManageExtracurriculars />;
+      case 'manageEskuls':
+        return <ManageEskuls />;
       case 'manageLessonSchedule':
         return <ManageLessonSchedule />;
-      case 'manageExtraSchedule':
-        return <ManageExtracurricularSchedule />;
+      case 'manageEskulSchedule':
+        return <ManageEskulSchedule />;
       case 'reportTeacherAttendance':
         return <TeacherAttendanceReportPage />;
       case 'reportStudentAbsence':
