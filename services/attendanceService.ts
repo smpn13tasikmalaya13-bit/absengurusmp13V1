@@ -1,6 +1,6 @@
 import { AttendanceRecord, User } from '../types';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, collectionGroup } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit } from 'firebase/firestore';
 
 
 let currentQrCodeData: string | null = null;
@@ -29,12 +29,13 @@ export const recordAttendance = async (
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
-  // Path to the user's specific attendance subcollection: absenceRecords/{userId}/absenceRecords
-  const userAttendanceCol = collection(db, 'absenceRecords', user.id, 'absenceRecords');
+  // Use the top-level 'absenceRecords' collection
+  const attendanceCol = collection(db, 'absenceRecords');
 
-  // Check if user has already checked in today within their subcollection
+  // Check if user has already checked in today in the top-level collection
   const q = query(
-    userAttendanceCol,
+    attendanceCol,
+    where('teacherId', '==', user.id),
     where('timestamp', '>=', startOfDay),
     where('timestamp', '<', endOfDay)
   );
@@ -54,7 +55,7 @@ export const recordAttendance = async (
       status,
       reason: '', // Reason is empty for QR code check-in
     };
-    await addDoc(userAttendanceCol, newRecord);
+    await addDoc(attendanceCol, newRecord);
     return { success: true, message: `Attendance recorded successfully as ${status}.` };
   } catch (error) {
     console.error("Error recording attendance: ", error);
@@ -66,11 +67,10 @@ export const getAttendanceReport = async (date: Date): Promise<AttendanceRecord[
   const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
   
-  // Use a collection group query to get records from all "absenceRecords" subcollections.
-  // This requires a Firestore index. Firebase will provide a link to create it on first run.
-  const attendanceCollectionGroup = collectionGroup(db, 'absenceRecords');
+  // Query the top-level 'absenceRecords' collection directly
+  const attendanceCol = collection(db, 'absenceRecords');
   const q = query(
-    attendanceCollectionGroup,
+    attendanceCol,
     where('timestamp', '>=', startOfDay),
     where('timestamp', '<', endOfDay),
     orderBy('timestamp', 'desc')
@@ -88,11 +88,11 @@ export const getAttendanceReport = async (date: Date): Promise<AttendanceRecord[
 };
 
 export const getFullReport = async (recordLimit?: number): Promise<AttendanceRecord[]> => {
-    // Use a collection group query to get records from all "absenceRecords" subcollections.
-    const attendanceCollectionGroup = collectionGroup(db, 'absenceRecords');
+    // Query the top-level 'absenceRecords' collection directly
+    const attendanceCol = collection(db, 'absenceRecords');
     const q = recordLimit 
-      ? query(attendanceCollectionGroup, orderBy('timestamp', 'desc'), limit(recordLimit))
-      : query(attendanceCollectionGroup, orderBy('timestamp', 'desc'));
+      ? query(attendanceCol, orderBy('timestamp', 'desc'), limit(recordLimit))
+      : query(attendanceCol, orderBy('timestamp', 'desc'));
 
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => {
