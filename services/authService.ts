@@ -9,13 +9,24 @@ import {
 import { doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
 
 // Login user with Firebase Auth
-export const login = async (email: string, pass: string): Promise<FirebaseUser | null> => {
+export const login = async (email: string, pass: string): Promise<FirebaseUser> => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
     return userCredential.user;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error signing in:", error);
-    return null;
+    switch (error.code) {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+            throw new Error('Email atau password salah.');
+        case 'auth/invalid-email':
+            throw new Error('Format email tidak valid.');
+        case 'auth/user-disabled':
+            throw new Error('Akun ini telah dinonaktifkan.');
+        default:
+            throw new Error('Terjadi kesalahan tak terduga saat login.');
+    }
   }
 };
 
@@ -43,11 +54,22 @@ export const register = async (name: string, email: string, pass: string, role: 
         return newUser;
 
     } catch (error: any) {
-        if (error.code === 'auth/email-already-in-use') {
-            throw new Error('User with this email already exists.');
-        }
         console.error("Error registering user:", error);
-        throw new Error('An unexpected error occurred during registration.');
+        // Provide more specific feedback for common errors
+        switch (error.code) {
+            case 'auth/email-already-in-use':
+                throw new Error('Email ini sudah terdaftar. Silakan gunakan email lain.');
+            case 'auth/weak-password':
+                throw new Error('Password terlalu lemah. Gunakan minimal 6 karakter.');
+            case 'auth/invalid-email':
+                throw new Error('Format email tidak valid.');
+            case 'auth/operation-not-allowed':
+                 throw new Error('Pendaftaran dengan email/password belum diaktifkan oleh admin.');
+            case 'permission-denied': // Firestore error
+                throw new Error('Pendaftaran gagal karena masalah izin database. Hubungi admin.');
+            default:
+                throw new Error('Terjadi kesalahan tak terduga saat pendaftaran.');
+        }
     }
 };
 

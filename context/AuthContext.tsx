@@ -9,7 +9,7 @@ import { getUserProfile } from '../services/authService';
 interface AuthContextType {
   user: User | null;
   isAuthLoading: boolean;
-  login: (email: string, pass: string) => Promise<FirebaseUser | null>;
+  login: (email: string, pass: string) => Promise<FirebaseUser>;
   logout: () => void;
 }
 
@@ -44,9 +44,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 
   const login = async (email: string, pass: string) => {
-    const firebaseUser = await authService.login(email, pass);
-    // The onAuthStateChanged listener will handle setting the user state.
-    return firebaseUser;
+    // The service now throws on error, which will be caught by the component.
+    // The onAuthStateChanged listener will handle setting the user state on success.
+    return authService.login(email, pass);
   };
 
   const logout = async () => {

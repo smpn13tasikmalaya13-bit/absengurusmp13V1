@@ -31,13 +31,10 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
     setError('');
     setIsLoading(true);
     try {
-      const user = await login(email, password);
-      if (!user) {
-        setError('Invalid email or password. Please try again.');
-      }
+      await login(email, password);
       // On successful login, the AuthContext's onAuthStateChanged will handle navigation.
     } catch (err) {
-      setError('An unexpected error occurred. Please try again later.');
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
     } finally {
       setIsLoading(false);
     }
