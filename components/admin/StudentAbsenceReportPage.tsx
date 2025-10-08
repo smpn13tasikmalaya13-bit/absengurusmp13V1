@@ -24,22 +24,23 @@ const StudentAbsenceReportPage: React.FC = () => {
             </div>
             <div>
                 <label className="text-sm text-gray-400">Tanggal Mulai</label>
-                <input type="text" placeholder="hh/bb/tttt" className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md placeholder-gray-400"/>
+                <input type="date" className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md placeholder-gray-400"/>
             </div>
              <div>
                 <label className="text-sm text-gray-400">Tanggal Selesai</label>
-                <input type="text" placeholder="hh/bb/tttt" className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md placeholder-gray-400"/>
+                <input type="date" className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md placeholder-gray-400"/>
             </div>
           </div>
           <div className="flex justify-end space-x-4">
-              <Button variant="secondary" className="w-auto !bg-gray-600 hover:!bg-gray-700 !text-white px-6">Ekspor PDF</Button>
-              <Button variant="secondary" className="w-auto !bg-gray-600 hover:!bg-gray-700 !text-white px-6">Ekspor Excel</Button>
+              <Button variant="secondary" className="w-auto !bg-gray-600 hover:!bg-gray-700 !text-white px-6" disabled>Ekspor PDF</Button>
+              <Button variant="secondary" className="w-auto !bg-gray-600 hover:!bg-gray-700 !text-white px-6" disabled>Ekspor Excel</Button>
           </div>
         </div>
       </Card>
       
       <div className="text-center py-16 px-4 bg-slate-900 rounded-lg">
-        <p className="font-medium text-white">Pilih rentang tanggal untuk menampilkan laporan.</p>
+        <p className="font-medium text-white">Fitur laporan siswa absen sedang dalam pengembangan.</p>
+        <p className="text-sm text-gray-400 mt-1">Data laporan siswa yang diinput oleh guru akan tersedia di sini.</p>
       </div>
     </div>
   );

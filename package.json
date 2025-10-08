@@ -13,7 +13,10 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "qrcode.react": "^4.2.0",
-    "firebase": "^12.3.0"
+    "firebase": "^12.3.0",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

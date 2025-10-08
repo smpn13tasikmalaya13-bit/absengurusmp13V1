@@ -87,6 +87,45 @@ export const getAttendanceReport = async (date: Date): Promise<AttendanceRecord[
   });
 };
 
+// New function to get reports based on filters
+export const getFilteredAttendanceReport = async ({
+    startDate,
+    endDate,
+    teacherId,
+}: {
+    startDate: Date;
+    endDate: Date;
+    teacherId?: string;
+}): Promise<AttendanceRecord[]> => {
+    const attendanceCol = collection(db, 'absenceRecords');
+    const constraints = [
+        where('timestamp', '>=', Timestamp.fromDate(startDate)),
+        where('timestamp', '<=', Timestamp.fromDate(endDate)),
+    ];
+
+    if (teacherId) {
+        constraints.push(where('teacherId', '==', teacherId));
+    }
+
+    const q = query(attendanceCol, ...constraints, orderBy('timestamp', 'desc'));
+
+    try {
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                timestamp: (data.timestamp as Timestamp).toDate(),
+            } as AttendanceRecord;
+        });
+    } catch (error) {
+        console.error("Error fetching filtered attendance report:", error);
+        return [];
+    }
+};
+
+
 export const getFullReport = async (recordLimit?: number): Promise<AttendanceRecord[]> => {
     // Query the top-level 'absenceRecords' collection directly
     const attendanceCol = collection(db, 'absenceRecords');
