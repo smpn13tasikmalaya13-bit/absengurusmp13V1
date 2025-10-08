@@ -290,3 +290,46 @@ export const getStudentAbsencesByTeacherForDate = async (teacherName: string, da
         return [];
     }
 };
+
+export const getFilteredStudentAbsenceReport = async ({
+    startDate,
+    endDate,
+    teacherName,
+    className,
+}: {
+    startDate: string;
+    endDate: string;
+    teacherName?: string;
+    className?: string;
+}): Promise<StudentAbsenceRecord[]> => {
+    const studentAbsencesCol = collection(db, 'studentAbsenceRecords');
+    const constraints: any[] = [
+        where('date', '>=', startDate),
+        where('date', '<=', endDate),
+    ];
+
+    if (teacherName) {
+        constraints.push(where('reportedBy', '==', teacherName));
+    }
+    if (className) {
+        constraints.push(where('class', '==', className));
+    }
+    
+    // Firestore might require a composite index for this query.
+    // The error message in the console will guide the user to create one if needed.
+    const q = query(studentAbsencesCol, ...constraints, orderBy('date', 'desc'));
+
+    try {
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        } as StudentAbsenceRecord));
+    } catch (error: any) {
+        console.error("Error fetching filtered student absence report:", error);
+        if (error.code === 'failed-precondition') {
+             alert("Query failed. You might need to create a composite index in your Firestore database. Check the developer console (F12) for a link to create it.");
+        }
+        return [];
+    }
+};

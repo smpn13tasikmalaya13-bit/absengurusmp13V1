@@ -199,8 +199,8 @@ const TeacherAttendanceReportPage: React.FC = () => {
             </div>
           </div>
           <div className="flex justify-end space-x-4">
-              <Button onClick={handleExportPDF} variant="secondary" className="w-auto !bg-gray-600 hover:!bg-gray-700 !text-white px-6" disabled={reportData.length === 0}>Ekspor PDF</Button>
-              <Button onClick={handleExportExcel} variant="secondary" className="w-auto !bg-gray-600 hover:!bg-gray-700 !text-white px-6" disabled={reportData.length === 0}>Ekspor Excel</Button>
+              <Button onClick={handleExportPDF} variant="secondary" className="w-auto !bg-red-700 hover:!bg-red-800 !text-white px-6" disabled={reportData.length === 0}>Ekspor PDF</Button>
+              <Button onClick={handleExportExcel} variant="secondary" className="w-auto !bg-green-700 hover:!bg-green-800 !text-white px-6" disabled={reportData.length === 0}>Ekspor Excel</Button>
           </div>
         </div>
       </Card>
