@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import QRScanner from './QRScanner';
-import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacherForDate } from '../../services/dataService';
+import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacherForDate, getAllClasses, addLessonSchedule } from '../../services/dataService';
 import { getAttendanceForTeacher, reportTeacherAbsence } from '../../services/attendanceService';
-import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord } from '../../types';
+import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
@@ -57,6 +57,17 @@ const TeacherDashboard: React.FC = () => {
   const [modalError, setModalError] = useState('');
   const [modalSuccess, setModalSuccess] = useState('');
 
+  // State for adding schedule
+  const [isAddingSchedule, setIsAddingSchedule] = useState(false);
+  const [newScheduleData, setNewScheduleData] = useState({
+      day: 'Senin',
+      time: '',
+      subject: '',
+      class: '',
+      period: 1 as number | '',
+  });
+  const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
+
 
   const refreshData = async () => {
     if (!user) return;
@@ -94,14 +105,16 @@ const TeacherDashboard: React.FC = () => {
       setIsLoadingStats(true);
       setIsLoadingReported(true);
       try {
-        const [allSchedules, allAttendance, reported] = await Promise.all([
+        const [allSchedules, allAttendance, reported, classesData] = await Promise.all([
           getSchedulesByTeacher(user.name),
           getAttendanceForTeacher(user.id),
           getStudentAbsencesByTeacherForDate(user.name, new Date().toISOString().split('T')[0]),
+          getAllClasses(),
         ]);
 
         setFullSchedule(allSchedules);
         setTodaysSchedule(allSchedules.filter(s => s.day === todayDayName));
+        setAvailableClasses(classesData);
         
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -196,6 +209,54 @@ const TeacherDashboard: React.FC = () => {
     setIsSubmitting(false);
   };
 
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setNewScheduleData(prev => ({
+        ...prev,
+        [name]: name === 'period' && value !== '' ? Number(value) : value,
+    }));
+  };
+
+  const handleAddScheduleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setIsSubmitting(true);
+    setModalError('');
+    setModalSuccess('');
+
+    const scheduleToAdd = {
+        ...newScheduleData,
+        teacher: user.name,
+        period: Number(newScheduleData.period),
+    };
+
+    if (!scheduleToAdd.time || !scheduleToAdd.subject || !scheduleToAdd.class || !scheduleToAdd.period) {
+        setModalError("Semua kolom harus diisi dengan benar.");
+        setIsSubmitting(false);
+        return;
+    }
+
+    try {
+        await addLessonSchedule(scheduleToAdd as Omit<LessonSchedule, 'id'>);
+        setModalSuccess("Jadwal berhasil ditambahkan.");
+        
+        // Refetch schedule data
+        const todayDayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
+        const allSchedules = await getSchedulesByTeacher(user.name);
+        setFullSchedule(allSchedules);
+        setTodaysSchedule(allSchedules.filter(s => s.day === todayDayName));
+        
+        // Reset form and hide it
+        setIsAddingSchedule(false);
+        setNewScheduleData({ day: 'Senin', time: '', subject: '', class: '', period: 1 });
+        setTimeout(() => setModalSuccess(''), 2000);
+    } catch (err) {
+        setModalError(err instanceof Error ? err.message : "Gagal menambahkan jadwal.");
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
   const uniqueTodayClasses = useMemo(() => {
     const classNames = todaysSchedule.map(s => s.class);
     return [...new Set(classNames)];
@@ -212,6 +273,7 @@ const TeacherDashboard: React.FC = () => {
     return acc;
   }, {} as Record<string, LessonSchedule[]>);
   const scheduleOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const daysOfWeek = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
   return (
     <>
@@ -237,7 +299,7 @@ const TeacherDashboard: React.FC = () => {
             <button onClick={() => setIsScheduleModalOpen(true)} className="bg-slate-700 p-6 rounded-lg text-left hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">
               <ScheduleIcon/>
               <h3 className="font-bold text-lg mt-4 text-white">Jadwal Mengajar</h3>
-              <p className="text-sm text-slate-400">Lihat jadwal mengajar lengkap Anda</p>
+              <p className="text-sm text-slate-400">Lihat & tambah jadwal mengajar Anda</p>
             </button>
             <button onClick={() => setIsReportAbsenceModalOpen(true)} className="bg-slate-700 p-6 rounded-lg text-left hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500">
               <ReportIcon/>
@@ -256,65 +318,4 @@ const TeacherDashboard: React.FC = () => {
             {/* Stat Cards */}
             <div className="bg-slate-700 p-4 rounded-lg flex items-center"><div className="p-3 bg-slate-600 rounded-md mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div><div><p className="text-sm text-slate-400">Absensi Hari Ini</p>{isLoadingStats ? <Spinner/> : <p className="text-2xl font-bold text-white">{stats.today}</p>}<p className="text-xs text-slate-500">Jam pelajaran yang sudah diabsen</p></div></div>
             <div className="bg-slate-700 p-4 rounded-lg flex items-center"><div className="p-3 bg-slate-600 rounded-md mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-sm text-slate-400">Minggu Ini</p>{isLoadingStats ? <Spinner/> : <p className="text-2xl font-bold text-white">{stats.week}</p>}<p className="text-xs text-slate-500">Total absensi minggu ini</p></div></div>
-            <div className="bg-slate-700 p-4 rounded-lg flex items-center"><div className="p-3 bg-slate-600 rounded-md mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div><div><p className="text-sm text-slate-400">Total Absensi</p>{isLoadingStats ? <Spinner/> : <p className="text-2xl font-bold text-white">{stats.total}</p>}<p className="text-xs text-slate-500">Semua absensi Anda</p></div></div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-slate-700 p-6 rounded-lg min-h-[250px] flex flex-col"><h3 className="font-bold text-lg text-white">Riwayat Absensi Terbaru</h3><p className="text-sm text-slate-400 mb-4">10 absensi terakhir Anda</p>{isLoadingHistory ? <div className="flex-grow flex items-center justify-center"><Spinner/></div> : attendanceHistory.length === 0 ? <div className="flex-grow flex flex-col items-center justify-center text-center text-slate-500"><EmptyHistoryIcon /><p className="font-semibold mt-4">Belum ada riwayat absensi</p><p className="text-sm">Scan QR Code kelas untuk mulai absensi</p></div> : <ul className="space-y-2 overflow-y-auto">{attendanceHistory.map(r => <li key={r.id} className="flex justify-between items-center text-sm p-2 bg-slate-600/50 rounded-md"><div><p className="font-semibold">{r.timestamp.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p><p className="text-slate-400">{r.timestamp.toLocaleTimeString('id-ID')}</p></div><span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.status === 'Present' ? 'bg-green-200 text-green-900' : r.status === 'Late' ? 'bg-yellow-200 text-yellow-900' : 'bg-red-200 text-red-900'}`}>{r.status}</span></li>)}</ul>}</div>
-            <div className="bg-slate-700 p-6 rounded-lg min-h-[250px] flex flex-col"><h3 className="font-bold text-lg text-white">Jadwal Hari Ini</h3><p className="text-sm text-slate-400 mb-4">Jadwal mengajar Anda hari ini</p>{isLoadingSchedule ? <div className="flex-grow flex items-center justify-center"><Spinner/></div> : todaysSchedule.length === 0 ? <div className="flex-grow flex flex-col items-center justify-center text-center text-slate-500"><EmptyScheduleIcon /><p className="font-semibold mt-4">Tidak ada jadwal mengajar hari ini</p><p className="text-sm">Anda bisa bersantai sejenak!</p></div> : <ul className="space-y-2 overflow-y-auto">{todaysSchedule.map(s => <li key={s.id} className="p-2 bg-slate-600/50 rounded-md text-sm"><p className="font-semibold">{s.subject} - Kelas {s.class}</p><p className="text-slate-400">{s.time} (Jam ke-{s.period})</p></li>)}</ul>}</div>
-          </div>
-          
-          <div className="bg-slate-700 p-6 rounded-lg min-h-[250px] flex flex-col"><h3 className="font-bold text-lg text-white">Laporan Siswa Tidak Hadir Hari Ini</h3><p className="text-sm text-slate-400 mb-4">Daftar siswa yang Anda laporkan tidak hadir</p>{isLoadingReported ? <div className="flex-grow flex items-center justify-center"><Spinner/></div> : reportedAbsences.length === 0 ? <div className="flex-grow flex flex-col items-center justify-center text-center text-slate-500"><EmptyReportIcon /><p className="font-semibold mt-4">Belum ada laporan</p><p className="text-sm">Klik tombol 'Lapor Siswa Absen' untuk menambahkan.</p></div> : <ul className="space-y-2 overflow-y-auto">{reportedAbsences.map(r => <li key={r.id} className="flex justify-between items-center text-sm p-2 bg-slate-600/50 rounded-md"><div><p className="font-semibold">{r.studentName} (Kelas {r.class})</p></div><span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.reason === 'Sakit' ? 'bg-yellow-200 text-yellow-900' : r.reason === 'Izin' ? 'bg-blue-200 text-blue-900' : 'bg-red-200 text-red-900'}`}>{r.reason}</span></li>)}</ul>}</div>
-        </main>
-        
-        <footer className="text-center text-slate-500 text-sm p-6">© 2025 Rullp. All rights reserved.</footer>
-      </div>
-
-      {/* Modals */}
-      <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title="Jadwal Mengajar Lengkap"><div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">{scheduleOrder.map(day => groupedSchedule[day] && <div key={day}><h4 className="font-bold text-lg text-white mb-2">{day}</h4><ul className="space-y-2">{groupedSchedule[day].map(s => <li key={s.id} className="p-3 bg-slate-700 rounded-md text-sm"><p className="font-semibold">{s.subject} - Kelas {s.class}</p><p className="text-slate-400">{s.time} (Jam ke-{s.period})</p></li>)}</ul></div>)}</div></Modal>
-      <Modal isOpen={isReportAbsenceModalOpen} onClose={() => setIsReportAbsenceModalOpen(false)} title="Lapor Ketidakhadiran">
-        <form onSubmit={handleReportAbsenceSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="absenceReason" className="block text-sm font-medium text-gray-300">Alasan Tidak Hadir</label>
-            <select id="absenceReason" value={absenceReason} onChange={e => setAbsenceReason(e.target.value as 'Sakit'|'Izin')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-              <option>Sakit</option>
-              <option>Izin</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="absencePeriods" className="block text-sm font-medium text-gray-300">Tidak Mengikuti Pelajaran Ke</label>
-            <input 
-              id="absencePeriods" 
-              type="text"
-              value={absencePeriods}
-              onChange={e => setAbsencePeriods(e.target.value)}
-              placeholder="Contoh: 3, 4, 5 (kosongkan jika absen seharian)"
-              className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-          </div>
-
-          <div>
-            <label htmlFor="absenceDescription" className="block text-sm font-medium text-gray-300">Keterangan Tambahan</label>
-            <textarea 
-              id="absenceDescription" 
-              value={absenceDescription}
-              onChange={e => setAbsenceDescription(e.target.value)}
-              rows={3}
-              placeholder="Berikan keterangan lebih lanjut jika diperlukan..."
-              className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            ></textarea>
-          </div>
-
-          {modalError && <p className="text-sm text-red-400">{modalError}</p>}
-          {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
-          <div className="flex justify-end pt-2">
-            <Button type="submit" isLoading={isSubmitting} className="w-auto">Kirim Laporan</Button>
-          </div>
-        </form>
-      </Modal>
-      <Modal isOpen={isReportStudentModalOpen} onClose={() => setIsReportStudentModalOpen(false)} title="Lapor Siswa Tidak Hadir"><form onSubmit={handleReportStudentSubmit} className="space-y-4"><div><label htmlFor="studentName" className="block text-sm font-medium text-gray-300">Nama Siswa</label><input id="studentName" type="text" value={studentName} onChange={e => setStudentName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500" /></div><div className="grid grid-cols-2 gap-4"><div><label htmlFor="studentClass" className="block text-sm font-medium text-gray-300">Kelas</label><select id="studentClass" value={studentClass} onChange={e => setStudentClass(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"><option value="">Pilih Kelas</option>{uniqueTodayClasses.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label htmlFor="studentReason" className="block text-sm font-medium text-gray-300">Keterangan</label><select id="studentReason" value={studentReason} onChange={e => setStudentReason(e.target.value as 'Sakit'|'Izin'|'Alpa')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"><option>Sakit</option><option>Izin</option><option>Alpa</option></select></div></div>{modalError && <p className="text-sm text-red-400">{modalError}</p>}{modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}<div className="flex justify-end pt-2"><Button type="submit" isLoading={isSubmitting} className="w-auto">Simpan Laporan</Button></div></form></Modal>
-    </>
-  );
-};
-
-export default TeacherDashboard;
+            <div className="bg-slate-700 p-4 rounded-lg flex items-center"><div className="p-3 bg-slate-600 rounded-md mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor
