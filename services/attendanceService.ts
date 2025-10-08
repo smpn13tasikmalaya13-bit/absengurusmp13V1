@@ -143,3 +143,71 @@ export const getFullReport = async (recordLimit?: number): Promise<AttendanceRec
       } as AttendanceRecord;
     });
 };
+
+export const reportTeacherAbsence = async (
+  user: User,
+  status: 'Sakit' | 'Izin',
+  reason?: string
+): Promise<{ success: boolean; message: string }> => {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+  const attendanceCol = collection(db, 'absenceRecords');
+
+  // Check if user has already an entry for today
+  const q = query(
+    attendanceCol,
+    where('teacherId', '==', user.id),
+    where('timestamp', '>=', startOfDay),
+    where('timestamp', '<', endOfDay)
+  );
+  const querySnapshot = await getDocs(q);
+  if (!querySnapshot.empty) {
+    return { success: false, message: 'Anda sudah memiliki catatan kehadiran untuk hari ini.' };
+  }
+
+  try {
+    const newRecord = {
+      teacherId: user.id,
+      userName: user.name,
+      timestamp: Timestamp.fromDate(now),
+      date: now.toISOString().split('T')[0],
+      status,
+      reason: reason || '',
+    };
+    await addDoc(attendanceCol, newRecord);
+    return { success: true, message: `Ketidakhadiran Anda telah dilaporkan sebagai ${status}.` };
+  } catch (error) {
+    console.error("Error reporting teacher absence: ", error);
+    return { success: false, message: 'Gagal melaporkan ketidakhadiran.' };
+  }
+};
+
+// Fetch attendance records for a specific teacher
+export const getAttendanceForTeacher = async (teacherId: string, recordLimit?: number): Promise<AttendanceRecord[]> => {
+    const attendanceCol = collection(db, 'absenceRecords');
+    // Base constraints
+    const constraints = [
+        where('teacherId', '==', teacherId),
+        orderBy('timestamp', 'desc')
+    ];
+
+    // Add limit if provided
+    if (recordLimit) {
+        constraints.push(limit(recordLimit));
+    }
+    
+    // Construct the query
+    const q = query(attendanceCol, ...constraints);
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        timestamp: (data.timestamp as Timestamp).toDate(),
+      } as AttendanceRecord;
+    });
+};

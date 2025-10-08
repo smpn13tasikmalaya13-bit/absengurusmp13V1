@@ -1,5 +1,5 @@
-import { Class, Eskul, LessonSchedule, EskulSchedule } from '../types';
-import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord } from '../types';
+import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 
 
@@ -154,6 +154,45 @@ export const getAllLessonSchedules = async (): Promise<LessonSchedule[]> => {
     }
 };
 
+// Add a new lesson schedule to Firestore
+export const addLessonSchedule = async (schedule: Omit<LessonSchedule, 'id'>): Promise<void> => {
+    try {
+        const schedulesCol = collection(db, 'lessonSchedules');
+        await addDoc(schedulesCol, schedule);
+    } catch (error) {
+        console.error("Error adding lesson schedule:", error);
+        throw new Error("Failed to add new lesson schedule. Please try again.");
+    }
+};
+
+// Update a lesson schedule in Firestore
+export const updateLessonSchedule = async (id: string, schedule: Partial<LessonSchedule>): Promise<void> => {
+    if (!id) {
+        throw new Error("Schedule ID is required to update.");
+    }
+    try {
+        const scheduleDocRef = doc(db, 'lessonSchedules', id);
+        await updateDoc(scheduleDocRef, schedule);
+    } catch (error) {
+        console.error("Error updating lesson schedule:", error);
+        throw new Error("Failed to update the lesson schedule. Please try again.");
+    }
+};
+
+// Delete a lesson schedule from Firestore
+export const deleteLessonSchedule = async (id: string): Promise<void> => {
+    if (!id) {
+        throw new Error("Schedule ID is required to delete.");
+    }
+    try {
+        const scheduleDocRef = doc(db, 'lessonSchedules', id);
+        await deleteDoc(scheduleDocRef);
+    } catch (error) {
+        console.error("Error deleting lesson schedule:", error);
+        throw new Error("Failed to delete the lesson schedule. Please try again.");
+    }
+};
+
 // Fetch all eskul schedules from Firestore
 export const getAllEskulSchedules = async (): Promise<EskulSchedule[]> => {
     try {
@@ -163,6 +202,52 @@ export const getAllEskulSchedules = async (): Promise<EskulSchedule[]> => {
         return scheduleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EskulSchedule));
     } catch (error) {
         console.error("Error fetching eskul schedules:", error);
+        return [];
+    }
+};
+
+// Fetch lesson schedules for a specific teacher
+export const getSchedulesByTeacher = async (teacherName: string): Promise<LessonSchedule[]> => {
+    try {
+        const schedulesCol = collection(db, 'lessonSchedules');
+        const q = query(
+            schedulesCol, 
+            where('teacher', '==', teacherName),
+            orderBy('day'), 
+            orderBy('time')
+        );
+        const scheduleSnapshot = await getDocs(q);
+        return scheduleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonSchedule));
+    } catch (error) {
+        console.error("Error fetching schedules by teacher:", error);
+        return [];
+    }
+};
+
+// Report a student's absence
+export const reportStudentAbsence = async (record: Omit<StudentAbsenceRecord, 'id'>): Promise<void> => {
+    try {
+        const studentAbsencesCol = collection(db, 'studentAbsences');
+        await addDoc(studentAbsencesCol, record);
+    } catch (error) {
+        console.error("Error reporting student absence:", error);
+        throw new Error("Failed to report student absence. Please try again.");
+    }
+};
+
+// Fetch student absences reported by a specific teacher for a given date
+export const getStudentAbsencesByTeacherForDate = async (teacherName: string, date: string): Promise<StudentAbsenceRecord[]> => {
+    try {
+        const studentAbsencesCol = collection(db, 'studentAbsences');
+        const q = query(
+            studentAbsencesCol,
+            where('reportedBy', '==', teacherName),
+            where('date', '==', date)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentAbsenceRecord));
+    } catch (error) {
+        console.error("Error fetching student absences:", error);
         return [];
     }
 };
