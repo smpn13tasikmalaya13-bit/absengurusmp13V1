@@ -2,19 +2,12 @@
 import { GoogleGenAI } from "@google/genai";
 import { AttendanceRecord } from "../types";
 
-const API_KEY = process.env.API_KEY;
+// FIX: Initialize GoogleGenAI with the API key from environment variables as per guidelines.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-if (!API_KEY) {
-  console.error("API_KEY is not set in environment variables.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
 
 export const generateAttendanceSummary = async (records: AttendanceRecord[]): Promise<string> => {
-  if (!API_KEY) {
-    return "Error: Gemini API key is not configured.";
-  }
-  
+  // FIX: Removed manual API key check. As per guidelines, assume the API key is configured correctly in the environment.
   if (records.length === 0) {
     return "No attendance data available to summarize.";
   }
