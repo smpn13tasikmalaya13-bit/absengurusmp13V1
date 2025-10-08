@@ -64,27 +64,32 @@ export const recordAttendance = async (
 };
 
 export const getAttendanceReport = async (date: Date): Promise<AttendanceRecord[]> => {
-  const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
-  
-  // Query the top-level 'absenceRecords' collection directly
-  const attendanceCol = collection(db, 'absenceRecords');
-  const q = query(
-    attendanceCol,
-    where('timestamp', '>=', startOfDay),
-    where('timestamp', '<', endOfDay),
-    orderBy('timestamp', 'desc')
-  );
+  try {
+    const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+    
+    // Query the top-level 'absenceRecords' collection directly
+    const attendanceCol = collection(db, 'absenceRecords');
+    const q = query(
+      attendanceCol,
+      where('timestamp', '>=', startOfDay),
+      where('timestamp', '<', endOfDay),
+      orderBy('timestamp', 'desc')
+    );
 
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      ...data,
-      timestamp: (data.timestamp as Timestamp).toDate(),
-    } as AttendanceRecord;
-  });
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        timestamp: (data.timestamp as Timestamp).toDate(),
+      } as AttendanceRecord;
+    });
+  } catch (error) {
+    console.error("Error fetching attendance report for date:", error);
+    return [];
+  }
 };
 
 // New function to get reports based on filters
@@ -127,7 +132,7 @@ export const getFilteredAttendanceReport = async ({
 
 
 export const getFullReport = async (recordLimit?: number): Promise<AttendanceRecord[]> => {
-    // Query the top-level 'absenceRecords' collection directly
+  try {
     const attendanceCol = collection(db, 'absenceRecords');
     const q = recordLimit 
       ? query(attendanceCol, orderBy('timestamp', 'desc'), limit(recordLimit))
@@ -142,6 +147,10 @@ export const getFullReport = async (recordLimit?: number): Promise<AttendanceRec
         timestamp: (data.timestamp as Timestamp).toDate(),
       } as AttendanceRecord;
     });
+  } catch (error) {
+    console.error("Error fetching full attendance report:", error);
+    return [];
+  }
 };
 
 export const reportTeacherAbsence = async (

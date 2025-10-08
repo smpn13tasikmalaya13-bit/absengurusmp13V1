@@ -93,32 +93,36 @@ const TeacherDashboard: React.FC = () => {
       setIsLoadingHistory(true);
       setIsLoadingStats(true);
       setIsLoadingReported(true);
+      try {
+        const [allSchedules, allAttendance, reported] = await Promise.all([
+          getSchedulesByTeacher(user.name),
+          getAttendanceForTeacher(user.id),
+          getStudentAbsencesByTeacherForDate(user.name, new Date().toISOString().split('T')[0]),
+        ]);
 
-      const [allSchedules, allAttendance, reported] = await Promise.all([
-        getSchedulesByTeacher(user.name),
-        getAttendanceForTeacher(user.id),
-        getStudentAbsencesByTeacherForDate(user.name, new Date().toISOString().split('T')[0]),
-      ]);
+        setFullSchedule(allSchedules);
+        setTodaysSchedule(allSchedules.filter(s => s.day === todayDayName));
+        
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfWeek = new Date(startOfToday);
+        startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() === 0 ? 6 : startOfWeek.getDay() - 1));
+        
+        const todayCount = allAttendance.filter(r => r.timestamp >= startOfToday).length;
+        const weekCount = allAttendance.filter(r => r.timestamp >= startOfWeek).length;
 
-      setFullSchedule(allSchedules);
-      setTodaysSchedule(allSchedules.filter(s => s.day === todayDayName));
-      setIsLoadingSchedule(false);
-
-      const now = new Date();
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const startOfWeek = new Date(startOfToday);
-      startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() === 0 ? 6 : startOfWeek.getDay() - 1));
-      
-      const todayCount = allAttendance.filter(r => r.timestamp >= startOfToday).length;
-      const weekCount = allAttendance.filter(r => r.timestamp >= startOfWeek).length;
-
-      setStats({ today: todayCount, week: weekCount, total: allAttendance.length });
-      setAttendanceHistory(allAttendance.slice(0, 10));
-      setIsLoadingHistory(false);
-      setIsLoadingStats(false);
-
-      setReportedAbsences(reported);
-      setIsLoadingReported(false);
+        setStats({ today: todayCount, week: weekCount, total: allAttendance.length });
+        setAttendanceHistory(allAttendance.slice(0, 10));
+        
+        setReportedAbsences(reported);
+      } catch (error) {
+        console.error("Failed to fetch teacher dashboard data:", error);
+      } finally {
+        setIsLoadingSchedule(false);
+        setIsLoadingHistory(false);
+        setIsLoadingStats(false);
+        setIsLoadingReported(false);
+      }
     };
 
     fetchData();
