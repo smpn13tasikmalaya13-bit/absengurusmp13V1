@@ -77,12 +77,13 @@ const TeacherAttendanceReportPage: React.FC = () => {
     const doc = new jsPDF();
     doc.text("Laporan Absensi Guru", 14, 16);
     (doc as any).autoTable({
-        head: [['Nama Guru', 'Tanggal', 'Waktu', 'Status']],
+        head: [['Nama Guru', 'Tanggal', 'Waktu', 'Status', 'Keterangan']],
         body: reportData.map(r => [
             r.userName,
             r.timestamp.toLocaleDateString('id-ID'),
             r.timestamp.toLocaleTimeString('id-ID'),
-            r.status
+            r.status,
+            r.reason || ''
         ]),
         startY: 20,
     });
@@ -96,6 +97,7 @@ const TeacherAttendanceReportPage: React.FC = () => {
         'Tanggal': r.timestamp.toLocaleDateString('id-ID'),
         'Waktu': r.timestamp.toLocaleTimeString('id-ID'),
         'Status': r.status,
+        'Keterangan': r.reason || '',
     })));
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Absensi");
@@ -125,6 +127,7 @@ const TeacherAttendanceReportPage: React.FC = () => {
                     <th className="p-4 text-sm font-semibold text-gray-200">Tanggal</th>
                     <th className="p-4 text-sm font-semibold text-gray-200">Waktu</th>
                     <th className="p-4 text-sm font-semibold text-gray-200">Status</th>
+                    <th className="p-4 text-sm font-semibold text-gray-200">Keterangan</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -140,6 +143,7 @@ const TeacherAttendanceReportPage: React.FC = () => {
                           {record.status}
                         </span>
                       </td>
+                      <td className="p-4 text-gray-400 text-xs">{record.reason || '-'}</td>
                     </tr>
                   ))}
                 </tbody>

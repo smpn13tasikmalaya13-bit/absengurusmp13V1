@@ -46,6 +46,8 @@ const TeacherDashboard: React.FC = () => {
 
   // Form states
   const [absenceReason, setAbsenceReason] = useState<'Sakit' | 'Izin'>('Sakit');
+  const [absencePeriods, setAbsencePeriods] = useState('');
+  const [absenceDescription, setAbsenceDescription] = useState('');
   const [studentName, setStudentName] = useState('');
   const [studentClass, setStudentClass] = useState('');
   const [studentReason, setStudentReason] = useState<'Sakit' | 'Izin' | 'Alpa'>('Sakit');
@@ -134,13 +136,21 @@ const TeacherDashboard: React.FC = () => {
     setIsSubmitting(true);
     setModalError('');
     setModalSuccess('');
-    const result = await reportTeacherAbsence(user, absenceReason);
+
+    let detailedReason = `Pelajaran Ke: ${absencePeriods || 'Semua'}.`;
+    if (absenceDescription) {
+      detailedReason += ` Keterangan: ${absenceDescription}`;
+    }
+
+    const result = await reportTeacherAbsence(user, absenceReason, detailedReason);
     if (result.success) {
       setModalSuccess(result.message);
       await refreshData();
       setTimeout(() => {
         setIsReportAbsenceModalOpen(false);
         setModalSuccess('');
+        setAbsencePeriods('');
+        setAbsenceDescription('');
       }, 2000);
     } else {
       setModalError(result.message);
@@ -258,7 +268,46 @@ const TeacherDashboard: React.FC = () => {
 
       {/* Modals */}
       <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title="Jadwal Mengajar Lengkap"><div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">{scheduleOrder.map(day => groupedSchedule[day] && <div key={day}><h4 className="font-bold text-lg text-white mb-2">{day}</h4><ul className="space-y-2">{groupedSchedule[day].map(s => <li key={s.id} className="p-3 bg-slate-700 rounded-md text-sm"><p className="font-semibold">{s.subject} - Kelas {s.class}</p><p className="text-slate-400">{s.time} (Jam ke-{s.period})</p></li>)}</ul></div>)}</div></Modal>
-      <Modal isOpen={isReportAbsenceModalOpen} onClose={() => setIsReportAbsenceModalOpen(false)} title="Lapor Ketidakhadiran"><form onSubmit={handleReportAbsenceSubmit} className="space-y-4"><div><label htmlFor="absenceReason" className="block text-sm font-medium text-gray-300">Keterangan</label><select id="absenceReason" value={absenceReason} onChange={e => setAbsenceReason(e.target.value as 'Sakit'|'Izin')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"><option>Sakit</option><option>Izin</option></select></div>{modalError && <p className="text-sm text-red-400">{modalError}</p>}{modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}<div className="flex justify-end pt-2"><Button type="submit" isLoading={isSubmitting} className="w-auto">Kirim Laporan</Button></div></form></Modal>
+      <Modal isOpen={isReportAbsenceModalOpen} onClose={() => setIsReportAbsenceModalOpen(false)} title="Lapor Ketidakhadiran">
+        <form onSubmit={handleReportAbsenceSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="absenceReason" className="block text-sm font-medium text-gray-300">Alasan Tidak Hadir</label>
+            <select id="absenceReason" value={absenceReason} onChange={e => setAbsenceReason(e.target.value as 'Sakit'|'Izin')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+              <option>Sakit</option>
+              <option>Izin</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="absencePeriods" className="block text-sm font-medium text-gray-300">Tidak Mengikuti Pelajaran Ke</label>
+            <input 
+              id="absencePeriods" 
+              type="text"
+              value={absencePeriods}
+              onChange={e => setAbsencePeriods(e.target.value)}
+              placeholder="Contoh: 3, 4, 5 (kosongkan jika absen seharian)"
+              className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+          </div>
+
+          <div>
+            <label htmlFor="absenceDescription" className="block text-sm font-medium text-gray-300">Keterangan Tambahan</label>
+            <textarea 
+              id="absenceDescription" 
+              value={absenceDescription}
+              onChange={e => setAbsenceDescription(e.target.value)}
+              rows={3}
+              placeholder="Berikan keterangan lebih lanjut jika diperlukan..."
+              className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            ></textarea>
+          </div>
+
+          {modalError && <p className="text-sm text-red-400">{modalError}</p>}
+          {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
+          <div className="flex justify-end pt-2">
+            <Button type="submit" isLoading={isSubmitting} className="w-auto">Kirim Laporan</Button>
+          </div>
+        </form>
+      </Modal>
       <Modal isOpen={isReportStudentModalOpen} onClose={() => setIsReportStudentModalOpen(false)} title="Lapor Siswa Tidak Hadir"><form onSubmit={handleReportStudentSubmit} className="space-y-4"><div><label htmlFor="studentName" className="block text-sm font-medium text-gray-300">Nama Siswa</label><input id="studentName" type="text" value={studentName} onChange={e => setStudentName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500" /></div><div className="grid grid-cols-2 gap-4"><div><label htmlFor="studentClass" className="block text-sm font-medium text-gray-300">Kelas</label><select id="studentClass" value={studentClass} onChange={e => setStudentClass(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"><option value="">Pilih Kelas</option>{uniqueTodayClasses.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label htmlFor="studentReason" className="block text-sm font-medium text-gray-300">Keterangan</label><select id="studentReason" value={studentReason} onChange={e => setStudentReason(e.target.value as 'Sakit'|'Izin'|'Alpa')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"><option>Sakit</option><option>Izin</option><option>Alpa</option></select></div></div>{modalError && <p className="text-sm text-red-400">{modalError}</p>}{modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}<div className="flex justify-end pt-2"><Button type="submit" isLoading={isSubmitting} className="w-auto">Simpan Laporan</Button></div></form></Modal>
     </>
   );
