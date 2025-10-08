@@ -1,5 +1,5 @@
 import { Class, Eskul, LessonSchedule, EskulSchedule } from '../types';
-import { collection, getDocs, query, orderBy, addDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 
@@ -83,6 +83,20 @@ export const addClass = async (name: string, grade: number): Promise<void> => {
     } catch (error) {
         console.error("Error adding class:", error);
         throw new Error("Failed to add new class. Please try again.");
+    }
+};
+
+// Delete a class from Firestore
+export const deleteClass = async (id: string): Promise<void> => {
+    if (!id) {
+        throw new Error("Class ID is required to delete.");
+    }
+    try {
+        const classDocRef = doc(db, 'classes', id);
+        await deleteDoc(classDocRef);
+    } catch (error) {
+        console.error("Error deleting class:", error);
+        throw new Error("Failed to delete the class. Please try again.");
     }
 };
 

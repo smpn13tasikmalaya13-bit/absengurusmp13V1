@@ -1,16 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAllClasses, addClass } from '../../services/dataService';
+import { getAllClasses, addClass, deleteClass } from '../../services/dataService';
 import { Button } from '../ui/Button';
 import { Class } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
+import QRCode from 'qrcode.react';
 
 const ManageClasses: React.FC = () => {
   const [classes, setClasses] = useState<Class[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // State for Add Modal
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newClassName, setNewClassName] = useState('');
   const [newClassGrade, setNewClassGrade] = useState<number | ''>('');
+
+  // State for Delete Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [classToDelete, setClassToDelete] = useState<Class | null>(null);
+
+  // State for QR Code Modal
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
+
+  // General state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -25,16 +38,17 @@ const ManageClasses: React.FC = () => {
     fetchClasses();
   }, [fetchClasses]);
 
-  const handleOpenModal = () => {
+  // === ADD MODAL LOGIC ===
+  const handleOpenAddModal = () => {
     setNewClassName('');
     setNewClassGrade('');
     setError('');
-    setIsModalOpen(true);
+    setIsAddModalOpen(true);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseAddModal = () => {
     if (isSubmitting) return;
-    setIsModalOpen(false);
+    setIsAddModalOpen(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,7 +61,7 @@ const ManageClasses: React.FC = () => {
     setIsSubmitting(true);
     try {
       await addClass(newClassName.trim(), Number(newClassGrade));
-      handleCloseModal();
+      handleCloseAddModal();
       await fetchClasses(); // Refetch classes to show the new one
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan kelas.');
@@ -55,13 +69,52 @@ const ManageClasses: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+  
+  // === DELETE MODAL LOGIC ===
+  const handleOpenDeleteModal = (cls: Class) => {
+    setClassToDelete(cls);
+    setError('');
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (isSubmitting) return;
+    setIsDeleteModalOpen(false);
+    setClassToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!classToDelete) return;
+    setError('');
+    setIsSubmitting(true);
+    try {
+      await deleteClass(classToDelete.id);
+      handleCloseDeleteModal();
+      await fetchClasses(); // Refetch classes
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menghapus kelas.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  // === QR CODE MODAL LOGIC ===
+  const handleOpenQrModal = (cls: Class) => {
+    setSelectedClass(cls);
+    setIsQrModalOpen(true);
+  };
+
+  const handleCloseQrModal = () => {
+    setIsQrModalOpen(false);
+    setSelectedClass(null);
+  };
 
   return (
     <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-white">Manajemen Kelas</h1>
-          <Button onClick={handleOpenModal} className="w-auto !bg-blue-600 hover:!bg-blue-700 px-6">Tambah</Button>
+          <Button onClick={handleOpenAddModal} className="w-auto !bg-blue-600 hover:!bg-blue-700 px-6">Tambah</Button>
         </div>
         <div className="bg-slate-900 rounded-lg shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
@@ -82,8 +135,8 @@ const ManageClasses: React.FC = () => {
                       <td className="p-4 whitespace-nowrap font-medium">{cls.name}</td>
                       <td className="p-4 whitespace-nowrap text-gray-400">{cls.grade}</td>
                       <td className="p-4 space-x-4">
-                        <button className="text-blue-400 hover:underline font-medium">QR Code</button>
-                        <button className="text-red-400 hover:underline font-medium">Hapus</button>
+                        <button onClick={() => handleOpenQrModal(cls)} className="text-blue-400 hover:underline font-medium">QR Code</button>
+                        <button onClick={() => handleOpenDeleteModal(cls)} className="text-red-400 hover:underline font-medium">Hapus</button>
                       </td>
                     </tr>
                   )) : (
@@ -99,7 +152,9 @@ const ManageClasses: React.FC = () => {
           </div>
         </div>
       </div>
-      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title="Tambah Kelas Baru">
+
+      {/* ADD MODAL */}
+      <Modal isOpen={isAddModalOpen} onClose={handleCloseAddModal} title="Tambah Kelas Baru">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="className" className="block text-sm font-medium text-gray-300">Nama Kelas</label>
@@ -131,7 +186,7 @@ const ManageClasses: React.FC = () => {
           </div>
           {error && <p className="text-sm text-red-400">{error}</p>}
           <div className="flex justify-end space-x-3 pt-2">
-            <Button type="button" onClick={handleCloseModal} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>
+            <Button type="button" onClick={handleCloseAddModal} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>
               Batal
             </Button>
             <Button type="submit" isLoading={isSubmitting} className="w-auto">
@@ -140,6 +195,43 @@ const ManageClasses: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* QR CODE MODAL */}
+      {selectedClass && (
+        <Modal isOpen={isQrModalOpen} onClose={handleCloseQrModal} title={`QR Code untuk Kelas ${selectedClass.name}`}>
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="p-4 bg-white rounded-lg">
+              <QRCode value={selectedClass.id} size={256} />
+            </div>
+            <p className="text-sm text-gray-400 text-center">
+              QR Code ini berisi ID unik untuk kelas {selectedClass.name}. Gunakan untuk absensi atau keperluan lain.
+            </p>
+             <div className="w-full pt-2">
+                <Button onClick={handleCloseQrModal} className="w-full !bg-slate-600 hover:!bg-slate-500 !text-white">Tutup</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {classToDelete && (
+        <Modal isOpen={isDeleteModalOpen} onClose={handleCloseDeleteModal} title="Konfirmasi Hapus">
+          <div className="space-y-4">
+            <p className="text-gray-300">
+              Apakah Anda yakin ingin menghapus kelas <strong>{classToDelete.name}</strong>? Tindakan ini tidak dapat diurungkan.
+            </p>
+            {error && <p className="text-sm text-red-400">{error}</p>}
+            <div className="flex justify-end space-x-3 pt-2">
+              <Button type="button" onClick={handleCloseDeleteModal} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>
+                Batal
+              </Button>
+              <Button onClick={handleConfirmDelete} isLoading={isSubmitting} variant="danger" className="w-auto">
+                Hapus
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   );
 };
