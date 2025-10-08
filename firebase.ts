@@ -3,19 +3,15 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // =================================================================================
-// TODO: PASTE YOUR FIREBASE CONFIGURATION HERE
+// Konfigurasi Firebase Anda telah diimplementasikan.
 // =================================================================================
-// 1. Go to your Firebase project console.
-// 2. In the project settings, find your web app's configuration.
-// 3. Copy the firebaseConfig object and paste it below, replacing the placeholders.
-
 const firebaseConfig = {
-  apiKey: "PASTE_YOUR_API_KEY_HERE",
-  authDomain: "PASTE_YOUR_AUTH_DOMAIN_HERE",
-  projectId: "PASTE_YOUR_PROJECT_ID_HERE",
-  storageBucket: "PASTE_YOUR_STORAGE_BUCKET_HERE",
-  messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID_HERE",
-  appId: "PASTE_YOUR_APP_ID_HERE"
+  apiKey: "AIzaSyAXuzoo7a-OJyN3VdVwDQTJ7_stOOBIiOI",
+  authDomain: "absensi-guru13-v1.firebaseapp.com",
+  projectId: "absensi-guru13-v1",
+  storageBucket: "absensi-guru13-v1.firebasestorage.app",
+  messagingSenderId: "516666933891",
+  appId: "1:516666933891:web:e30f4bc18ac1dcce5451b6"
 };
 
 // =================================================================================
