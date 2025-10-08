@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { generateQrCodeData, getCurrentQrCodeData } from '../../services/attendanceService';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 
 const QRCodeGenerator: React.FC = () => {
   const [qrData, setQrData] = useState<string | null>(null);
@@ -26,7 +25,7 @@ const QRCodeGenerator: React.FC = () => {
       <div className="flex flex-col items-center space-y-6">
         {qrData ? (
           <div className="p-4 bg-white border rounded-lg">
-            <QRCode value={qrData} size={256} />
+            <QRCodeSVG value={qrData} size={256} />
           </div>
         ) : (
           <div className="h-64 w-64 flex items-center justify-center bg-gray-100 rounded-lg">

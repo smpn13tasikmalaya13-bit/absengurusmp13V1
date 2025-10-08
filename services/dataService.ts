@@ -113,6 +113,34 @@ export const getAllEskuls = async (): Promise<Eskul[]> => {
     }
 };
 
+// Add a new eskul to Firestore
+export const addEskul = async (name: string): Promise<void> => {
+    if (!name) {
+        throw new Error("Eskul name is required.");
+    }
+    try {
+        const eskulsCol = collection(db, 'eskuls');
+        await addDoc(eskulsCol, { name });
+    } catch (error) {
+        console.error("Error adding eskul:", error);
+        throw new Error("Failed to add new eskul. Please try again.");
+    }
+};
+
+// Delete an eskul from Firestore
+export const deleteEskul = async (id: string): Promise<void> => {
+    if (!id) {
+        throw new Error("Eskul ID is required to delete.");
+    }
+    try {
+        const eskulDocRef = doc(db, 'eskuls', id);
+        await deleteDoc(eskulDocRef);
+    } catch (error) {
+        console.error("Error deleting eskul:", error);
+        throw new Error("Failed to delete the eskul. Please try again.");
+    }
+};
+
 // Fetch all lesson schedules from Firestore
 export const getAllLessonSchedules = async (): Promise<LessonSchedule[]> => {
     try {

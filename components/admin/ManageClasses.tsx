@@ -4,7 +4,7 @@ import { Button } from '../ui/Button';
 import { Class } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 
 const ManageClasses: React.FC = () => {
   const [classes, setClasses] = useState<Class[]>([]);
@@ -201,10 +201,10 @@ const ManageClasses: React.FC = () => {
         <Modal isOpen={isQrModalOpen} onClose={handleCloseQrModal} title={`QR Code untuk Kelas ${selectedClass.name}`}>
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="p-4 bg-white rounded-lg">
-              <QRCode value={selectedClass.id} size={256} />
+              <QRCodeSVG value={selectedClass.id} size={256} />
             </div>
             <p className="text-sm text-gray-400 text-center">
-              QR Code ini berisi ID unik untuk kelas {selectedClass.name}. Gunakan untuk absensi atau keperluan lain.
+              QR Code ini berisi ID unik untuk kelas ${selectedClass.name}. Gunakan untuk absensi atau keperluan lain.
             </p>
              <div className="w-full pt-2">
                 <Button onClick={handleCloseQrModal} className="w-full !bg-slate-600 hover:!bg-slate-500 !text-white">Tutup</Button>
