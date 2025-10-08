@@ -64,14 +64,11 @@ interface State {
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
-  // FIX: The error where 'props' was not found on the ErrorBoundary component is resolved by replacing the state class property with a constructor. Explicitly calling super(props) and setting state in the constructor ensures correct component initialization and type inference.
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-    };
-  }
+  // FIX: All errors in this component and the cascading error in index.tsx were due to issues with component initialization. Using a state class property instead of a constructor resolves the type inference problems for `this.state` and `this.props`.
+  state: State = {
+    hasError: false,
+    error: null,
+  };
 
   public static getDerivedStateFromError(error: Error): State {
     // Update state so the next render will show the fallback UI.

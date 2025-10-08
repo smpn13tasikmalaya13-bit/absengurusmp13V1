@@ -1,8 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { getAllUsers } from '../../services/authService';
+import { getAllClasses } from '../../services/dataService';
+import { User, Class, Role } from '../../types';
 
 const StudentAbsenceReportPage: React.FC = () => {
+  const [teachers, setTeachers] = useState<User[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+
+  useEffect(() => {
+    const fetchFilterData = async () => {
+      const allUsers = await getAllUsers();
+      setTeachers(allUsers.filter(u => u.role === Role.Teacher || u.role === Role.Coach));
+      const classData = await getAllClasses();
+      setClasses(classData);
+    };
+    fetchFilterData();
+  }, []);
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-white">Laporan Siswa Tidak Hadir</h1>
@@ -13,13 +29,15 @@ const StudentAbsenceReportPage: React.FC = () => {
             <div>
                 <label className="text-sm text-gray-400">Guru Pelapor</label>
                 <select className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md">
-                    <option>Semua Guru</option>
+                    <option value="">Semua Guru</option>
+                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
             </div>
             <div>
                 <label className="text-sm text-gray-400">Kelas</label>
                 <select className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md">
-                    <option>Semua Kelas</option>
+                    <option value="">Semua Kelas</option>
+                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
             </div>
             <div>

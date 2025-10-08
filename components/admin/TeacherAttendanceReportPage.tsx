@@ -20,7 +20,7 @@ const TeacherAttendanceReportPage: React.FC = () => {
   const [eskuls, setEskuls] = useState<Eskul[]>([]);
   
   const [selectedTeacher, setSelectedTeacher] = useState('');
-  const [selectedClass, setSelectedClass] = useState(''); // Note: Class/Eskul filtering is not yet backed by the data model
+  const [selectedClass, setSelectedClass] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
@@ -176,9 +176,13 @@ const TeacherAttendanceReportPage: React.FC = () => {
             </div>
             <div>
                 <label className="text-sm text-gray-400">{activeTab === 'kelas' ? 'Kelas' : 'Eskul'}</label>
-                <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} disabled className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md disabled:opacity-50">
+                <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md">
                     <option value="">{activeTab === 'kelas' ? 'Semua Kelas' : 'Semua Eskul'}</option>
-                     {/* Note: This filter is a placeholder as the backend data model doesn't link attendance to a specific class/eskul yet. */}
+                    {/* Note: Filtering by class/eskul is not yet implemented in the backend. */}
+                    {activeTab === 'kelas' 
+                        ? classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                        : eskuls.map(e => <option key={e.id} value={e.id}>{e.name}</option>)
+                    }
                 </select>
             </div>
             <div>
