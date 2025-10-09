@@ -64,7 +64,7 @@ const TeacherDashboard: React.FC = () => {
       time: '',
       subject: '',
       class: '',
-      period: 1 as number | '',
+      period: 1, // Store as number for type consistency
   });
   const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
 
@@ -213,7 +213,8 @@ const TeacherDashboard: React.FC = () => {
     const { name, value } = e.target;
     setNewScheduleData(prev => ({
         ...prev,
-        [name]: name === 'period' && value !== '' ? Number(value) : value,
+        // Ensure period is always stored as a number. An empty input becomes 0 for validation.
+        [name]: name === 'period' ? (parseInt(value, 10) || 0) : value,
     }));
   };
 
@@ -227,11 +228,10 @@ const TeacherDashboard: React.FC = () => {
     const scheduleToAdd = {
         ...newScheduleData,
         teacher: user.name,
-        period: Number(newScheduleData.period),
     };
 
-    if (!scheduleToAdd.time || !scheduleToAdd.subject || !scheduleToAdd.class || !scheduleToAdd.period) {
-        setModalError("Semua kolom harus diisi dengan benar.");
+    if (!scheduleToAdd.time || !scheduleToAdd.subject || !scheduleToAdd.class || scheduleToAdd.period <= 0) {
+        setModalError("Semua kolom harus diisi dengan benar. Pastikan 'Jam Ke-' lebih dari 0.");
         setIsSubmitting(false);
         return;
     }
