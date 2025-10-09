@@ -397,41 +397,41 @@ const TeacherDashboard: React.FC = () => {
       {/* Full Schedule Modal */}
       <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title="Jadwal Mengajar Lengkap">
         <div className="max-h-[70vh] overflow-y-auto space-y-4 pr-2">
-            <div className="bg-slate-700/50 p-4 rounded-md">
-                <form onSubmit={handleAddScheduleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Hari</label>
-                        <select name="day" value={newScheduleData.day} onChange={handleFormChange} className="w-full p-2 bg-slate-900/70 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Waktu (JJ:MM - JJ:MM)</label>
-                        <input type="text" name="time" value={newScheduleData.time} onChange={handleFormChange} className="w-full p-2 bg-slate-900/70 border border-slate-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="07:20 - 08:30" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Mata Pelajaran</label>
-                        <input type="text" name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full p-2 bg-slate-900/70 border border-slate-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Matematika" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Kelas</label>
-                        <select name="class" value={newScheduleData.class} onChange={handleFormChange} className="w-full p-2 bg-slate-900/70 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">Pilih Kelas</option>
-                            {availableClasses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Jam Ke-</label>
-                        <input type="number" name="period" value={newScheduleData.period} onChange={handleFormChange} className="w-full p-2 bg-slate-900/70 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500" min="1" />
-                    </div>
+            <form onSubmit={handleAddScheduleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-normal text-gray-400 mb-1">Hari</label>
+                    <select name="day" value={newScheduleData.day} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-normal text-gray-400 mb-1">Waktu (JJ:MM - JJ:MM)</label>
+                    <input type="text" name="time" value={newScheduleData.time} onChange={handleFormChange} className="w-full p-2 bg-gray-100 border border-slate-500 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="07:20 - 08:30" />
+                </div>
+                <div>
+                    <label className="block text-sm font-normal text-gray-400 mb-1">Mata Pelajaran</label>
+                    <input type="text" name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full p-2 bg-gray-100 border border-slate-500 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Matematika" />
+                </div>
+                <div>
+                    <label className="block text-sm font-normal text-gray-400 mb-1">Kelas</label>
+                    <select name="class" value={newScheduleData.class} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Pilih Kelas</option>
+                        {availableClasses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-normal text-gray-400 mb-1">Jam Ke-</label>
+                    <input type="number" name="period" value={newScheduleData.period} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500" min="1" />
+                </div>
 
-                    {modalError && <p className="text-sm text-red-500">{modalError}</p>}
-                    
-                    <div className="pt-2">
-                        <Button type="submit" isLoading={isSubmitting} className="w-full !bg-blue-600 hover:!bg-blue-700 !py-2.5 text-base font-semibold">Simpan Jadwal</Button>
-                    </div>
-                </form>
-            </div>
+                {modalError && <p className="text-sm text-red-400">{modalError}</p>}
+                
+                <div className="pt-2">
+                    <Button type="submit" isLoading={isSubmitting} className="w-full !bg-blue-600 hover:!bg-blue-700 !py-2.5 text-base font-semibold">Simpan Jadwal</Button>
+                </div>
+            </form>
+
+          <hr className="border-slate-600 !my-6" />
 
           {isLoadingSchedule ? <Spinner/> : scheduleOrder.map(day => groupedSchedule[day] && (
             <div key={day}>
