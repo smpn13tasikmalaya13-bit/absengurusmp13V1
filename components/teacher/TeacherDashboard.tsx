@@ -318,4 +318,203 @@ const TeacherDashboard: React.FC = () => {
             {/* Stat Cards */}
             <div className="bg-slate-700 p-4 rounded-lg flex items-center"><div className="p-3 bg-slate-600 rounded-md mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div><div><p className="text-sm text-slate-400">Absensi Hari Ini</p>{isLoadingStats ? <Spinner/> : <p className="text-2xl font-bold text-white">{stats.today}</p>}<p className="text-xs text-slate-500">Jam pelajaran yang sudah diabsen</p></div></div>
             <div className="bg-slate-700 p-4 rounded-lg flex items-center"><div className="p-3 bg-slate-600 rounded-md mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-sm text-slate-400">Minggu Ini</p>{isLoadingStats ? <Spinner/> : <p className="text-2xl font-bold text-white">{stats.week}</p>}<p className="text-xs text-slate-500">Total absensi minggu ini</p></div></div>
-            <div className="bg-slate-700 p-4 rounded-lg flex items-center"><div className="p-3 bg-slate-600 rounded-md mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor
+            <div className="bg-slate-700 p-4 rounded-lg flex items-center"><div className="p-3 bg-slate-600 rounded-md mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div><div><p className="text-sm text-slate-400">Total Absensi</p>{isLoadingStats ? <Spinner/> : <p className="text-2xl font-bold text-white">{stats.total}</p>}<p className="text-xs text-slate-500">Sepanjang waktu</p></div></div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Today's Schedule */}
+            <div className="bg-slate-700 p-6 rounded-lg">
+              <h3 className="font-bold text-lg text-white mb-4">Jadwal Hari Ini</h3>
+              {isLoadingSchedule ? <Spinner/> : todaysSchedule.length > 0 ? (
+                <ul className="space-y-3">
+                  {todaysSchedule.map(s => (
+                    <li key={s.id} className="flex justify-between items-center bg-slate-600/50 p-3 rounded-md">
+                      <div>
+                        <p className="font-semibold text-white">{s.subject} <span className="text-slate-400 font-normal">- Jam ke-{s.period}</span></p>
+                        <p className="text-sm text-slate-400">{s.class} • {s.time}</p>
+                      </div>
+                      <span className="px-2 py-1 text-xs font-semibold text-blue-200 bg-blue-500/30 rounded-full">Pelajaran</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-center py-8">
+                  <EmptyScheduleIcon/>
+                  <p className="mt-4 text-slate-400">Tidak ada jadwal mengajar hari ini.</p>
+                </div>
+              )}
+            </div>
+            
+            {/* History */}
+            <div className="bg-slate-700 p-6 rounded-lg">
+              <h3 className="font-bold text-lg text-white mb-4">Riwayat Absensi Terkini</h3>
+              {isLoadingHistory ? <Spinner/> : attendanceHistory.length > 0 ? (
+                <ul className="space-y-3">
+                  {attendanceHistory.map(r => (
+                    <li key={r.id} className="flex justify-between items-center bg-slate-600/50 p-3 rounded-md">
+                      <div>
+                        <p className="font-semibold text-white">{new Date(r.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                        <p className="text-sm text-slate-400">{new Date(r.timestamp).toLocaleTimeString('id-ID')}</p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.status === 'Present' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-yellow-500/30 text-yellow-200'}`}>{r.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                 <div className="text-center py-8">
+                  <EmptyHistoryIcon/>
+                  <p className="mt-4 text-slate-400">Belum ada riwayat absensi.</p>
+                </div>
+              )}
+            </div>
+
+             {/* Reported Student Absences */}
+            <div className="bg-slate-700 p-6 rounded-lg lg:col-span-2">
+              <h3 className="font-bold text-lg text-white mb-4">Siswa Absen Dilaporkan Hari Ini</h3>
+              {isLoadingReported ? <Spinner/> : reportedAbsences.length > 0 ? (
+                 <ul className="space-y-3">
+                  {reportedAbsences.map(r => (
+                    <li key={r.id} className="flex justify-between items-center bg-slate-600/50 p-3 rounded-md">
+                      <div>
+                        <p className="font-semibold text-white">{r.studentName} <span className="text-slate-400 font-normal">({r.class})</span></p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.reason === 'Sakit' ? 'bg-yellow-500/30 text-yellow-200' : r.reason === 'Izin' ? 'bg-blue-500/30 text-blue-200' : 'bg-red-500/30 text-red-200'}`}>{r.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-center py-8">
+                  <EmptyReportIcon/>
+                  <p className="mt-4 text-slate-400">Belum ada siswa yang dilaporkan absen hari ini.</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <footer className="text-center text-gray-500 text-sm pt-4">
+            © 2025 Rullp. All rights reserved.
+          </footer>
+        </main>
+      </div>
+
+      {/* --- MODALS --- */}
+
+      {/* Full Schedule Modal */}
+      <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title="Jadwal Mengajar Lengkap">
+        <div className="max-h-[70vh] overflow-y-auto space-y-4">
+          {modalSuccess && <p className="text-sm text-green-400 bg-green-900/50 p-2 rounded-md">{modalSuccess}</p>}
+          <button onClick={() => setIsAddingSchedule(!isAddingSchedule)} className="text-sm text-blue-400 hover:underline mb-4">
+            {isAddingSchedule ? 'Batal Tambah' : '+ Tambah Jadwal Baru'}
+          </button>
+
+          {isAddingSchedule && (
+            <form onSubmit={handleAddScheduleSubmit} className="p-4 bg-slate-700 rounded-lg space-y-3 mb-4">
+               <h4 className="font-semibold text-white">Form Tambah Jadwal</h4>
+                <div>
+                    <label className="text-xs text-slate-400">Hari</label>
+                    <select name="day" value={newScheduleData.day} onChange={handleFormChange} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md text-sm">
+                        {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                </div>
+                 <div>
+                    <label className="text-xs text-slate-400">Waktu (JJ:MM - JJ:MM)</label>
+                    <input type="text" name="time" value={newScheduleData.time} onChange={handleFormChange} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md text-sm" placeholder="07:20 - 08:00" />
+                </div>
+                 <div>
+                    <label className="text-xs text-slate-400">Mata Pelajaran</label>
+                    <input type="text" name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md text-sm" placeholder="e.g., Matematika" />
+                </div>
+                 <div>
+                    <label className="text-xs text-slate-400">Kelas</label>
+                     <select name="class" value={newScheduleData.class} onChange={handleFormChange} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md text-sm">
+                        <option value="">Pilih Kelas</option>
+                        {availableClasses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    </select>
+                </div>
+                 <div>
+                    <label className="text-xs text-slate-400">Jam Ke-</label>
+                    <input type="number" name="period" value={newScheduleData.period} onChange={handleFormChange} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md text-sm" min="1" />
+                </div>
+                {modalError && <p className="text-xs text-red-400">{modalError}</p>}
+                <Button type="submit" isLoading={isSubmitting} className="w-full !text-sm !py-2">Simpan Jadwal</Button>
+            </form>
+          )}
+
+          {isLoadingSchedule ? <Spinner/> : scheduleOrder.map(day => groupedSchedule[day] && (
+            <div key={day}>
+              <h4 className="font-bold text-lg text-white sticky top-0 bg-slate-800 py-2">{day}</h4>
+              <ul className="space-y-2 mt-2">
+                {groupedSchedule[day].map(s => (
+                   <li key={s.id} className="flex justify-between items-center bg-slate-700 p-3 rounded-md">
+                      <div>
+                        <p className="font-semibold text-white">{s.subject} <span className="text-slate-400 font-normal">- Jam ke-{s.period}</span></p>
+                        <p className="text-sm text-slate-400">{s.class} • {s.time}</p>
+                      </div>
+                    </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </Modal>
+
+      {/* Report Absence Modal */}
+      <Modal isOpen={isReportAbsenceModalOpen} onClose={() => setIsReportAbsenceModalOpen(false)} title="Lapor Ketidakhadiran">
+         <form onSubmit={handleReportAbsenceSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Alasan Tidak Hadir</label>
+              <select value={absenceReason} onChange={(e) => setAbsenceReason(e.target.value as 'Sakit' | 'Izin')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                <option value="Sakit">Sakit</option>
+                <option value="Izin">Izin</option>
+              </select>
+            </div>
+             <div>
+              <label className="block text-sm font-medium text-gray-300">Pelajaran Ke- (Opsional)</label>
+              <input type="text" value={absencePeriods} onChange={e => setAbsencePeriods(e.target.value)} placeholder="Contoh: 1-4" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
+            </div>
+             <div>
+              <label className="block text-sm font-medium text-gray-300">Keterangan Tambahan (Opsional)</label>
+              <input type="text" value={absenceDescription} onChange={e => setAbsenceDescription(e.target.value)} placeholder="Contoh: Ada acara keluarga" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
+            </div>
+             {modalError && <p className="text-sm text-red-400">{modalError}</p>}
+            {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
+            <div className="flex justify-end pt-2">
+              <Button type="submit" isLoading={isSubmitting} className="w-full">Kirim Laporan</Button>
+            </div>
+        </form>
+      </Modal>
+
+      {/* Report Student Absence Modal */}
+      <Modal isOpen={isReportStudentModalOpen} onClose={() => setIsReportStudentModalOpen(false)} title="Lapor Siswa Tidak Hadir">
+         <form onSubmit={handleReportStudentSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Nama Lengkap Siswa</label>
+              <input type="text" value={studentName} onChange={e => setStudentName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
+            </div>
+             <div>
+              <label className="block text-sm font-medium text-gray-300">Kelas</label>
+              <select value={studentClass} onChange={e => setStudentClass(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                <option value="">Pilih Kelas</option>
+                {uniqueTodayClasses.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Alasan</label>
+              <select value={studentReason} onChange={(e) => setStudentReason(e.target.value as 'Sakit' | 'Izin' | 'Alpa')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                <option value="Sakit">Sakit</option>
+                <option value="Izin">Izin</option>
+                <option value="Alpa">Alpa</option>
+              </select>
+            </div>
+            {modalError && <p className="text-sm text-red-400">{modalError}</p>}
+            {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
+            <div className="flex justify-end pt-2">
+              <Button type="submit" isLoading={isSubmitting} className="w-full">Simpan Laporan</Button>
+            </div>
+        </form>
+      </Modal>
+
+    </>
+  );
+};
+
+export default TeacherDashboard;
