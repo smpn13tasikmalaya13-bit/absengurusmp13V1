@@ -210,13 +210,21 @@ export const getAttendanceForTeacher = async (teacherId: string, recordLimit?: n
     // Construct the query
     const q = query(attendanceCol, ...constraints);
 
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        timestamp: (data.timestamp as Timestamp).toDate(),
-      } as AttendanceRecord;
-    });
+    try {
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          timestamp: (data.timestamp as Timestamp).toDate(),
+        } as AttendanceRecord;
+      });
+    } catch (error) {
+        console.error("Error fetching attendance records for teacher:", error);
+        if ((error as any).code === 'failed-precondition') {
+            alert("Query to fetch attendance history failed. A composite index might be required in Firestore. Please check the developer console (F12) for a link to create it.");
+        }
+        return [];
+    }
 };
