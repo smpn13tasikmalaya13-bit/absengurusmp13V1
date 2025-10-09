@@ -1,19 +1,18 @@
-
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
-import { recordAttendance } from '../../services/attendanceService';
 import { Spinner } from '../ui/Spinner';
 
 declare const jsQR: any;
 
 interface QRScannerProps {
+  onScanSuccess: (qrData: string) => void;
   onClose: () => void;
 }
 
-const QRScanner: React.FC<QRScannerProps> = ({ onClose }) => {
+const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
   const { user } = useAuth();
   const [statusMessage, setStatusMessage] = useState<string>('Please select an image of the QR code.');
   const [messageType, setMessageType] = useState<'info' | 'success' | 'error'>('info');
@@ -47,7 +46,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onClose }) => {
         const code = jsQR(imageData.data, imageData.width, imageData.height);
 
         if (code) {
-          verifyAndRecordAttendance(code.data);
+          verifyLocationAndProceed(code.data);
         } else {
           setStatusMessage('No QR code found in the image. Please try again.');
           setMessageType('error');
@@ -59,7 +58,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onClose }) => {
     reader.readAsDataURL(file);
   };
 
-  const verifyAndRecordAttendance = async (qrData: string) => {
+  const verifyLocationAndProceed = async (qrData: string) => {
     if (!user) {
         setStatusMessage('User not logged in.');
         setMessageType('error');
@@ -78,11 +77,10 @@ const QRScanner: React.FC<QRScannerProps> = ({ onClose }) => {
         return;
       }
 
-      setStatusMessage('Location verified. Recording attendance...');
-      const result = await recordAttendance(user, qrData);
-      
-      setStatusMessage(result.message);
-      setMessageType(result.success ? 'success' : 'error');
+      setStatusMessage('Location verified. Scan successful!');
+      setMessageType('success');
+      // Instead of recording attendance here, call the success callback
+      onScanSuccess(qrData);
 
     } catch (error) {
       setStatusMessage('Could not get location. Please enable GPS and try again.');

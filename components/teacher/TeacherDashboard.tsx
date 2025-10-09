@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import QRScanner from './QRScanner';
 import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacherForDate, getAllClasses, addLessonSchedule } from '../../services/dataService';
-import { getAttendanceForTeacher, reportTeacherAbsence } from '../../services/attendanceService';
+import { getAttendanceForTeacher, reportTeacherAbsence, recordAttendance } from '../../services/attendanceService';
 import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -11,9 +11,7 @@ import { Spinner } from '../ui/Spinner';
 
 // SVG Icons for the dashboard
 const LocationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>;
-const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" /></svg>;
-const OptionsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" /></svg>;
-const MailIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
+const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>;
 const QrCodeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4h4m12 0h-4v4m0 12v-4h4m-12 0H4v-4" /></svg>;
 const ScheduleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 const ReportIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
@@ -43,6 +41,7 @@ const TeacherDashboard: React.FC = () => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isReportAbsenceModalOpen, setIsReportAbsenceModalOpen] = useState(false);
   const [isReportStudentModalOpen, setIsReportStudentModalOpen] = useState(false);
+  const [isSelectScheduleModalOpen, setIsSelectScheduleModalOpen] = useState(false);
 
   // Form states
   const [absenceReason, setAbsenceReason] = useState<'Sakit' | 'Izin'>('Sakit');
@@ -56,6 +55,7 @@ const TeacherDashboard: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const [modalSuccess, setModalSuccess] = useState('');
+  const [scannedQrData, setScannedQrData] = useState<string | null>(null);
 
   // State for adding schedule
   const [newScheduleData, setNewScheduleData] = useState({
@@ -70,6 +70,10 @@ const TeacherDashboard: React.FC = () => {
 
   const refreshData = async () => {
     if (!user) return;
+    setIsLoadingStats(true);
+    setIsLoadingHistory(true);
+    setIsLoadingReported(true);
+
     const todayStr = new Date().toISOString().split('T')[0];
     
     // Refresh stats and history
@@ -78,14 +82,18 @@ const TeacherDashboard: React.FC = () => {
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfWeek = new Date(startOfToday);
     startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() === 0 ? 6 : startOfWeek.getDay() - 1));
-    const todayCount = allAttendance.filter(r => r.timestamp >= startOfToday).length;
+    const todayCount = allAttendance.filter(r => r.timestamp >= startOfToday && r.scheduleId).length;
     const weekCount = allAttendance.filter(r => r.timestamp >= startOfWeek).length;
     setStats({ today: todayCount, week: weekCount, total: allAttendance.length });
-    setAttendanceHistory(allAttendance.slice(0, 10));
+    setAttendanceHistory(allAttendance); // Fetch all history for accurate checks
 
     // Refresh reported absences
     const reported = await getStudentAbsencesByTeacherForDate(user.id, todayStr);
     setReportedAbsences(reported);
+
+    setIsLoadingStats(false);
+    setIsLoadingHistory(false);
+    setIsLoadingReported(false);
   };
 
 
@@ -105,7 +113,7 @@ const TeacherDashboard: React.FC = () => {
       setIsLoadingReported(true);
       try {
         const [allSchedules, allAttendance, reported, classesData] = await Promise.all([
-          getSchedulesByTeacher(user.id), // Changed from user.name to user.id
+          getSchedulesByTeacher(user.id),
           getAttendanceForTeacher(user.id),
           getStudentAbsencesByTeacherForDate(user.id, new Date().toISOString().split('T')[0]),
           getAllClasses(),
@@ -120,11 +128,11 @@ const TeacherDashboard: React.FC = () => {
         const startOfWeek = new Date(startOfToday);
         startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() === 0 ? 6 : startOfWeek.getDay() - 1));
         
-        const todayCount = allAttendance.filter(r => r.timestamp >= startOfToday).length;
+        const todayCount = allAttendance.filter(r => r.timestamp >= startOfToday && r.scheduleId).length;
         const weekCount = allAttendance.filter(r => r.timestamp >= startOfWeek).length;
 
         setStats({ today: todayCount, week: weekCount, total: allAttendance.length });
-        setAttendanceHistory(allAttendance.slice(0, 10));
+        setAttendanceHistory(allAttendance);
         
         setReportedAbsences(reported);
       } catch (error) {
@@ -139,6 +147,15 @@ const TeacherDashboard: React.FC = () => {
 
     fetchData();
   }, [user]);
+
+    const attendedTodaySet = useMemo(() => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        return new Set(
+            attendanceHistory
+                .filter(r => r.date === todayStr && r.scheduleId)
+                .map(r => r.scheduleId)
+        );
+    }, [attendanceHistory]);
 
   const locationStatus = locationError ? { text: locationError, color: 'text-red-400' }
     : isWithinRadius === null ? { text: 'Mengecek lokasi...', color: 'text-yellow-400' }
@@ -227,6 +244,7 @@ const TeacherDashboard: React.FC = () => {
     const scheduleToAdd = {
         ...newScheduleData,
         teacher: user.name,
+        teacherId: user.id,
     };
 
     if (!scheduleToAdd.time || !scheduleToAdd.subject || !scheduleToAdd.class || scheduleToAdd.period <= 0) {
@@ -254,13 +272,52 @@ const TeacherDashboard: React.FC = () => {
     }
   };
 
+  const handleScanSuccess = (qrData: string) => {
+    setShowScanner(false);
+    setScannedQrData(qrData);
+    setIsSelectScheduleModalOpen(true);
+    setModalError('');
+    setModalSuccess('');
+  };
+
+  const handleSelectScheduleForAttendance = async (schedule: LessonSchedule) => {
+    if (!user || !scannedQrData) return;
+    setIsSubmitting(true);
+    setModalError('');
+    setModalSuccess('');
+
+    const scheduleInfo = {
+      id: schedule.id,
+      subject: schedule.subject,
+      class: schedule.class,
+      period: schedule.period
+    };
+
+    const result = await recordAttendance(user, scannedQrData, scheduleInfo);
+
+    if (result.success) {
+      setModalSuccess(result.message);
+      await refreshData();
+      setTimeout(() => {
+        setIsSelectScheduleModalOpen(false);
+        setScannedQrData(null);
+        setModalSuccess('');
+      }, 2000);
+    } else {
+      setModalError(result.message);
+    }
+
+    setIsSubmitting(false);
+  };
+
+
   const uniqueTodayClasses = useMemo(() => {
     const classNames = todaysSchedule.map(s => s.class);
     return [...new Set(classNames)];
   }, [todaysSchedule]);
 
   if (showScanner) {
-    return <div className="min-h-screen bg-slate-800 p-8 flex items-center justify-center"><QRScanner onClose={() => setShowScanner(false)} /></div>;
+    return <div className="min-h-screen bg-slate-800 p-8 flex items-center justify-center"><QRScanner onScanSuccess={handleScanSuccess} onClose={() => setShowScanner(false)} /></div>;
   }
 
   const groupedSchedule = fullSchedule.reduce((acc, schedule) => {
@@ -324,15 +381,18 @@ const TeacherDashboard: React.FC = () => {
               <h3 className="font-bold text-lg text-white mb-4">Jadwal Hari Ini</h3>
               {isLoadingSchedule ? <Spinner/> : todaysSchedule.length > 0 ? (
                 <ul className="space-y-3">
-                  {todaysSchedule.map(s => (
-                    <li key={s.id} className="flex justify-between items-center bg-slate-600/50 p-3 rounded-md">
-                      <div>
-                        <p className="font-semibold text-white">{s.subject} <span className="text-slate-400 font-normal">- Jam ke-{s.period}</span></p>
-                        <p className="text-sm text-slate-400">{s.class} • {s.time}</p>
-                      </div>
-                      <span className="px-2 py-1 text-xs font-semibold text-blue-200 bg-blue-500/30 rounded-full">Pelajaran</span>
-                    </li>
-                  ))}
+                  {todaysSchedule.map(s => {
+                    const isAttended = attendedTodaySet.has(s.id);
+                    return (
+                      <li key={s.id} className={`flex justify-between items-center p-3 rounded-md transition-colors ${isAttended ? 'bg-slate-800 opacity-60' : 'bg-slate-600/50'}`}>
+                        <div>
+                          <p className={`font-semibold ${isAttended ? 'text-slate-400' : 'text-white'}`}>{s.subject} <span className="text-slate-400 font-normal">- Jam ke-{s.period}</span></p>
+                          <p className="text-sm text-slate-400">{s.class} • {s.time}</p>
+                        </div>
+                        {isAttended ? <CheckCircleIcon /> : <span className="px-2 py-1 text-xs font-semibold text-blue-200 bg-blue-500/30 rounded-full">Pelajaran</span>}
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <div className="text-center py-8">
@@ -347,10 +407,10 @@ const TeacherDashboard: React.FC = () => {
               <h3 className="font-bold text-lg text-white mb-4">Riwayat Absensi Terkini</h3>
               {isLoadingHistory ? <Spinner/> : attendanceHistory.length > 0 ? (
                 <ul className="space-y-3">
-                  {attendanceHistory.map(r => (
+                  {attendanceHistory.slice(0, 10).map(r => (
                     <li key={r.id} className="flex justify-between items-center bg-slate-600/50 p-3 rounded-md">
                       <div>
-                        <p className="font-semibold text-white">{new Date(r.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                        <p className="font-semibold text-white">{r.subject ? `${r.subject} (${r.class})` : new Date(r.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                         <p className="text-sm text-slate-400">{new Date(r.timestamp).toLocaleTimeString('id-ID')}</p>
                       </div>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.status === 'Present' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-yellow-500/30 text-yellow-200'}`}>{r.status}</span>
@@ -398,41 +458,40 @@ const TeacherDashboard: React.FC = () => {
       {/* Full Schedule Modal */}
       <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title="Jadwal Mengajar Lengkap">
         <div className="max-h-[70vh] overflow-y-auto space-y-4 pr-2">
-            <form onSubmit={handleAddScheduleSubmit} className="space-y-4 p-1">
-                <div>
+            <form onSubmit={handleAddScheduleSubmit} className="space-y-4 p-4 mb-4 border border-slate-700 rounded-lg bg-slate-900/50">
+                <h4 className="font-bold text-lg text-white">Tambah Jadwal Baru</h4>
+                 <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Hari</label>
-                    <select name="day" value={newScheduleData.day} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select name="day" value={newScheduleData.day} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Waktu (JJ:MM - JJ:MM)</label>
-                    <input type="text" name="time" value={newScheduleData.time} onChange={handleFormChange} className="w-full p-2.5 bg-slate-100 border-transparent rounded-md text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="07:20 - 08:30" />
+                    <input type="text" name="time" value={newScheduleData.time} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="07:20 - 08:30" />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Mata Pelajaran</label>
-                    <input type="text" name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full p-2.5 bg-slate-100 border-transparent rounded-md text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Matematika" />
+                    <input type="text" name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Matematika" />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Kelas</label>
-                    <select name="class" value={newScheduleData.class} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select name="class" value={newScheduleData.class} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="">Pilih Kelas</option>
                         {availableClasses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                     </select>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Jam Ke-</label>
-                    <input type="number" name="period" value={newScheduleData.period === 0 ? '' : newScheduleData.period} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500" min="1" />
+                    <input type="number" name="period" value={newScheduleData.period === 0 ? '' : newScheduleData.period} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500" min="1" />
                 </div>
 
                 {modalError && <p className="text-sm text-red-500 pt-1">{modalError}</p>}
                 
-                <div className="pt-4">
-                    <Button type="submit" isLoading={isSubmitting} className="w-full !bg-blue-600 hover:!bg-blue-700 !py-3 text-base font-semibold rounded-lg">Simpan Jadwal</Button>
+                <div className="pt-2">
+                    <Button type="submit" isLoading={isSubmitting} className="w-full">Simpan Jadwal</Button>
                 </div>
             </form>
-
-          <hr className="border-slate-600 !my-6" />
 
           {isLoadingSchedule ? <Spinner/> : scheduleOrder.map(day => groupedSchedule[day] && (
             <div key={day}>
@@ -506,6 +565,38 @@ const TeacherDashboard: React.FC = () => {
               <Button type="submit" isLoading={isSubmitting} className="w-full">Simpan Laporan</Button>
             </div>
         </form>
+      </Modal>
+      
+      {/* Select Schedule for Attendance Modal */}
+      <Modal isOpen={isSelectScheduleModalOpen} onClose={() => setIsSelectScheduleModalOpen(false)} title="Pilih Jadwal untuk Absen">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          <p className="text-sm text-slate-400">Pilih pelajaran yang sedang Anda absen saat ini.</p>
+          {todaysSchedule.length > 0 ? (
+            todaysSchedule.map(schedule => {
+              const isAttended = attendedTodaySet.has(schedule.id);
+              return (
+                <button
+                  key={schedule.id}
+                  onClick={() => handleSelectScheduleForAttendance(schedule)}
+                  disabled={isAttended || isSubmitting}
+                  className="w-full text-left p-4 rounded-lg flex justify-between items-center transition-colors bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div>
+                    <p className="font-semibold text-white">{schedule.subject}</p>
+                    <p className="text-sm text-slate-300">{schedule.class} - Jam ke-{schedule.period}</p>
+                  </div>
+                  {isAttended && <span className="text-sm font-semibold text-emerald-400">Sudah Absen</span>}
+                </button>
+              );
+            })
+          ) : (
+            <p className="text-center text-slate-400 py-4">Tidak ada jadwal untuk dipilih.</p>
+          )}
+
+          {modalError && <p className="text-sm text-red-400 pt-2">{modalError}</p>}
+          {modalSuccess && <p className="text-sm text-green-400 pt-2">{modalSuccess}</p>}
+          {isSubmitting && <Spinner />}
+        </div>
       </Modal>
 
     </>

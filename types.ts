@@ -19,6 +19,11 @@ export interface AttendanceRecord {
   date: string;
   status: string; // e.g., 'Present', 'Late', 'Sakit'
   reason?: string;
+  // Fields to link attendance to a specific lesson
+  scheduleId?: string;
+  subject?: string;
+  class?: string;
+  period?: number;
 }
 
 export interface Class {

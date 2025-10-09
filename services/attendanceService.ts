@@ -1,4 +1,4 @@
-import { AttendanceRecord, User } from '../types';
+import { AttendanceRecord, LessonSchedule, User } from '../types';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit } from 'firebase/firestore';
 
@@ -19,7 +19,8 @@ export const getCurrentQrCodeData = (): string | null => {
 
 export const recordAttendance = async (
   user: User,
-  qrCodeData: string
+  qrCodeData: string,
+  scheduleInfo?: Pick<LessonSchedule, 'id' | 'subject' | 'class' | 'period'>
 ): Promise<{ success: boolean; message: string }> => {
   if (qrCodeData !== currentQrCodeData) {
     return { success: false, message: 'Invalid or expired QR Code.' };
@@ -32,31 +33,56 @@ export const recordAttendance = async (
   // Use the top-level 'absenceRecords' collection
   const attendanceCol = collection(db, 'absenceRecords');
 
-  // Check if user has already checked in today in the top-level collection
-  const q = query(
-    attendanceCol,
-    where('teacherId', '==', user.id),
-    where('timestamp', '>=', startOfDay),
-    where('timestamp', '<', endOfDay)
-  );
-  const querySnapshot = await getDocs(q);
-  if (!querySnapshot.empty) {
-    return { success: false, message: 'You have already checked in today.' };
+  // Check if user has already checked in for this specific lesson today
+  if (scheduleInfo) {
+    const qCheck = query(
+      attendanceCol,
+      where('teacherId', '==', user.id),
+      where('scheduleId', '==', scheduleInfo.id),
+      where('timestamp', '>=', startOfDay),
+      where('timestamp', '<', endOfDay)
+    );
+    const checkSnapshot = await getDocs(qCheck);
+    if (!checkSnapshot.empty) {
+      return { success: false, message: `Anda sudah absen untuk pelajaran ${scheduleInfo.subject} hari ini.` };
+    }
+  } else {
+    // Fallback for general check-in if scheduleInfo is not provided
+     const q = query(
+      attendanceCol,
+      where('teacherId', '==', user.id),
+      where('timestamp', '>=', startOfDay),
+      where('timestamp', '<', endOfDay),
+       // We can only check for general check-in if there is no scheduleId
+      where('scheduleId', '==', null) 
+    );
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      return { success: false, message: 'You have already checked in today.' };
+    }
   }
+
 
   const status = now.getHours() < CHECK_IN_DEADLINE_HOUR ? 'Present' : 'Late';
 
   try {
-    const newRecord = {
+    const newRecord: Partial<AttendanceRecord> = {
       teacherId: user.id,
       userName: user.name,
       timestamp: Timestamp.fromDate(now),
       date: now.toISOString().split('T')[0],
       status,
       reason: '', // Reason is empty for QR code check-in
+      scheduleId: scheduleInfo?.id || null,
+      subject: scheduleInfo?.subject || null,
+      class: scheduleInfo?.class || null,
+      period: scheduleInfo?.period || null,
     };
     await addDoc(attendanceCol, newRecord);
-    return { success: true, message: `Attendance recorded successfully as ${status}.` };
+    const successMessage = scheduleInfo 
+      ? `Absensi untuk ${scheduleInfo.subject} kelas ${scheduleInfo.class} berhasil.`
+      : `Attendance recorded successfully as ${status}.`;
+    return { success: true, message: successMessage };
   } catch (error) {
     console.error("Error recording attendance: ", error);
     return { success: false, message: 'Failed to record attendance.' };
