@@ -338,3 +338,33 @@ export const getFilteredStudentAbsenceReport = async ({
         return [];
     }
 };
+
+/**
+ * Checks if a schedule slot is already taken.
+ * @param day The day of the week (e.g., 'Senin').
+ * @param period The lesson period number.
+ * @param className The name of the class (e.g., 'VII A').
+ * @returns The conflicting schedule if one exists, otherwise null.
+ */
+export const checkScheduleConflict = async (day: string, period: number, className: string): Promise<LessonSchedule | null> => {
+    try {
+        const schedulesCol = collection(db, 'lessonSchedules');
+        const q = query(
+            schedulesCol,
+            where('day', '==', day),
+            where('period', '==', period),
+            where('class', '==', className)
+        );
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            // Conflict found, return the first conflicting document's data
+            const doc = querySnapshot.docs[0];
+            return { id: doc.id, ...doc.data() } as LessonSchedule;
+        }
+        return null; // No conflict
+    } catch (error: any) {
+        console.error("Error checking for schedule conflict:", error);
+        // Let the UI handle this as a generic failure
+        throw new Error("Gagal memeriksa jadwal bentrok. Periksa koneksi Anda.");
+    }
+};

@@ -71,12 +71,13 @@ const StudentAbsenceReportPage: React.FC = () => {
     const doc = new jsPDF();
     doc.text("Laporan Siswa Tidak Hadir", 14, 16);
     (doc as any).autoTable({
-        head: [['Nama Siswa', 'Kelas', 'Tanggal', 'Keterangan', 'Dilaporkan Oleh']],
+        head: [['Nama Siswa', 'Kelas', 'Tanggal', 'Keterangan', 'Jam Ke-', 'Dilaporkan Oleh']],
         body: reportData.map(r => [
             r.studentName,
             r.class,
             new Date(r.date).toLocaleDateString('id-ID'),
             r.reason,
+            r.absentPeriods?.join(', ') || '-',
             r.reportedBy
         ]),
         startY: 20,
@@ -91,6 +92,7 @@ const StudentAbsenceReportPage: React.FC = () => {
         'Kelas': r.class,
         'Tanggal': new Date(r.date).toLocaleDateString('id-ID'),
         'Keterangan': r.reason,
+        'Jam Ke-': r.absentPeriods?.join(', ') || '-',
         'Dilaporkan Oleh': r.reportedBy,
     })));
     const workbook = XLSX.utils.book_new();
@@ -155,6 +157,7 @@ const StudentAbsenceReportPage: React.FC = () => {
                             <th className="p-4 text-sm font-semibold text-gray-200">Kelas</th>
                             <th className="p-4 text-sm font-semibold text-gray-200">Tanggal</th>
                             <th className="p-4 text-sm font-semibold text-gray-200">Keterangan</th>
+                            <th className="p-4 text-sm font-semibold text-gray-200">Jam Ke-</th>
                             <th className="p-4 text-sm font-semibold text-gray-200">Dilaporkan Oleh</th>
                           </tr>
                         </thead>
@@ -172,6 +175,7 @@ const StudentAbsenceReportPage: React.FC = () => {
                                   {record.reason}
                                 </span>
                               </td>
+                              <td className="p-4 whitespace-nowrap text-gray-400">{record.absentPeriods?.join(', ') || '-'}</td>
                                <td className="p-4 whitespace-nowrap text-gray-400">{record.reportedBy}</td>
                             </tr>
                           ))}

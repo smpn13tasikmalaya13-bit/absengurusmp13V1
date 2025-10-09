@@ -64,4 +64,5 @@ export interface StudentAbsenceRecord {
   reason: 'Sakit' | 'Izin' | 'Alpa';
   reportedBy: string; // Teacher's name
   teacherId: string; // Teacher's UID
+  absentPeriods?: number[]; // To record specific lesson periods
 }

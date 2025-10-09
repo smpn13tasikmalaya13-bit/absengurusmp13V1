@@ -181,7 +181,7 @@ export const getFullReport = async (recordLimit?: number): Promise<AttendanceRec
 
 export const reportTeacherAbsence = async (
   user: User,
-  status: 'Sakit' | 'Izin',
+  status: 'Sakit' | 'Izin' | 'Tugas Luar',
   reason?: string
 ): Promise<{ success: boolean; message: string }> => {
   const now = new Date();

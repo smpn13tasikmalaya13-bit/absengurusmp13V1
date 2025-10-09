@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import QRScanner from './QRScanner';
-import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacherForDate, getAllClasses, addLessonSchedule } from '../../services/dataService';
+import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacherForDate, getAllClasses, addLessonSchedule, checkScheduleConflict } from '../../services/dataService';
 import { getAttendanceForTeacher, reportTeacherAbsence, recordAttendance } from '../../services/attendanceService';
 import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class } from '../../types';
 import { Modal } from '../ui/Modal';
@@ -44,12 +44,14 @@ const TeacherDashboard: React.FC = () => {
   const [isSelectScheduleModalOpen, setIsSelectScheduleModalOpen] = useState(false);
 
   // Form states
-  const [absenceReason, setAbsenceReason] = useState<'Sakit' | 'Izin'>('Sakit');
+  const [absenceReason, setAbsenceReason] = useState<'Sakit' | 'Izin' | 'Tugas Luar'>('Sakit');
   const [absencePeriods, setAbsencePeriods] = useState('');
   const [absenceDescription, setAbsenceDescription] = useState('');
   const [studentName, setStudentName] = useState('');
   const [studentClass, setStudentClass] = useState('');
   const [studentReason, setStudentReason] = useState<'Sakit' | 'Izin' | 'Alpa'>('Sakit');
+  const [studentAbsentPeriods, setStudentAbsentPeriods] = useState<number[]>([]);
+
 
   // General UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -217,7 +219,8 @@ const TeacherDashboard: React.FC = () => {
         date: new Date().toISOString().split('T')[0],
         reason: studentReason,
         reportedBy: user.name,
-        teacherId: user.id, // FIX: Added teacherId for robust security rules
+        teacherId: user.id,
+        absentPeriods: studentAbsentPeriods,
     };
     try {
         await reportStudentAbsence(record);
@@ -227,6 +230,7 @@ const TeacherDashboard: React.FC = () => {
         setStudentName('');
         setStudentClass(todaysSchedule[0]?.class || '');
         setStudentReason('Sakit');
+        setStudentAbsentPeriods([]);
         setTimeout(() => {
             setIsReportStudentModalOpen(false);
             setModalSuccess('');
@@ -246,11 +250,18 @@ const TeacherDashboard: React.FC = () => {
     }));
   };
 
+  const handleStudentPeriodChange = (period: number) => {
+    setStudentAbsentPeriods(prev =>
+      prev.includes(period)
+        ? prev.filter(p => p !== period)
+        : [...prev, period].sort((a, b) => a - b)
+    );
+  };
+
+
   const handleAddScheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    setIsSubmitting(true);
-    setModalError('');
     
     const scheduleToAdd = {
         ...newScheduleData,
@@ -260,11 +271,21 @@ const TeacherDashboard: React.FC = () => {
 
     if (!scheduleToAdd.time || !scheduleToAdd.subject || !scheduleToAdd.class || scheduleToAdd.period <= 0) {
         setModalError("Semua kolom harus diisi dengan benar. Pastikan 'Jam Ke-' lebih dari 0.");
-        setIsSubmitting(false);
         return;
     }
 
+    setIsSubmitting(true);
+    setModalError('');
+
     try {
+        // Check for schedule conflicts before adding
+        const conflict = await checkScheduleConflict(scheduleToAdd.day, scheduleToAdd.period, scheduleToAdd.class);
+        if (conflict) {
+            setModalError(`Jadwal bentrok! Kelas ${conflict.class} jam ke-${conflict.period} pada hari ${conflict.day} sudah diisi oleh ${conflict.teacher} (${conflict.subject}).`);
+            setIsSubmitting(false);
+            return;
+        }
+
         const newScheduleWithId = await addLessonSchedule(scheduleToAdd as Omit<LessonSchedule, 'id'>);
         
         // Update the full schedule list for the modal
@@ -292,7 +313,7 @@ const TeacherDashboard: React.FC = () => {
         setNewScheduleData({ day: 'Senin', time: '', subject: '', class: '', period: 1 });
         setModalError('');
     } catch (err) {
-        setModalError("Gagal menambahkan jadwal pelajaran baru. Silakan coba lagi.");
+        setModalError(err instanceof Error ? err.message : "Gagal menambahkan jadwal. Coba lagi.");
     } finally {
         setIsSubmitting(false);
     }
@@ -370,7 +391,7 @@ const TeacherDashboard: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <button onClick={() => setShowScanner(true)} className="bg-slate-700 p-6 rounded-lg text-left hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <button onClick={() => setShowScanner(true)} className="bg-slate-700 p-6 rounded-lg text-left hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isWithinRadius !== true}>
               <ScanIcon/>
               <h3 className="font-bold text-lg mt-4 text-white">Scan QR Code</h3>
               <p className="text-sm text-slate-400">Scan QR Code kelas untuk absensi</p>
@@ -542,9 +563,10 @@ const TeacherDashboard: React.FC = () => {
          <form onSubmit={handleReportAbsenceSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300">Alasan Tidak Hadir</label>
-              <select value={absenceReason} onChange={(e) => setAbsenceReason(e.target.value as 'Sakit' | 'Izin')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+              <select value={absenceReason} onChange={(e) => setAbsenceReason(e.target.value as 'Sakit' | 'Izin' | 'Tugas Luar')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
                 <option value="Sakit">Sakit</option>
                 <option value="Izin">Izin</option>
+                <option value="Tugas Luar">Tugas Luar</option>
               </select>
             </div>
              <div>
@@ -576,6 +598,22 @@ const TeacherDashboard: React.FC = () => {
                 <option value="">Pilih Kelas</option>
                 {uniqueTodayClasses.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Tidak Hadir Pada Jam Pelajaran Ke-</label>
+              <div className="mt-2 grid grid-cols-5 gap-2">
+                {Array.from({ length: 10 }, (_, i) => i + 1).map(period => (
+                  <label key={period} className="flex items-center space-x-2 p-1 rounded-md hover:bg-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={studentAbsentPeriods.includes(period)}
+                      onChange={() => handleStudentPeriodChange(period)}
+                      className="h-5 w-5 rounded bg-slate-600 border-slate-500 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-800"
+                    />
+                    <span className="text-sm select-none">{period}</span>
+                  </label>
+                ))}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300">Alasan</label>
