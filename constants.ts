@@ -1,7 +1,8 @@
 
+
 export const SCHOOL_COORDINATES = {
-  latitude: -6.2088, // Monas, Jakarta for example
-  longitude: 106.8456,
+  latitude: -7.280701276792126,
+  longitude: 108.19574588935167,
 };
 
-export const ALLOWED_RADIUS_METERS = 500; // 500 meters
+export const ALLOWED_RADIUS_METERS = 100; // 100 meters
