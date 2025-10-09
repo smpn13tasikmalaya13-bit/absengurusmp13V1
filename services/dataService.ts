@@ -259,8 +259,11 @@ export const getSchedulesByTeacher = async (teacherId: string): Promise<LessonSc
         );
         const scheduleSnapshot = await getDocs(q);
         return scheduleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonSchedule));
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching schedules by teacher:", error);
+        if (error.code === 'failed-precondition') {
+            alert(`Query to fetch schedules failed. A composite index is required in Firestore. Please open the developer console (F12) for a direct link to create it, or manually create an index on the 'lessonSchedules' collection for fields: teacherId (ascending), day (ascending), time (ascending).\n\n${error.message}`);
+        }
         return [];
     }
 };
