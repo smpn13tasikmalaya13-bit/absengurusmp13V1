@@ -58,7 +58,6 @@ const TeacherDashboard: React.FC = () => {
   const [modalSuccess, setModalSuccess] = useState('');
 
   // State for adding schedule
-  const [isAddingSchedule, setIsAddingSchedule] = useState(false);
   const [newScheduleData, setNewScheduleData] = useState({
       day: 'Senin',
       time: '',
@@ -223,8 +222,7 @@ const TeacherDashboard: React.FC = () => {
     if (!user) return;
     setIsSubmitting(true);
     setModalError('');
-    setModalSuccess('');
-
+    
     const scheduleToAdd = {
         ...newScheduleData,
         teacher: user.name,
@@ -238,7 +236,6 @@ const TeacherDashboard: React.FC = () => {
 
     try {
         await addLessonSchedule(scheduleToAdd as Omit<LessonSchedule, 'id'>);
-        setModalSuccess("Jadwal berhasil ditambahkan.");
         
         // Refetch schedule data
         const todayDayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
@@ -246,12 +243,11 @@ const TeacherDashboard: React.FC = () => {
         setFullSchedule(allSchedules);
         setTodaysSchedule(allSchedules.filter(s => s.day === todayDayName));
         
-        // Reset form and hide it
-        setIsAddingSchedule(false);
+        // Reset form
         setNewScheduleData({ day: 'Senin', time: '', subject: '', class: '', period: 1 });
-        setTimeout(() => setModalSuccess(''), 2000);
+        setModalError('');
     } catch (err) {
-        setModalError(err instanceof Error ? err.message : "Gagal menambahkan jadwal.");
+        setModalError("Gagal menambahkan jadwal pelajaran baru. Silakan coba lagi.");
     } finally {
         setIsSubmitting(false);
     }
@@ -400,44 +396,42 @@ const TeacherDashboard: React.FC = () => {
 
       {/* Full Schedule Modal */}
       <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title="Jadwal Mengajar Lengkap">
-        <div className="max-h-[70vh] overflow-y-auto space-y-4">
-          {modalSuccess && <p className="text-sm text-green-400 bg-green-900/50 p-2 rounded-md">{modalSuccess}</p>}
-          <button onClick={() => setIsAddingSchedule(!isAddingSchedule)} className="text-sm text-blue-400 hover:underline mb-4">
-            {isAddingSchedule ? 'Batal Tambah' : '+ Tambah Jadwal Baru'}
-          </button>
+        <div className="max-h-[70vh] overflow-y-auto space-y-4 pr-2">
+            <div className="bg-slate-700/50 p-4 rounded-md">
+                <form onSubmit={handleAddScheduleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Hari</label>
+                        <select name="day" value={newScheduleData.day} onChange={handleFormChange} className="w-full p-2 bg-slate-900/70 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Waktu (JJ:MM - JJ:MM)</label>
+                        <input type="text" name="time" value={newScheduleData.time} onChange={handleFormChange} className="w-full p-2 bg-slate-900/70 border border-slate-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="07:20 - 08:30" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Mata Pelajaran</label>
+                        <input type="text" name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full p-2 bg-slate-900/70 border border-slate-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Matematika" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Kelas</label>
+                        <select name="class" value={newScheduleData.class} onChange={handleFormChange} className="w-full p-2 bg-slate-900/70 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Pilih Kelas</option>
+                            {availableClasses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Jam Ke-</label>
+                        <input type="number" name="period" value={newScheduleData.period} onChange={handleFormChange} className="w-full p-2 bg-slate-900/70 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500" min="1" />
+                    </div>
 
-          {isAddingSchedule && (
-            <form onSubmit={handleAddScheduleSubmit} className="p-4 bg-slate-700 rounded-lg space-y-3 mb-4">
-               <h4 className="font-semibold text-white">Form Tambah Jadwal</h4>
-                <div>
-                    <label className="text-xs text-slate-400">Hari</label>
-                    <select name="day" value={newScheduleData.day} onChange={handleFormChange} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md text-sm">
-                        {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                </div>
-                 <div>
-                    <label className="text-xs text-slate-400">Waktu (JJ:MM - JJ:MM)</label>
-                    <input type="text" name="time" value={newScheduleData.time} onChange={handleFormChange} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md text-sm" placeholder="07:20 - 08:00" />
-                </div>
-                 <div>
-                    <label className="text-xs text-slate-400">Mata Pelajaran</label>
-                    <input type="text" name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md text-sm" placeholder="e.g., Matematika" />
-                </div>
-                 <div>
-                    <label className="text-xs text-slate-400">Kelas</label>
-                     <select name="class" value={newScheduleData.class} onChange={handleFormChange} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md text-sm">
-                        <option value="">Pilih Kelas</option>
-                        {availableClasses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                    </select>
-                </div>
-                 <div>
-                    <label className="text-xs text-slate-400">Jam Ke-</label>
-                    <input type="number" name="period" value={newScheduleData.period} onChange={handleFormChange} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md text-sm" min="1" />
-                </div>
-                {modalError && <p className="text-xs text-red-400">{modalError}</p>}
-                <Button type="submit" isLoading={isSubmitting} className="w-full !text-sm !py-2">Simpan Jadwal</Button>
-            </form>
-          )}
+                    {modalError && <p className="text-sm text-red-500">{modalError}</p>}
+                    
+                    <div className="pt-2">
+                        <Button type="submit" isLoading={isSubmitting} className="w-full !bg-blue-600 hover:!bg-blue-700 !py-2.5 text-base font-semibold">Simpan Jadwal</Button>
+                    </div>
+                </form>
+            </div>
 
           {isLoadingSchedule ? <Spinner/> : scheduleOrder.map(day => groupedSchedule[day] && (
             <div key={day}>
