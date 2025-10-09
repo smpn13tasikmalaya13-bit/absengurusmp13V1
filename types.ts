@@ -36,7 +36,8 @@ export interface LessonSchedule {
   id: string;
   day: string;
   time: string;
-  teacher: string;
+  teacher: string; // Teacher's name
+  teacherId: string; // Teacher's UID
   subject: string;
   class: string;
   period: number;

@@ -37,15 +37,16 @@ export const MOCK_ESKULS: Omit<Eskul, 'id'>[] = [
   { name: 'Tahfidz' },
 ];
 
+// FIX: Added missing teacherId to mock data to match LessonSchedule type.
 export const MOCK_LESSON_SCHEDULE: Omit<LessonSchedule, 'id'>[] = [
-  { day: 'Senin', time: '08:00 - 08:40', teacher: 'Suherlan', subject: 'PP', class: 'IX A', period: 1 },
-  { day: 'Senin', time: '08:40 - 09:20', teacher: 'Suherlan', subject: 'PP', class: 'IX A', period: 2 },
-  { day: 'Senin', time: '09:00 - 10:40', teacher: 'Alita Yatnikasari Putri', subject: 'IPA', class: 'VII J', period: 2 },
-  { day: 'Senin', time: '09:40 - 10:20', teacher: 'Suherlan', subject: 'PP', class: 'IX F', period: 3 },
-  { day: 'Senin', time: '10:20 - 11:00', teacher: 'Suherlan', subject: 'PP', class: 'IX F', period: 4 },
-  { day: 'Senin', time: '10:40 - 11:20', teacher: 'Alita Yatnikasari Putri', subject: 'IPA', class: 'VII H', period: 4 },
-  { day: 'Senin', time: '11:00 - 11:40', teacher: 'Suherlan', subject: 'PP', class: 'IX F', period: 5 },
-  { day: 'Senin', time: '12:30 - 13:10', teacher: 'Suherlan', subject: 'PP', class: 'IX F', period: 6 },
+  { day: 'Senin', time: '08:00 - 08:40', teacher: 'Suherlan', teacherId: 'mock-teacher-id-1', subject: 'PP', class: 'IX A', period: 1 },
+  { day: 'Senin', time: '08:40 - 09:20', teacher: 'Suherlan', teacherId: 'mock-teacher-id-1', subject: 'PP', class: 'IX A', period: 2 },
+  { day: 'Senin', time: '09:00 - 10:40', teacher: 'Alita Yatnikasari Putri', teacherId: 'mock-teacher-id-2', subject: 'IPA', class: 'VII J', period: 2 },
+  { day: 'Senin', time: '09:40 - 10:20', teacher: 'Suherlan', teacherId: 'mock-teacher-id-1', subject: 'PP', class: 'IX F', period: 3 },
+  { day: 'Senin', time: '10:20 - 11:00', teacher: 'Suherlan', teacherId: 'mock-teacher-id-1', subject: 'PP', class: 'IX F', period: 4 },
+  { day: 'Senin', time: '10:40 - 11:20', teacher: 'Alita Yatnikasari Putri', teacherId: 'mock-teacher-id-2', subject: 'IPA', class: 'VII H', period: 4 },
+  { day: 'Senin', time: '11:00 - 11:40', teacher: 'Suherlan', teacherId: 'mock-teacher-id-1', subject: 'PP', class: 'IX F', period: 5 },
+  { day: 'Senin', time: '12:30 - 13:10', teacher: 'Suherlan', teacherId: 'mock-teacher-id-1', subject: 'PP', class: 'IX F', period: 6 },
 ];
 
 export const MOCK_EXTRA_SCHEDULE: Omit<EskulSchedule, 'id'>[] = [
@@ -246,12 +247,12 @@ export const deleteEskulSchedule = async (id: string): Promise<void> => {
 };
 
 // Fetch lesson schedules for a specific teacher
-export const getSchedulesByTeacher = async (teacherName: string): Promise<LessonSchedule[]> => {
+export const getSchedulesByTeacher = async (teacherId: string): Promise<LessonSchedule[]> => {
     try {
         const schedulesCol = collection(db, 'lessonSchedules');
         const q = query(
             schedulesCol, 
-            where('teacher', '==', teacherName),
+            where('teacherId', '==', teacherId),
             orderBy('day'), 
             orderBy('time')
         );

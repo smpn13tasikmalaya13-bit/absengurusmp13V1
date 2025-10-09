@@ -13,10 +13,12 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 
 // Initial state for the form
+// FIX: Added missing teacherId to match the LessonSchedule type.
 const initialFormState: Omit<LessonSchedule, 'id'> = {
   day: 'Senin',
   time: '',
   teacher: '',
+  teacherId: '',
   subject: '',
   class: '',
   period: 1,
@@ -87,12 +89,22 @@ const ManageLessonSchedule: React.FC = () => {
     setIsModalOpen(false);
   };
 
+  // FIX: Updated form handler to set both teacher name and teacherId.
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'period' ? Number(value) : value,
-    }));
+    if (name === 'teacher') {
+      const selectedTeacherData = teachers.find(t => t.name === value);
+      setFormData(prev => ({
+        ...prev,
+        teacher: value,
+        teacherId: selectedTeacherData ? selectedTeacherData.id : '',
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: name === 'period' ? Number(value) : value,
+      }));
+    }
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {

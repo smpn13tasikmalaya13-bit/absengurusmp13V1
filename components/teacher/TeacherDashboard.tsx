@@ -105,7 +105,7 @@ const TeacherDashboard: React.FC = () => {
       setIsLoadingReported(true);
       try {
         const [allSchedules, allAttendance, reported, classesData] = await Promise.all([
-          getSchedulesByTeacher(user.name),
+          getSchedulesByTeacher(user.id), // Changed from user.name to user.id
           getAttendanceForTeacher(user.id),
           getStudentAbsencesByTeacherForDate(user.id, new Date().toISOString().split('T')[0]),
           getAllClasses(),
@@ -240,7 +240,7 @@ const TeacherDashboard: React.FC = () => {
         
         // Refetch schedule data
         const todayDayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
-        const allSchedules = await getSchedulesByTeacher(user.name);
+        const allSchedules = await getSchedulesByTeacher(user.id);
         setFullSchedule(allSchedules);
         setTodaysSchedule(allSchedules.filter(s => s.day === todayDayName));
         
@@ -398,37 +398,37 @@ const TeacherDashboard: React.FC = () => {
       {/* Full Schedule Modal */}
       <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title="Jadwal Mengajar Lengkap">
         <div className="max-h-[70vh] overflow-y-auto space-y-4 pr-2">
-            <form onSubmit={handleAddScheduleSubmit} className="space-y-4">
+            <form onSubmit={handleAddScheduleSubmit} className="space-y-4 p-1">
                 <div>
-                    <label className="block text-sm font-normal text-gray-400 mb-1">Hari</label>
-                    <select name="day" value={newScheduleData.day} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Hari</label>
+                    <select name="day" value={newScheduleData.day} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-normal text-gray-400 mb-1">Waktu (JJ:MM - JJ:MM)</label>
-                    <input type="text" name="time" value={newScheduleData.time} onChange={handleFormChange} className="w-full p-2 bg-gray-100 border border-slate-500 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="07:20 - 08:30" />
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Waktu (JJ:MM - JJ:MM)</label>
+                    <input type="text" name="time" value={newScheduleData.time} onChange={handleFormChange} className="w-full p-2.5 bg-slate-100 border-transparent rounded-md text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="07:20 - 08:30" />
                 </div>
                 <div>
-                    <label className="block text-sm font-normal text-gray-400 mb-1">Mata Pelajaran</label>
-                    <input type="text" name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full p-2 bg-gray-100 border border-slate-500 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Matematika" />
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Mata Pelajaran</label>
+                    <input type="text" name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full p-2.5 bg-slate-100 border-transparent rounded-md text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Matematika" />
                 </div>
                 <div>
-                    <label className="block text-sm font-normal text-gray-400 mb-1">Kelas</label>
-                    <select name="class" value={newScheduleData.class} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Kelas</label>
+                    <select name="class" value={newScheduleData.class} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="">Pilih Kelas</option>
                         {availableClasses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-normal text-gray-400 mb-1">Jam Ke-</label>
-                    <input type="number" name="period" value={newScheduleData.period} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500" min="1" />
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Jam Ke-</label>
+                    <input type="number" name="period" value={newScheduleData.period === 0 ? '' : newScheduleData.period} onChange={handleFormChange} className="w-full p-2.5 bg-slate-900 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500" min="1" />
                 </div>
 
-                {modalError && <p className="text-sm text-red-400">{modalError}</p>}
+                {modalError && <p className="text-sm text-red-500 pt-1">{modalError}</p>}
                 
-                <div className="pt-2">
-                    <Button type="submit" isLoading={isSubmitting} className="w-full !bg-blue-600 hover:!bg-blue-700 !py-2.5 text-base font-semibold">Simpan Jadwal</Button>
+                <div className="pt-4">
+                    <Button type="submit" isLoading={isSubmitting} className="w-full !bg-blue-600 hover:!bg-blue-700 !py-3 text-base font-semibold rounded-lg">Simpan Jadwal</Button>
                 </div>
             </form>
 
