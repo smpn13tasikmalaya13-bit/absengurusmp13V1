@@ -144,7 +144,7 @@ export const deleteEskul = async (id: string): Promise<void> => {
 // Fetch all lesson schedules from Firestore
 export const getAllLessonSchedules = async (): Promise<LessonSchedule[]> => {
     try {
-        const schedulesCol = collection(db, 'schedules');
+        const schedulesCol = collection(db, 'lessonSchedules');
         const q = query(schedulesCol, orderBy('day'), orderBy('time'));
         const scheduleSnapshot = await getDocs(q);
         return scheduleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonSchedule));
@@ -157,7 +157,7 @@ export const getAllLessonSchedules = async (): Promise<LessonSchedule[]> => {
 // Add a new lesson schedule to Firestore
 export const addLessonSchedule = async (schedule: Omit<LessonSchedule, 'id'>): Promise<void> => {
     try {
-        const schedulesCol = collection(db, 'schedules');
+        const schedulesCol = collection(db, 'lessonSchedules');
         await addDoc(schedulesCol, schedule);
     } catch (error) {
         console.error("Error adding lesson schedule:", error);
@@ -171,7 +171,7 @@ export const updateLessonSchedule = async (id: string, schedule: Partial<LessonS
         throw new Error("Schedule ID is required to update.");
     }
     try {
-        const scheduleDocRef = doc(db, 'schedules', id);
+        const scheduleDocRef = doc(db, 'lessonSchedules', id);
         await updateDoc(scheduleDocRef, schedule);
     } catch (error) {
         console.error("Error updating lesson schedule:", error);
@@ -185,7 +185,7 @@ export const deleteLessonSchedule = async (id: string): Promise<void> => {
         throw new Error("Schedule ID is required to delete.");
     }
     try {
-        const scheduleDocRef = doc(db, 'schedules', id);
+        const scheduleDocRef = doc(db, 'lessonSchedules', id);
         await deleteDoc(scheduleDocRef);
     } catch (error) {
         console.error("Error deleting lesson schedule:", error);
@@ -248,7 +248,7 @@ export const deleteEskulSchedule = async (id: string): Promise<void> => {
 // Fetch lesson schedules for a specific teacher
 export const getSchedulesByTeacher = async (teacherName: string): Promise<LessonSchedule[]> => {
     try {
-        const schedulesCol = collection(db, 'schedules');
+        const schedulesCol = collection(db, 'lessonSchedules');
         const q = query(
             schedulesCol, 
             where('teacher', '==', teacherName),
@@ -275,12 +275,12 @@ export const reportStudentAbsence = async (record: Omit<StudentAbsenceRecord, 'i
 };
 
 // Fetch student absences reported by a specific teacher for a given date
-export const getStudentAbsencesByTeacherForDate = async (teacherName: string, date: string): Promise<StudentAbsenceRecord[]> => {
+export const getStudentAbsencesByTeacherForDate = async (teacherId: string, date: string): Promise<StudentAbsenceRecord[]> => {
     try {
         const studentAbsencesCol = collection(db, 'studentAbsenceRecords');
         const q = query(
             studentAbsencesCol,
-            where('reportedBy', '==', teacherName),
+            where('teacherId', '==', teacherId),
             where('date', '==', date)
         );
         const snapshot = await getDocs(q);
@@ -294,12 +294,12 @@ export const getStudentAbsencesByTeacherForDate = async (teacherName: string, da
 export const getFilteredStudentAbsenceReport = async ({
     startDate,
     endDate,
-    teacherName,
+    teacherId,
     className,
 }: {
     startDate: string;
     endDate: string;
-    teacherName?: string;
+    teacherId?: string;
     className?: string;
 }): Promise<StudentAbsenceRecord[]> => {
     const studentAbsencesCol = collection(db, 'studentAbsenceRecords');
@@ -308,8 +308,8 @@ export const getFilteredStudentAbsenceReport = async ({
         where('date', '<=', endDate),
     ];
 
-    if (teacherName) {
-        constraints.push(where('reportedBy', '==', teacherName));
+    if (teacherId) {
+        constraints.push(where('teacherId', '==', teacherId));
     }
     if (className) {
         constraints.push(where('class', '==', className));

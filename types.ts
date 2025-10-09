@@ -57,4 +57,5 @@ export interface StudentAbsenceRecord {
   date: string;
   reason: 'Sakit' | 'Izin' | 'Alpa';
   reportedBy: string; // Teacher's name
+  teacherId: string; // Teacher's UID
 }

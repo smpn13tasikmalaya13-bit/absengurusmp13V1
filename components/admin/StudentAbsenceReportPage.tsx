@@ -45,10 +45,6 @@ const StudentAbsenceReportPage: React.FC = () => {
 
     setIsLoading(true);
     setHasSearched(true);
-
-    // Find teacher name from selected ID
-    const teacher = teachers.find(t => t.id === selectedTeacher);
-    const teacherName = teacher ? teacher.name : undefined;
     
     // Find class name from selected ID
     const classInfo = classes.find(c => c.id === selectedClass);
@@ -57,12 +53,12 @@ const StudentAbsenceReportPage: React.FC = () => {
     const data = await getFilteredStudentAbsenceReport({
       startDate,
       endDate,
-      teacherName,
+      teacherId: selectedTeacher || undefined,
       className,
     });
     setReportData(data);
     setIsLoading(false);
-  }, [startDate, endDate, selectedTeacher, selectedClass, teachers, classes]);
+  }, [startDate, endDate, selectedTeacher, selectedClass, classes]);
 
   useEffect(() => {
     if (startDate && endDate) {

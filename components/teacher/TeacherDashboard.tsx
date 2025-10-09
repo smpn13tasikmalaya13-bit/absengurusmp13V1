@@ -84,7 +84,7 @@ const TeacherDashboard: React.FC = () => {
     setAttendanceHistory(allAttendance.slice(0, 10));
 
     // Refresh reported absences
-    const reported = await getStudentAbsencesByTeacherForDate(user.name, todayStr);
+    const reported = await getStudentAbsencesByTeacherForDate(user.id, todayStr);
     setReportedAbsences(reported);
   };
 
@@ -107,7 +107,7 @@ const TeacherDashboard: React.FC = () => {
         const [allSchedules, allAttendance, reported, classesData] = await Promise.all([
           getSchedulesByTeacher(user.name),
           getAttendanceForTeacher(user.id),
-          getStudentAbsencesByTeacherForDate(user.name, new Date().toISOString().split('T')[0]),
+          getStudentAbsencesByTeacherForDate(user.id, new Date().toISOString().split('T')[0]),
           getAllClasses(),
         ]);
 
@@ -189,6 +189,7 @@ const TeacherDashboard: React.FC = () => {
         date: new Date().toISOString().split('T')[0],
         reason: studentReason,
         reportedBy: user.name,
+        teacherId: user.id, // FIX: Added teacherId for robust security rules
     };
     try {
         await reportStudentAbsence(record);
