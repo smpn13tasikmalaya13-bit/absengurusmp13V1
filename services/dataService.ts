@@ -156,10 +156,11 @@ export const getAllLessonSchedules = async (): Promise<LessonSchedule[]> => {
 };
 
 // Add a new lesson schedule to Firestore
-export const addLessonSchedule = async (schedule: Omit<LessonSchedule, 'id'>): Promise<void> => {
+export const addLessonSchedule = async (schedule: Omit<LessonSchedule, 'id'>): Promise<LessonSchedule> => {
     try {
         const schedulesCol = collection(db, 'lessonSchedules');
-        await addDoc(schedulesCol, schedule);
+        const docRef = await addDoc(schedulesCol, schedule);
+        return { id: docRef.id, ...schedule } as LessonSchedule;
     } catch (error) {
         console.error("Error adding lesson schedule:", error);
         throw new Error("Failed to add new lesson schedule. Please try again.");

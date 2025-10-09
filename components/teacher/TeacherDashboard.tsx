@@ -254,13 +254,28 @@ const TeacherDashboard: React.FC = () => {
     }
 
     try {
-        await addLessonSchedule(scheduleToAdd as Omit<LessonSchedule, 'id'>);
+        const newScheduleWithId = await addLessonSchedule(scheduleToAdd as Omit<LessonSchedule, 'id'>);
         
-        // Refetch schedule data
+        // Update the full schedule list for the modal
+        setFullSchedule(prevSchedules => {
+            const updatedSchedules = [...prevSchedules, newScheduleWithId];
+            // Sort to maintain order in the modal view
+            const dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            return updatedSchedules.sort((a, b) => {
+                const dayComparison = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
+                if (dayComparison !== 0) return dayComparison;
+                return a.time.localeCompare(b.time);
+            });
+        });
+
+        // Update today's schedule list for the dashboard view
         const todayDayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
-        const allSchedules = await getSchedulesByTeacher(user.id);
-        setFullSchedule(allSchedules);
-        setTodaysSchedule(allSchedules.filter(s => s.day === todayDayName));
+        if (newScheduleWithId.day === todayDayName) {
+            setTodaysSchedule(prevSchedules => {
+                const updatedSchedules = [...prevSchedules, newScheduleWithId];
+                return updatedSchedules.sort((a, b) => a.time.localeCompare(b.time));
+            });
+        }
         
         // Reset form
         setNewScheduleData({ day: 'Senin', time: '', subject: '', class: '', period: 1 });
