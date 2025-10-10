@@ -1,58 +1,74 @@
 import React from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { AdminPage } from '../admin/AdminDashboard';
+
+// Icons for the sidebar items
+const DashboardIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>;
+const QRIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>;
+const ReportIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
+const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-3-5.197M15 21a9 9 0 00-9-9" /></svg>;
+const ScheduleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
+const DataIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10m16-10v10M9 3h6l-3 4-3-4zM9 21h6l-3-4-3 4z" /></svg>;
 
 interface SidebarProps {
-  activePage: AdminPage;
-  onNavigate: (page: AdminPage) => void;
+  currentView: string;
+  onNavigate: (view: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate }) => {
-  const { user, logout } = useAuth();
-
-  const navItems: { label: string; page: AdminPage }[] = [
-    { label: 'Dashboard', page: 'dashboard' },
-    { label: 'Data Guru & Pembina', page: 'manageTeachers' },
-    { label: 'Data Admin', page: 'manageAdmins' },
-    { label: 'Data Kelas', page: 'manageClasses' },
-    { label: 'Data Eskul', page: 'manageEskuls' },
-    { label: 'Jadwal Pelajaran', page: 'manageLessonSchedule' },
-    { label: 'Jadwal Eskul', page: 'manageEskulSchedule' },
-    { label: 'Laporan Absensi Guru', page: 'reportTeacherAttendance' },
-    { label: 'Laporan Siswa Absen', page: 'reportStudentAbsence' },
-  ];
-
+const NavItem: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  view: string;
+  currentView: string;
+  onNavigate: (view: string) => void;
+}> = ({ icon, label, view, currentView, onNavigate }) => {
+  const isActive = currentView === view;
   return (
-    <div className="w-64 bg-slate-900 text-gray-300 flex flex-col h-screen fixed top-0 left-0">
-      <div className="p-6">
-        <h2 className="text-xl font-bold text-white">Panel Admin</h2>
+    <button
+      onClick={() => onNavigate(view)}
+      className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+        isActive
+          ? 'bg-blue-600 text-white'
+          : 'text-gray-300 hover:bg-slate-700 hover:text-white'
+      }`}
+    >
+      {icon}
+      <span className="ml-3">{label}</span>
+    </button>
+  );
+};
+
+const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
+  return (
+    <aside className="w-64 bg-slate-800 p-4 space-y-2 flex flex-col h-full">
+      <div className="flex items-center mb-6 px-2">
+        <h1 className="text-2xl font-bold text-blue-500">HadirKu</h1>
+        <span className="ml-2 px-2 py-1 text-xs font-semibold text-blue-200 bg-blue-500/30 rounded-full">Admin</span>
       </div>
-      <nav className="flex-1 px-4 space-y-2">
-        {navItems.map((item) => (
-          <button
-            key={item.page}
-            onClick={() => onNavigate(item.page)}
-            className={`w-full text-left block px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activePage === item.page
-                ? 'bg-slate-700 text-white'
-                : 'hover:bg-slate-700 hover:text-white'
-            }`}
-            aria-current={activePage === item.page ? 'page' : undefined}
-          >
-            {item.label}
-          </button>
-        ))}
+      <nav className="flex-1 space-y-2">
+        <NavItem icon={<DashboardIcon />} label="Dashboard" view="dashboard" currentView={currentView} onNavigate={onNavigate} />
+        <NavItem icon={<QRIcon />} label="Generate QR Code" view="qr-generator" currentView={currentView} onNavigate={onNavigate} />
+        
+        <div className="pt-4">
+            <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Laporan</h3>
+            <div className="mt-2 space-y-2">
+                <NavItem icon={<ReportIcon />} label="Absensi Guru" view="teacher-attendance-report" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<ReportIcon />} label="Absensi Siswa" view="student-absence-report" currentView={currentView} onNavigate={onNavigate} />
+            </div>
+        </div>
+        
+        <div className="pt-4">
+            <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Manajemen</h3>
+            <div className="mt-2 space-y-2">
+                <NavItem icon={<UsersIcon />} label="Guru & Pembina" view="manage-teachers" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<UsersIcon />} label="Admin" view="manage-admins" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<ScheduleIcon />} label="Jadwal Pelajaran" view="manage-lesson-schedule" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<ScheduleIcon />} label="Jadwal Eskul" view="manage-eskul-schedule" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<DataIcon />} label="Data Kelas" view="manage-classes" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<DataIcon />} label="Data Eskul" view="manage-eskuls" currentView={currentView} onNavigate={onNavigate} />
+            </div>
+        </div>
+
       </nav>
-      <div className="p-4 border-t border-slate-700">
-        <p className="font-semibold text-white">{user?.name || 'AdminLaptop'}</p>
-        <button
-          onClick={logout}
-          className="text-sm text-red-400 hover:text-red-300 transition-colors"
-        >
-          Keluar
-        </button>
-      </div>
-    </div>
+    </aside>
   );
 };
 

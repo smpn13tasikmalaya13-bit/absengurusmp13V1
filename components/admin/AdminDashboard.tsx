@@ -1,59 +1,96 @@
 import React, { useState } from 'react';
 import Sidebar from '../layout/Sidebar';
 import DashboardContent from './DashboardContent';
-import ManageUsers from './ManageUsers';
-import ManageClasses from './ManageClasses';
-import ManageEskuls from './ManageExtracurriculars';
-import ManageLessonSchedule from './ManageLessonSchedule';
-import ManageEskulSchedule from './ManageExtracurricularSchedule';
+import QRCodeGenerator from './QRCodeGenerator';
 import TeacherAttendanceReportPage from './TeacherAttendanceReportPage';
 import StudentAbsenceReportPage from './StudentAbsenceReportPage';
-
-export type AdminPage = 
-  | 'dashboard'
-  | 'manageTeachers'
-  | 'manageAdmins'
-  | 'manageClasses'
-  | 'manageEskuls'
-  | 'manageLessonSchedule'
-  | 'manageEskulSchedule'
-  | 'reportTeacherAttendance'
-  | 'reportStudentAbsence';
+import ManageUsers from './ManageUsers';
+import ManageLessonSchedule from './ManageLessonSchedule';
+import ManageExtracurricularSchedule from './ManageExtracurricularSchedule';
+import ManageClasses from './ManageClasses';
+import ManageExtracurriculars from './ManageExtracurriculars';
+import { useAuth } from '../../context/AuthContext';
+import { Button } from '../ui/Button';
 
 const AdminDashboard: React.FC = () => {
-  const [activePage, setActivePage] = useState<AdminPage>('dashboard');
+  const [currentView, setCurrentView] = useState('dashboard');
+  const { user, logout } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State for mobile sidebar
 
   const renderContent = () => {
-    switch (activePage) {
+    switch (currentView) {
       case 'dashboard':
         return <DashboardContent />;
-      case 'manageTeachers':
-        return <ManageUsers mode="teachers" />;
-      case 'manageAdmins':
-        return <ManageUsers mode="admins" />;
-      case 'manageClasses':
-        return <ManageClasses />;
-      case 'manageEskuls':
-        return <ManageEskuls />;
-      case 'manageLessonSchedule':
-        return <ManageLessonSchedule />;
-      case 'manageEskulSchedule':
-        return <ManageEskulSchedule />;
-      case 'reportTeacherAttendance':
+      case 'qr-generator':
+        return <QRCodeGenerator />;
+      case 'teacher-attendance-report':
         return <TeacherAttendanceReportPage />;
-      case 'reportStudentAbsence':
+      case 'student-absence-report':
         return <StudentAbsenceReportPage />;
+      case 'manage-teachers':
+        return <ManageUsers mode="teachers" />;
+      case 'manage-admins':
+        return <ManageUsers mode="admins" />;
+      case 'manage-lesson-schedule':
+        return <ManageLessonSchedule />;
+      case 'manage-eskul-schedule':
+        return <ManageExtracurricularSchedule />;
+      case 'manage-classes':
+        return <ManageClasses />;
+      case 'manage-eskuls':
+        return <ManageExtracurriculars />;
       default:
         return <DashboardContent />;
     }
   };
 
   return (
-    <div className="flex h-screen bg-slate-800 text-gray-300">
-      <Sidebar activePage={activePage} onNavigate={setActivePage} />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
-        {renderContent()}
-      </main>
+    <div className="min-h-screen flex bg-slate-900 text-gray-300">
+      {/* Sidebar for larger screens */}
+      <div className="hidden md:block">
+          <Sidebar currentView={currentView} onNavigate={setCurrentView} />
+      </div>
+
+      {/* Mobile Sidebar */}
+      {isSidebarOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)}>
+              <div className="w-64 h-full bg-slate-800" onClick={(e) => e.stopPropagation()}>
+                 <Sidebar currentView={currentView} onNavigate={(view) => { setCurrentView(view); setIsSidebarOpen(false); }} />
+              </div>
+          </div>
+      )}
+      
+      <div className="flex-1 flex flex-col">
+        <header className="bg-slate-800/50 backdrop-blur-sm shadow-sm md:hidden p-4 flex justify-between items-center sticky top-0 z-20">
+            <button onClick={() => setIsSidebarOpen(true)} className="text-white">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
+            </button>
+             <div className="flex items-center">
+              <span className="text-gray-300 mr-4 text-sm">
+                Hi, <span className="font-medium">{user?.name}</span>
+              </span>
+              <Button onClick={logout} variant="secondary" className="w-auto py-1 px-3 text-sm !bg-slate-700 hover:!bg-slate-600 !text-white">
+                Logout
+              </Button>
+            </div>
+        </header>
+
+         <header className="hidden md:flex bg-slate-800/50 backdrop-blur-sm shadow-sm p-4 justify-end items-center sticky top-0 z-20">
+             <div className="flex items-center">
+              <span className="text-gray-300 mr-4 text-sm">
+                Welcome, <span className="font-medium">{user?.name}</span>
+              </span>
+              <Button onClick={logout} variant="secondary" className="w-auto py-1 px-3 text-sm !bg-slate-700 hover:!bg-slate-600 !text-white">
+                Logout
+              </Button>
+            </div>
+        </header>
+
+
+        <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+          {renderContent()}
+        </main>
+      </div>
     </div>
   );
 };

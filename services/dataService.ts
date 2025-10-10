@@ -149,8 +149,11 @@ export const getAllLessonSchedules = async (): Promise<LessonSchedule[]> => {
         const q = query(schedulesCol, orderBy('day'), orderBy('time'));
         const scheduleSnapshot = await getDocs(q);
         return scheduleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonSchedule));
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching lesson schedules:", error);
+        if (error.code === 'failed-precondition') {
+            alert(`Query to fetch schedules failed. A composite index is required in Firestore. Please open the developer console (F12) for a direct link to create it, or manually create an index on the 'lessonSchedules' collection for fields: day (ascending), time (ascending).\n\n${error.message}`);
+        }
         return [];
     }
 };

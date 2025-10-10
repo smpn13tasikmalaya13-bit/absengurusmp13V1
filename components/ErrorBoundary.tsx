@@ -64,28 +64,24 @@ interface State {
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
-  // FIX: Reverted to a standard constructor for state initialization.
-  // The class property syntax was causing an issue where `this.props` was not
-  // being correctly recognized on the component type in this environment.
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-    };
-  }
+  // FIX: Initialized state using a class property. This is a common pattern in modern React
+  // and can resolve issues with `this` context that might arise from complex configurations.
+  state: State = {
+    hasError: false,
+    error: null,
+  };
 
-  public static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): State {
     // Update state so the next render will show the fallback UI.
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // You can also log the error to an error reporting service
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  public render() {
+  render() {
     if (this.state.hasError) {
         const isConfigError = this.state.error?.message.includes('api-key-not-valid');
         
