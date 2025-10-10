@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Sidebar from '../layout/Sidebar';
 import DashboardContent from './DashboardContent';
-import QRCodeGenerator from './QRCodeGenerator';
 import TeacherAttendanceReportPage from './TeacherAttendanceReportPage';
 import StudentAbsenceReportPage from './StudentAbsenceReportPage';
 import ManageUsers from './ManageUsers';
@@ -21,8 +20,6 @@ const AdminDashboard: React.FC = () => {
     switch (currentView) {
       case 'dashboard':
         return <DashboardContent />;
-      case 'qr-generator':
-        return <QRCodeGenerator />;
       case 'teacher-attendance-report':
         return <TeacherAttendanceReportPage />;
       case 'student-absence-report':

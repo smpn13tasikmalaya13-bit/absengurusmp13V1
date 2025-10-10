@@ -64,7 +64,6 @@ interface State {
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
-  // FIX: Refactored to use a constructor for state initialization to resolve a TypeScript error where `this.props` was not being recognized.
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -84,7 +83,9 @@ class ErrorBoundary extends React.Component<Props, State> {
   }
 
   render() {
+    // FIX: Access state via `this.state` in a class component.
     if (this.state.hasError) {
+        // FIX: Access error from `this.state` in a class component.
         const isConfigError = this.state.error?.message.includes('api-key-not-valid');
         
         if (isConfigError) {
@@ -101,6 +102,7 @@ class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
+    // FIX: Access children via `this.props` in a class component.
     return this.props.children;
   }
 }

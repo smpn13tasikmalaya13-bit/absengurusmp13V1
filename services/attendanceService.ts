@@ -2,29 +2,66 @@ import { AttendanceRecord, LessonSchedule, User } from '../types';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit } from 'firebase/firestore';
 
+// FIX: Implement missing QR code generation and retrieval functions.
+// Key for storing the daily QR code data in localStorage
+const QR_CODE_STORAGE_KEY = 'dailyQrCodeData';
 
-let currentQrCodeData: string | null = null;
-const CHECK_IN_DEADLINE_HOUR = 8; // 8 AM
+interface DailyQrCode {
+  date: string; // YYYY-MM-DD
+  data: string;
+}
 
+/**
+ * Generates a new QR code data string for the current day and stores it.
+ * This should be called by an admin. The data is a simple timestamped UUID.
+ * @returns The generated QR code data string.
+ */
 export const generateQrCodeData = (): string => {
-  const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  const randomStr = Math.random().toString(36).substring(2, 10);
-  currentQrCodeData = `HADIRKU-${date}-${randomStr}`;
-  return currentQrCodeData;
+    const today = new Date().toISOString().split('T')[0];
+    const newQrData = `HADIRKU-${today}-${crypto.randomUUID()}`;
+    const dataToStore: DailyQrCode = { date: today, data: newQrData };
+    localStorage.setItem(QR_CODE_STORAGE_KEY, JSON.stringify(dataToStore));
+    return newQrData;
 };
 
+/**
+ * Retrieves the QR code data for the current day from localStorage.
+ * @returns The QR code data string if it exists and is for today, otherwise null.
+ */
 export const getCurrentQrCodeData = (): string | null => {
-  return currentQrCodeData;
+    const storedData = localStorage.getItem(QR_CODE_STORAGE_KEY);
+    if (!storedData) {
+        return null;
+    }
+
+    try {
+        const qrCodeObject: DailyQrCode = JSON.parse(storedData);
+        const today = new Date().toISOString().split('T')[0];
+
+        if (qrCodeObject.date === today) {
+            return qrCodeObject.data;
+        } else {
+            // Data is from a previous day, so it's invalid.
+            localStorage.removeItem(QR_CODE_STORAGE_KEY);
+            return null;
+        }
+    } catch (error) {
+        console.error("Error parsing QR code data from localStorage", error);
+        localStorage.removeItem(QR_CODE_STORAGE_KEY);
+        return null;
+    }
 };
+
+
+const CHECK_IN_DEADLINE_HOUR = 8; // 8 AM
 
 export const recordAttendance = async (
   user: User,
-  qrCodeData: string,
+  qrCodeData: string, // This is now just a trigger, not a secret to be validated here.
   scheduleInfo?: Pick<LessonSchedule, 'id' | 'subject' | 'class' | 'period'>
 ): Promise<{ success: boolean; message: string }> => {
-  if (qrCodeData !== currentQrCodeData) {
-    return { success: false, message: 'Invalid or expired QR Code.' };
-  }
+  // The check for a daily, matching QR code has been removed as requested.
+  // Any valid QR scan (that's not an empty string) from a teacher within the location radius is now considered a valid trigger.
 
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
