@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAllUsers, deleteUser } from '../../services/authService';
+import { getAllUsers, deleteUser, resetDeviceBinding, register } from '../../services/authService';
 import { Role, User } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { ADMIN_REGISTRATION_KEY } from '../../constants';
 
 interface ManageUsersProps {
   mode: 'teachers' | 'admins';
@@ -13,11 +14,19 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // State for Delete Modal
+  // Modals state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
+  
+  // Data for modals
+  const [userToAction, setUserToAction] = useState<User | null>(null);
+  const [newAdminData, setNewAdminData] = useState({ name: '', email: '', password: '' });
+
+  // General state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const isTeachers = mode === 'teachers';
   const title = isTeachers ? 'Manajemen Guru & Pembina' : 'Manajemen Admin';
@@ -38,28 +47,27 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+  
+  const clearMessages = () => {
+    setError('');
+    setSuccess('');
+  };
 
   // === DELETE MODAL LOGIC ===
   const handleOpenDeleteModal = (user: User) => {
-    setUserToDelete(user);
-    setError('');
+    setUserToAction(user);
+    clearMessages();
     setIsDeleteModalOpen(true);
   };
-
-  const handleCloseDeleteModal = () => {
-    if (isSubmitting) return;
-    setIsDeleteModalOpen(false);
-    setUserToDelete(null);
-  };
-
   const handleConfirmDelete = async () => {
-    if (!userToDelete) return;
-    setError('');
+    if (!userToAction) return;
+    clearMessages();
     setIsSubmitting(true);
     try {
-      await deleteUser(userToDelete.id);
-      handleCloseDeleteModal();
-      await fetchUsers(); // Refetch users
+      await deleteUser(userToAction.id);
+      setIsDeleteModalOpen(false);
+      setUserToAction(null);
+      await fetchUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menghapus pengguna.');
     } finally {
@@ -67,10 +75,82 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
     }
   };
 
+  // === RESET DEVICE MODAL LOGIC ===
+  const handleOpenResetModal = (user: User) => {
+    setUserToAction(user);
+    clearMessages();
+    setIsResetModalOpen(true);
+  };
+  const handleConfirmReset = async () => {
+    if (!userToAction) return;
+    clearMessages();
+    setIsSubmitting(true);
+    try {
+      await resetDeviceBinding(userToAction.id);
+      setSuccess(`Ikatan perangkat untuk ${userToAction.name} berhasil direset.`);
+      setTimeout(() => {
+        setIsResetModalOpen(false);
+        setUserToAction(null);
+        clearMessages();
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal mereset perangkat.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // === ADD ADMIN MODAL LOGIC ===
+  const handleOpenAddAdminModal = () => {
+    setNewAdminData({ name: '', email: '', password: '' });
+    clearMessages();
+    setIsAddAdminModalOpen(true);
+  };
+  const handleAddAdminSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearMessages();
+    setIsSubmitting(true);
+    try {
+      await register(newAdminData.name, newAdminData.email, newAdminData.password, Role.Admin, ADMIN_REGISTRATION_KEY);
+      setSuccess(`Admin ${newAdminData.name} berhasil ditambahkan.`);
+      await fetchUsers();
+      setTimeout(() => {
+        setIsAddAdminModalOpen(false);
+        clearMessages();
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menambah admin.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const closeModal = (modalSetter: React.Dispatch<React.SetStateAction<boolean>>) => {
+      if(isSubmitting) return;
+      modalSetter(false);
+      setUserToAction(null);
+  }
+
   return (
     <>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-white">{title}</h1>
+        <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold text-white">{title}</h1>
+            {!isTeachers && (
+              <Button onClick={handleOpenAddAdminModal} className="w-auto !bg-blue-600 hover:!bg-blue-700 px-6">Tambah Admin</Button>
+            )}
+        </div>
+
+        {!isTeachers && (
+            <div className="bg-slate-700 p-4 rounded-lg border border-yellow-500/50">
+                <h3 className="font-bold text-lg text-yellow-400">Kode Pendaftaran Admin</h3>
+                <p className="text-slate-300 mt-1">Berikan kode berikut kepada pengguna yang ingin Anda daftarkan sebagai Admin baru:</p>
+                <div className="mt-2 bg-slate-900 p-3 rounded-md">
+                    <p className="font-mono text-lg text-amber-300 select-all">{ADMIN_REGISTRATION_KEY}</p>
+                </div>
+            </div>
+        )}
+
         <div className="bg-slate-900 rounded-lg shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             {isLoading ? (
@@ -100,7 +180,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
                       <td className="p-4">
                         <div className="flex flex-col items-start space-y-1">
                           {isTeachers && <button className="text-green-400 hover:underline text-sm">Kirim Pesan</button>}
-                          <button className="text-blue-400 hover:underline text-sm">Reset Perangkat</button>
+                          <button onClick={() => handleOpenResetModal(user)} className="text-blue-400 hover:underline text-sm">Reset Perangkat</button>
                           <button onClick={() => handleOpenDeleteModal(user)} className="text-red-400 hover:underline text-sm">Hapus</button>
                         </div>
                       </td>
@@ -116,16 +196,59 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
         </footer>
       </div>
 
+      {/* MODALS */}
+      
+      {/* ADD ADMIN MODAL */}
+      <Modal isOpen={isAddAdminModalOpen} onClose={() => closeModal(setIsAddAdminModalOpen)} title="Tambah Admin Baru">
+          <form onSubmit={handleAddAdminSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300">Nama Lengkap</label>
+                <input type="text" value={newAdminData.name} onChange={e => setNewAdminData({...newAdminData, name: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300">Email</label>
+                <input type="email" value={newAdminData.email} onChange={e => setNewAdminData({...newAdminData, email: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300">Password</label>
+                <input type="password" value={newAdminData.password} onChange={e => setNewAdminData({...newAdminData, password: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" />
+              </div>
+              {error && <p className="text-sm text-red-400">{error}</p>}
+              {success && <p className="text-sm text-green-400">{success}</p>}
+              <div className="flex justify-end space-x-3 pt-2">
+                  <Button type="button" onClick={() => closeModal(setIsAddAdminModalOpen)} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>Batal</Button>
+                  <Button type="submit" isLoading={isSubmitting} className="w-auto">Simpan</Button>
+              </div>
+          </form>
+      </Modal>
+
+      {/* RESET DEVICE CONFIRMATION MODAL */}
+      {userToAction && (
+          <Modal isOpen={isResetModalOpen} onClose={() => closeModal(setIsResetModalOpen)} title="Konfirmasi Reset Perangkat">
+              <div className="space-y-4">
+                  <p className="text-gray-300">
+                      Apakah Anda yakin ingin mereset ikatan perangkat untuk <strong>{userToAction.name}</strong>? Pengguna akan dapat login dari perangkat baru setelah ini.
+                  </p>
+                  {error && <p className="text-sm text-red-400">{error}</p>}
+                  {success && <p className="text-sm text-green-400">{success}</p>}
+                  <div className="flex justify-end space-x-3 pt-2">
+                      <Button type="button" onClick={() => closeModal(setIsResetModalOpen)} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>Batal</Button>
+                      <Button onClick={handleConfirmReset} isLoading={isSubmitting} variant="primary" className="w-auto !bg-blue-600 hover:!bg-blue-700">Reset</Button>
+                  </div>
+              </div>
+          </Modal>
+      )}
+
       {/* DELETE CONFIRMATION MODAL */}
-      {userToDelete && (
-        <Modal isOpen={isDeleteModalOpen} onClose={handleCloseDeleteModal} title="Konfirmasi Hapus">
+      {userToAction && (
+        <Modal isOpen={isDeleteModalOpen} onClose={() => closeModal(setIsDeleteModalOpen)} title="Konfirmasi Hapus">
           <div className="space-y-4">
             <p className="text-gray-300">
-              Apakah Anda yakin ingin menghapus pengguna <strong>{userToDelete.name}</strong>? Tindakan ini hanya menghapus profil dari database, bukan akun login.
+              Apakah Anda yakin ingin menghapus pengguna <strong>{userToAction.name}</strong>? Tindakan ini hanya menghapus profil dari database, bukan akun login.
             </p>
             {error && <p className="text-sm text-red-400">{error}</p>}
             <div className="flex justify-end space-x-3 pt-2">
-              <Button type="button" onClick={handleCloseDeleteModal} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>
+              <Button type="button" onClick={() => closeModal(setIsDeleteModalOpen)} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>
                 Batal
               </Button>
               <Button onClick={handleConfirmDelete} isLoading={isSubmitting} variant="danger" className="w-auto">

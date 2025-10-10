@@ -9,6 +9,7 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  boundDeviceId?: string; // Unique ID for device binding
 }
 
 export interface AttendanceRecord {

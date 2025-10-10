@@ -6,3 +6,6 @@ export const SCHOOL_COORDINATES = {
 };
 
 export const ALLOWED_RADIUS_METERS = 100; // 100 meters
+
+// Secret key for registering new admins. This should be kept secure.
+export const ADMIN_REGISTRATION_KEY = 'RAHASIA_ADMIN_123';

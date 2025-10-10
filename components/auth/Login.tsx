@@ -95,6 +95,7 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<Role>(Role.Teacher);
+  const [adminKey, setAdminKey] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -107,7 +108,7 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
     }
     setIsLoading(true);
     try {
-      await register(name, email, password, role);
+      await register(name, email, password, role, adminKey);
       // On successful registration, the AuthContext's onAuthStateChanged will log the user in.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
@@ -144,6 +145,20 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
             <option value={Role.Admin}>Admin</option>
           </select>
         </div>
+        
+        {role === Role.Admin && (
+            <div>
+                <label htmlFor="adminKey" className="text-sm font-medium text-gray-400 block mb-1">Kode Pendaftaran Admin</label>
+                <input 
+                    id="adminKey" 
+                    type="password" 
+                    value={adminKey} 
+                    onChange={(e) => setAdminKey(e.target.value)} 
+                    required 
+                    placeholder="Masukkan kode rahasia"
+                    className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+        )}
         
         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
