@@ -12,7 +12,7 @@ const AppContent: React.FC = () => {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-800">
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
         <Spinner />
       </div>
     );

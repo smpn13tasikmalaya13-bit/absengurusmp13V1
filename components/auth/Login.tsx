@@ -1,8 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { Role } from '../../types';
 import { register } from '../../services/authService';
+
+// ========== PWA Install Prompt Component ==========
+const PwaInstallPrompt: React.FC = () => {
+  const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const beforeInstallPromptHandler = (e: Event) => {
+      e.preventDefault();
+      // Don't show the prompt if the app is already installed (in standalone mode)
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        return;
+      }
+      setInstallPromptEvent(e);
+      setIsVisible(true);
+    };
+
+    const appInstalledHandler = () => {
+      setIsVisible(false);
+      setInstallPromptEvent(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
+    window.addEventListener('appinstalled', appInstalledHandler);
+
+    // Check on mount if already in standalone
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        setIsVisible(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
+      window.removeEventListener('appinstalled', appInstalledHandler);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!installPromptEvent) return;
+    installPromptEvent.prompt();
+    const { outcome } = await installPromptEvent.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    if (outcome === 'accepted') {
+      setIsVisible(false);
+    }
+    setInstallPromptEvent(null);
+  };
+  
+  if (!isVisible) return null;
+
+  return (
+    <div className="mt-8 p-6 bg-slate-800 rounded-lg text-center border border-slate-700">
+      <h3 className="font-bold text-white">Instal Aplikasi untuk Pengalaman Terbaik</h3>
+      <p className="text-sm text-slate-400 mt-2">Akses lebih cepat dan fitur offline dengan menambahkan aplikasi ini ke layar utama (home screen) Anda.</p>
+      <button
+        onClick={handleInstallClick}
+        className="mt-4 w-full flex items-center justify-center py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+        Instal Aplikasi
+      </button>
+    </div>
+  );
+};
+
 
 // ========== Common Header and Footer for Auth Pages ==========
 const AuthHeader: React.FC = () => (
@@ -32,7 +96,6 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
     setIsLoading(true);
     try {
       await login(email, password);
-      // On successful login, the AuthContext's onAuthStateChanged will handle navigation.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
     } finally {
@@ -53,7 +116,7 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         
@@ -68,7 +131,7 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         
@@ -79,6 +142,8 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
         </Button>
       </form>
       
+      <PwaInstallPrompt />
+
       <p className="text-center text-sm text-gray-400 mt-6">
         Belum punya akun?{' '}
         <button onClick={onSwitchToRegister} className="font-medium text-blue-500 hover:underline">
@@ -109,7 +174,6 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
     setIsLoading(true);
     try {
       await register(name, email, password, role, adminKey);
-      // On successful registration, the AuthContext's onAuthStateChanged will log the user in.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
     } finally {
@@ -124,22 +188,22 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
         
         <div>
           <label htmlFor="name" className="text-sm font-medium text-gray-400 block mb-1">Nama Lengkap</label>
-          <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
 
         <div>
           <label htmlFor="email-register" className="text-sm font-medium text-gray-400 block mb-1">Email</label>
-          <input id="email-register" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input id="email-register" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         
         <div>
           <label htmlFor="password-register" className="text-sm font-medium text-gray-400 block mb-1">Password</label>
-          <input id="password-register" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input id="password-register" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
 
         <div>
           <label htmlFor="role" className="text-sm font-medium text-gray-400 block mb-1">Daftar sebagai</label>
-          <select id="role" value={role} onChange={(e) => setRole(e.target.value as Role)} required className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select id="role" value={role} onChange={(e) => setRole(e.target.value as Role)} required className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value={Role.Teacher}>Guru</option>
             <option value={Role.Coach}>Pembina Ekstrakurikuler</option>
             <option value={Role.Admin}>Admin</option>
@@ -156,7 +220,7 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
                     onChange={(e) => setAdminKey(e.target.value)} 
                     required 
                     placeholder="Masukkan kode rahasia"
-                    className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
         )}
         
@@ -185,7 +249,7 @@ const AuthComponent: React.FC = () => {
   const [isLoginView, setIsLoginView] = useState(true);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-800 text-gray-300 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-gray-300 p-4">
       <div className="w-full max-w-sm">
         <AuthHeader />
         {isLoginView 
