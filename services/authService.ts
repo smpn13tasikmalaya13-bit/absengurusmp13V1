@@ -102,14 +102,18 @@ export const register = async (name: string, email: string, pass: string, role: 
 
         const deviceId = getOrCreateDeviceId();
 
+        // Create the base user object
         const newUser: User = {
             id: firebaseUser.uid,
             name,
             email,
             role,
-            // Bind device immediately on registration for non-admins
-            boundDeviceId: role !== Role.Admin ? deviceId : undefined,
         };
+        
+        // Conditionally add boundDeviceId only for non-admins to avoid 'undefined'
+        if (role !== Role.Admin) {
+            newUser.boundDeviceId = deviceId;
+        }
         
         await setDoc(doc(db, "users", firebaseUser.uid), newUser);
 
