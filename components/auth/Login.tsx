@@ -66,7 +66,7 @@ const PwaInstallPrompt: React.FC = () => {
         className={`mt-4 w-full ${!isInstallable ? '!bg-slate-600 !cursor-not-allowed' : ''}`}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-        {isInstallable ? 'Instal Aplikasi' : 'Instalasi Siap...'}
+        {isInstallable ? 'Instal Aplikasi' : 'Instalasi Belum Siap'}
       </Button>
     </div>
   );
@@ -82,7 +82,7 @@ const AuthHeader: React.FC = () => (
 );
 
 const AuthFooter: React.FC = () => (
-  <footer className="absolute bottom-4 text-center text-gray-500 text-sm">
+  <footer className="text-center text-gray-500 text-sm mt-8">
     © 2025 Rullp. All rights reserved.
   </footer>
 );
@@ -261,8 +261,8 @@ const AuthComponent: React.FC = () => {
           ? <LoginView onSwitchToRegister={() => setIsLoginView(false)} /> 
           : <RegisterView onSwitchToLogin={() => setIsLoginView(true)} />
         }
+        <AuthFooter />
       </div>
-      <AuthFooter />
     </div>
   );
 };
