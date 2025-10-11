@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { Role } from '../../types';
 import { register } from '../../services/authService';
+import Logo from '../ui/Logo';
 
 // ========== PWA Install Prompt Component ==========
 const PwaInstallPrompt: React.FC = () => {
@@ -11,7 +12,7 @@ const PwaInstallPrompt: React.FC = () => {
 
   useEffect(() => {
     // Check on mount if already in standalone mode, which means it's installed.
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
         setIsAppInstalled(true);
         return;
     }
@@ -43,8 +44,7 @@ const PwaInstallPrompt: React.FC = () => {
     // Show the browser's installation prompt
     installPromptEvent.prompt();
     // Wait for the user to respond to the prompt
-    const { outcome } = await installPromptEvent.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
+    await installPromptEvent.userChoice;
     // We don't need to do anything here; the 'appinstalled' event will handle the UI update.
     setInstallPromptEvent(null);
   };
@@ -60,14 +60,14 @@ const PwaInstallPrompt: React.FC = () => {
     <div className="mt-8 p-6 bg-slate-800 rounded-lg text-center border border-slate-700">
       <h3 className="font-bold text-white">Instal Aplikasi untuk Pengalaman Terbaik</h3>
       <p className="text-sm text-slate-400 mt-2">Akses lebih cepat dan fitur offline dengan menambahkan aplikasi ini ke layar utama (home screen) Anda.</p>
-      <button
+      <Button
         onClick={handleInstallClick}
         disabled={!isInstallable}
-        className="mt-4 w-full flex items-center justify-center py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+        className={`mt-4 w-full ${!isInstallable ? '!bg-slate-600 !cursor-not-allowed' : ''}`}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-        {isInstallable ? 'Instal Aplikasi' : 'Instalasi Belum Siap'}
-      </button>
+        {isInstallable ? 'Instal Aplikasi' : 'Instalasi Siap...'}
+      </Button>
     </div>
   );
 };
@@ -75,9 +75,9 @@ const PwaInstallPrompt: React.FC = () => {
 
 // ========== Common Header and Footer for Auth Pages ==========
 const AuthHeader: React.FC = () => (
-  <header className="text-center mb-8">
-    <h1 className="text-5xl font-bold text-blue-500">HadirKu</h1>
-    <p className="text-gray-400 mt-2">Sistem Absensi Guru Digital</p>
+  <header className="text-center mb-8 flex flex-col items-center">
+    <Logo className="h-24 w-auto" />
+    <p className="text-gray-400 mt-4 text-lg">Sistem Absensi Guru Digital</p>
   </header>
 );
 
@@ -121,7 +121,7 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           />
         </div>
         
@@ -136,13 +136,13 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           />
         </div>
         
         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
-        <Button type="submit" isLoading={isLoading} className="w-full !bg-blue-600 hover:!bg-blue-700">
+        <Button type="submit" isLoading={isLoading}>
           Login
         </Button>
       </form>
@@ -193,22 +193,22 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
         
         <div>
           <label htmlFor="name" className="text-sm font-medium text-gray-400 block mb-1">Nama Lengkap</label>
-          <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
         </div>
 
         <div>
           <label htmlFor="email-register" className="text-sm font-medium text-gray-400 block mb-1">Email</label>
-          <input id="email-register" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input id="email-register" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
         </div>
         
         <div>
           <label htmlFor="password-register" className="text-sm font-medium text-gray-400 block mb-1">Password</label>
-          <input id="password-register" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input id="password-register" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
         </div>
 
         <div>
           <label htmlFor="role" className="text-sm font-medium text-gray-400 block mb-1">Daftar sebagai</label>
-          <select id="role" value={role} onChange={(e) => setRole(e.target.value as Role)} required className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select id="role" value={role} onChange={(e) => setRole(e.target.value as Role)} required className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
             <option value={Role.Teacher}>Guru</option>
             <option value={Role.Coach}>Pembina Ekstrakurikuler</option>
             <option value={Role.Admin}>Admin</option>
@@ -225,14 +225,14 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
                     onChange={(e) => setAdminKey(e.target.value)} 
                     required 
                     placeholder="Masukkan kode rahasia"
-                    className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
             </div>
         )}
         
         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
         <div className="pt-2">
-            <Button type="submit" isLoading={isLoading} className="w-full !bg-blue-600 hover:!bg-blue-700">
+            <Button type="submit" isLoading={isLoading}>
             Daftar
             </Button>
         </div>
