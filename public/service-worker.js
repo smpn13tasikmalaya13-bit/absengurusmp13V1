@@ -3,7 +3,9 @@ const urlsToCache = [
   '/',
   '/index.html',
   '/index.tsx',
-  // Tambahkan aset penting lainnya di sini jika perlu
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 self.addEventListener('install', event => {
@@ -20,10 +22,8 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
+        // Cache falling back to network
+        return response || fetch(event.request);
       }
     )
   );
