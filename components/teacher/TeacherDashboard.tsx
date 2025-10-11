@@ -8,7 +8,6 @@ import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class } from '.
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
-import { LESSON_TIME_SLOTS } from '../../constants';
 
 // SVG Icons for the dashboard
 const LocationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>;
@@ -63,10 +62,11 @@ const TeacherDashboard: React.FC = () => {
   // State for adding schedule
   const [newScheduleData, setNewScheduleData] = useState({
       day: 'Senin',
-      time: '',
+      startTime: '',
+      endTime: '',
       subject: '',
       class: '',
-      period: 1, // Store as number for type consistency
+      period: 1,
   });
   const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
 
@@ -264,13 +264,17 @@ const TeacherDashboard: React.FC = () => {
     e.preventDefault();
     if (!user) return;
     
-    const scheduleToAdd = {
-        ...newScheduleData,
+    const scheduleToAdd: Omit<LessonSchedule, 'id'> = {
+        day: newScheduleData.day,
+        time: `${newScheduleData.startTime} - ${newScheduleData.endTime}`,
+        subject: newScheduleData.subject,
+        class: newScheduleData.class,
+        period: newScheduleData.period,
         teacher: user.name,
         teacherId: user.id,
     };
 
-    if (!scheduleToAdd.time || !scheduleToAdd.subject || !scheduleToAdd.class || scheduleToAdd.period <= 0) {
+    if (!newScheduleData.startTime || !newScheduleData.endTime || !scheduleToAdd.subject || !scheduleToAdd.class || scheduleToAdd.period <= 0) {
         setModalError("Semua kolom harus diisi dengan benar. Pastikan 'Jam Ke-' lebih dari 0.");
         return;
     }
@@ -287,7 +291,7 @@ const TeacherDashboard: React.FC = () => {
             return;
         }
 
-        const newScheduleWithId = await addLessonSchedule(scheduleToAdd as Omit<LessonSchedule, 'id'>);
+        const newScheduleWithId = await addLessonSchedule(scheduleToAdd);
         
         // Update the full schedule list for the modal
         setFullSchedule(prevSchedules => {
@@ -311,7 +315,7 @@ const TeacherDashboard: React.FC = () => {
         }
         
         // Reset form
-        setNewScheduleData({ day: 'Senin', time: '', subject: '', class: '', period: 1 });
+        setNewScheduleData({ day: 'Senin', startTime: '', endTime: '', subject: '', class: '', period: 1 });
         setModalError('');
     } catch (err) {
         setModalError(err instanceof Error ? err.message : "Gagal menambahkan jadwal. Coba lagi.");
@@ -514,12 +518,15 @@ const TeacherDashboard: React.FC = () => {
                         {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Waktu</label>
-                    <select name="time" value={newScheduleData.time} onChange={handleFormChange} required className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option value="" disabled>Pilih Waktu</option>
-                      {LESSON_TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}
-                    </select>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-1">Waktu Mulai</label>
+                        <input type="time" name="startTime" value={newScheduleData.startTime} onChange={handleFormChange} required className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-1">Waktu Selesai</label>
+                        <input type="time" name="endTime" value={newScheduleData.endTime} onChange={handleFormChange} required className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Mata Pelajaran</label>

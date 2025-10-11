@@ -11,13 +11,12 @@ import { LessonSchedule, Class, User, Role } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { LESSON_TIME_SLOTS } from '../../constants';
 
 // Initial state for the form
-// FIX: Added missing teacherId to match the LessonSchedule type.
-const initialFormState: Omit<LessonSchedule, 'id'> = {
+const initialFormState = {
   day: 'Senin',
-  time: LESSON_TIME_SLOTS[0],
+  startTime: '',
+  endTime: '',
   teacher: '',
   teacherId: '',
   subject: '',
@@ -37,7 +36,7 @@ const ManageLessonSchedule: React.FC = () => {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   
   // Data for modals
-  const [formData, setFormData] = useState<Omit<LessonSchedule, 'id'>>(initialFormState);
+  const [formData, setFormData] = useState(initialFormState);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
   const [scheduleToDelete, setScheduleToDelete] = useState<LessonSchedule | null>(null);
 
@@ -78,8 +77,16 @@ const ManageLessonSchedule: React.FC = () => {
   
   const handleOpenEditModal = (schedule: LessonSchedule) => {
     setModalMode('edit');
-    const { id, ...scheduleData } = schedule;
-    setFormData(scheduleData);
+    const { id, time, ...scheduleData } = schedule;
+    const [startTime = '', endTime = ''] = time.split(' - ');
+    
+    setFormData({
+      ...initialFormState, // ensure all fields are present
+      ...scheduleData,
+      startTime: startTime.trim(),
+      endTime: endTime.trim(),
+    });
+
     setSelectedScheduleId(id);
     setError('');
     setIsModalOpen(true);
@@ -90,7 +97,6 @@ const ManageLessonSchedule: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  // FIX: Updated form handler to set both teacher name and teacherId.
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     if (name === 'teacher') {
@@ -110,18 +116,29 @@ const ManageLessonSchedule: React.FC = () => {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.day || !formData.time || !formData.teacher || !formData.subject || !formData.class || !formData.period) {
+    if (!formData.day || !formData.startTime || !formData.endTime || !formData.teacher || !formData.subject || !formData.class || !formData.period) {
       setError('Semua field harus diisi.');
       return;
     }
 
     setError('');
     setIsSubmitting(true);
+    
+    const schedulePayload: Omit<LessonSchedule, 'id'> = {
+      day: formData.day,
+      time: `${formData.startTime} - ${formData.endTime}`,
+      teacher: formData.teacher,
+      teacherId: formData.teacherId,
+      subject: formData.subject,
+      class: formData.class,
+      period: formData.period,
+    };
+
     try {
       if (modalMode === 'add') {
-        await addLessonSchedule(formData);
+        await addLessonSchedule(schedulePayload);
       } else if (selectedScheduleId) {
-        await updateLessonSchedule(selectedScheduleId, formData);
+        await updateLessonSchedule(selectedScheduleId, schedulePayload);
       }
       handleCloseModal();
       await fetchSchedules();
@@ -163,18 +180,20 @@ const ManageLessonSchedule: React.FC = () => {
 
   const renderModalContent = () => (
     <form onSubmit={handleFormSubmit} className="space-y-4">
+      <div>
+        <label htmlFor="day" className="block text-sm font-medium text-gray-300">Hari</label>
+        <select id="day" name="day" value={formData.day} onChange={handleFormChange} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          {daysOfWeek.map(day => <option key={day} value={day}>{day}</option>)}
+        </select>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="day" className="block text-sm font-medium text-gray-300">Hari</label>
-          <select id="day" name="day" value={formData.day} onChange={handleFormChange} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-            {daysOfWeek.map(day => <option key={day} value={day}>{day}</option>)}
-          </select>
+          <label htmlFor="startTime" className="block text-sm font-medium text-gray-300">Waktu Mulai</label>
+          <input id="startTime" name="startTime" type="time" value={formData.startTime} onChange={handleFormChange} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
         </div>
         <div>
-          <label htmlFor="time" className="block text-sm font-medium text-gray-300">Waktu</label>
-          <select id="time" name="time" value={formData.time} onChange={handleFormChange} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-            {LESSON_TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}
-          </select>
+          <label htmlFor="endTime" className="block text-sm font-medium text-gray-300">Waktu Selesai</label>
+          <input id="endTime" name="endTime" type="time" value={formData.endTime} onChange={handleFormChange} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
         </div>
       </div>
        <div>
