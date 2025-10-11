@@ -42,7 +42,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-900 text-gray-300">
+    <div className="min-h-screen flex bg-slate-900 text-slate-300">
       {/* Sidebar for larger screens */}
       <div className="hidden md:block">
           <Sidebar currentView={currentView} onNavigate={setCurrentView} />
@@ -50,34 +50,34 @@ const AdminDashboard: React.FC = () => {
 
       {/* Mobile Sidebar */}
       {isSidebarOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)}>
-              <div className="w-64 h-full bg-slate-800" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black bg-opacity-70 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)}>
+              <div className="w-64 h-full" onClick={(e) => e.stopPropagation()}>
                  <Sidebar currentView={currentView} onNavigate={(view) => { setCurrentView(view); setIsSidebarOpen(false); }} />
               </div>
           </div>
       )}
       
       <div className="flex-1 flex flex-col">
-        <header className="bg-slate-800/50 backdrop-blur-sm shadow-sm md:hidden p-4 flex justify-between items-center sticky top-0 z-20">
+        <header className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 md:hidden p-4 flex justify-between items-center sticky top-0 z-20">
             <button onClick={() => setIsSidebarOpen(true)} className="text-white">
                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
             </button>
              <div className="flex items-center">
-              <span className="text-gray-300 mr-4 text-sm">
+              <span className="text-slate-300 mr-4 text-sm">
                 Hi, <span className="font-medium">{user?.name}</span>
               </span>
-              <Button onClick={logout} variant="secondary" className="w-auto py-1 px-3 text-sm !bg-slate-700 hover:!bg-slate-600 !text-white">
+              <Button onClick={logout} variant="secondary" className="w-auto py-1.5 px-3 text-sm">
                 Logout
               </Button>
             </div>
         </header>
 
-         <header className="hidden md:flex bg-slate-800/50 backdrop-blur-sm shadow-sm p-4 justify-end items-center sticky top-0 z-20">
+         <header className="hidden md:flex bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 p-4 justify-end items-center sticky top-0 z-20">
              <div className="flex items-center">
-              <span className="text-gray-300 mr-4 text-sm">
+              <span className="text-slate-300 mr-4 text-sm">
                 Welcome, <span className="font-medium">{user?.name}</span>
               </span>
-              <Button onClick={logout} variant="secondary" className="w-auto py-1 px-3 text-sm !bg-slate-700 hover:!bg-slate-600 !text-white">
+              <Button onClick={logout} variant="secondary" className="w-auto py-1.5 px-3 text-sm">
                 Logout
               </Button>
             </div>

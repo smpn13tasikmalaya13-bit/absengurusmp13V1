@@ -5,61 +5,54 @@ import { Role } from '../../types';
 import { register } from '../../services/authService';
 import Logo from '../ui/Logo';
 
+// ========== PWA Install Prompt Logic ==========
+let deferredInstallPrompt: Event | null = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  window.dispatchEvent(new CustomEvent('pwa-install-ready'));
+});
+
 // ========== PWA Install Prompt Component ==========
 const PwaInstallPrompt: React.FC = () => {
-  const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
+  const [installPromptEvent, setInstallPromptEvent] = useState<Event | null>(deferredInstallPrompt);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
 
   useEffect(() => {
-    // Check on mount if already in standalone mode, which means it's installed.
     if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
         setIsAppInstalled(true);
         return;
     }
-
-    const beforeInstallPromptHandler = (e: Event) => {
-      // Prevent the default browser prompt
-      e.preventDefault();
-      // Store the event so it can be triggered later.
-      setInstallPromptEvent(e);
-    };
-
+    const installReadyHandler = () => setInstallPromptEvent(deferredInstallPrompt);
     const appInstalledHandler = () => {
-      // Fired after the user accepts the installation prompt.
+      deferredInstallPrompt = null;
       setInstallPromptEvent(null);
       setIsAppInstalled(true);
     };
-
-    window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
+    window.addEventListener('pwa-install-ready', installReadyHandler);
     window.addEventListener('appinstalled', appInstalledHandler);
-
     return () => {
-      window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
+      window.removeEventListener('pwa-install-ready', installReadyHandler);
       window.removeEventListener('appinstalled', appInstalledHandler);
     };
   }, []);
 
   const handleInstallClick = async () => {
     if (!installPromptEvent) return;
-    // Show the browser's installation prompt
-    installPromptEvent.prompt();
-    // Wait for the user to respond to the prompt
-    await installPromptEvent.userChoice;
-    // We don't need to do anything here; the 'appinstalled' event will handle the UI update.
+    (installPromptEvent as any).prompt();
+    await (installPromptEvent as any).userChoice;
     setInstallPromptEvent(null);
+    deferredInstallPrompt = null;
   };
   
-  // If the app is already installed, don't show the prompt.
-  if (isAppInstalled) {
-    return null;
-  }
+  if (isAppInstalled) return null;
 
   const isInstallable = !!installPromptEvent;
 
   return (
-    <div className="mt-8 p-6 bg-slate-800 rounded-lg text-center border border-slate-700">
+    <div className="mt-8 p-6 bg-slate-800/50 rounded-lg text-center border border-slate-700">
       <h3 className="font-bold text-white">Instal Aplikasi untuk Pengalaman Terbaik</h3>
-      <p className="text-sm text-slate-400 mt-2">Akses lebih cepat dan fitur offline dengan menambahkan aplikasi ini ke layar utama (home screen) Anda.</p>
+      <p className="text-sm text-slate-400 mt-2">Akses lebih cepat dan fitur offline dengan menambahkan aplikasi ini ke layar utama Anda.</p>
       <Button
         onClick={handleInstallClick}
         disabled={!isInstallable}
@@ -72,20 +65,34 @@ const PwaInstallPrompt: React.FC = () => {
   );
 };
 
-
 // ========== Common Header and Footer for Auth Pages ==========
 const AuthHeader: React.FC = () => (
   <header className="text-center mb-8 flex flex-col items-center">
-    <Logo className="h-24 w-auto" />
-    <p className="text-gray-400 mt-4 text-lg">Sistem Absensi Guru Digital</p>
+    <Logo className="h-20 w-auto" />
+    <p className="text-slate-400 mt-4 text-base">Sistem Absensi Guru Digital</p>
   </header>
 );
 
 const AuthFooter: React.FC = () => (
-  <footer className="text-center text-gray-500 text-sm mt-8">
+  <footer className="text-center text-slate-500 text-sm mt-8">
     © 2025 Rullp. All rights reserved.
   </footer>
 );
+
+const FormInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
+  <input
+    {...props}
+    className="w-full px-4 py-3 bg-slate-900 text-white border-2 border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+  />
+);
+
+const FormSelect: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = (props) => (
+  <select
+    {...props}
+    className="w-full px-4 py-3 bg-slate-900 text-white border-2 border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+  />
+);
+
 
 // ========== LOGIN VIEW ==========
 const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToRegister }) => {
@@ -111,36 +118,22 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
   return (
     <main>
       <form onSubmit={handleSubmit} className="space-y-6">
-        <h2 className="text-center text-2xl font-bold text-white mb-6">Login</h2>
+        <h2 className="text-center text-3xl font-bold text-white mb-6">Login</h2>
         
         <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium text-gray-400">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          />
+          <label htmlFor="email" className="text-sm font-medium text-slate-400">Email</label>
+          <FormInput id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <label htmlFor="password"className="text-sm font-medium text-gray-400">Password</label>
-            <a href="#" className="text-sm text-blue-500 hover:underline">Lupa Password?</a>
+            <label htmlFor="password"className="text-sm font-medium text-slate-400">Password</label>
+            <a href="#" className="text-sm text-indigo-400 hover:underline">Lupa Password?</a>
           </div>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          />
+          <FormInput id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
         
-        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+        {error && <p className="text-sm text-red-400 text-center bg-red-500/10 py-2 px-4 rounded-md border border-red-500/30">{error}</p>}
 
         <Button type="submit" isLoading={isLoading}>
           Login
@@ -149,9 +142,9 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
       
       <PwaInstallPrompt />
 
-      <p className="text-center text-sm text-gray-400 mt-6">
+      <p className="text-center text-sm text-slate-400 mt-6">
         Belum punya akun?{' '}
-        <button onClick={onSwitchToRegister} className="font-medium text-blue-500 hover:underline">
+        <button onClick={onSwitchToRegister} className="font-semibold text-indigo-400 hover:underline">
           Daftar
         </button>
       </p>
@@ -189,47 +182,40 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
   return (
     <main>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <h2 className="text-center text-2xl font-bold text-white mb-6">Daftar Akun Baru</h2>
+        <h2 className="text-center text-3xl font-bold text-white mb-6">Daftar Akun Baru</h2>
         
         <div>
-          <label htmlFor="name" className="text-sm font-medium text-gray-400 block mb-1">Nama Lengkap</label>
-          <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+          <label htmlFor="name" className="text-sm font-medium text-slate-400 block mb-1">Nama Lengkap</label>
+          <FormInput id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
 
         <div>
-          <label htmlFor="email-register" className="text-sm font-medium text-gray-400 block mb-1">Email</label>
-          <input id="email-register" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+          <label htmlFor="email-register" className="text-sm font-medium text-slate-400 block mb-1">Email</label>
+          <FormInput id="email-register" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         
         <div>
-          <label htmlFor="password-register" className="text-sm font-medium text-gray-400 block mb-1">Password</label>
-          <input id="password-register" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+          <label htmlFor="password-register" className="text-sm font-medium text-slate-400 block mb-1">Password</label>
+          <FormInput id="password-register" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
 
         <div>
-          <label htmlFor="role" className="text-sm font-medium text-gray-400 block mb-1">Daftar sebagai</label>
-          <select id="role" value={role} onChange={(e) => setRole(e.target.value as Role)} required className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+          <label htmlFor="role" className="text-sm font-medium text-slate-400 block mb-1">Daftar sebagai</label>
+          <FormSelect id="role" value={role} onChange={(e) => setRole(e.target.value as Role)} required>
             <option value={Role.Teacher}>Guru</option>
             <option value={Role.Coach}>Pembina Ekstrakurikuler</option>
             <option value={Role.Admin}>Admin</option>
-          </select>
+          </FormSelect>
         </div>
         
         {role === Role.Admin && (
             <div>
-                <label htmlFor="adminKey" className="text-sm font-medium text-gray-400 block mb-1">Kode Pendaftaran Admin</label>
-                <input 
-                    id="adminKey" 
-                    type="password" 
-                    value={adminKey} 
-                    onChange={(e) => setAdminKey(e.target.value)} 
-                    required 
-                    placeholder="Masukkan kode rahasia"
-                    className="w-full px-4 py-2 bg-slate-800 text-white border-2 border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                <label htmlFor="adminKey" className="text-sm font-medium text-slate-400 block mb-1">Kode Pendaftaran Admin</label>
+                <FormInput id="adminKey" type="password" value={adminKey} onChange={(e) => setAdminKey(e.target.value)} required placeholder="Masukkan kode rahasia"/>
             </div>
         )}
         
-        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+        {error && <p className="text-sm text-red-400 text-center bg-red-500/10 py-2 px-4 rounded-md border border-red-500/30">{error}</p>}
 
         <div className="pt-2">
             <Button type="submit" isLoading={isLoading}>
@@ -238,9 +224,9 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
         </div>
       </form>
       
-      <p className="text-center text-sm text-gray-400 mt-6">
+      <p className="text-center text-sm text-slate-400 mt-6">
         Sudah punya akun?{' '}
-        <button onClick={onSwitchToLogin} className="font-medium text-blue-500 hover:underline">
+        <button onClick={onSwitchToLogin} className="font-semibold text-indigo-400 hover:underline">
           Login
         </button>
       </p>
@@ -254,8 +240,8 @@ const AuthComponent: React.FC = () => {
   const [isLoginView, setIsLoginView] = useState(true);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-gray-300 p-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-slate-300 p-4">
+      <div className="w-full max-w-md p-8 bg-slate-800/50 backdrop-blur-sm border border-slate-700 shadow-2xl shadow-indigo-500/10 rounded-2xl">
         <AuthHeader />
         {isLoginView 
           ? <LoginView onSwitchToRegister={() => setIsLoginView(false)} /> 

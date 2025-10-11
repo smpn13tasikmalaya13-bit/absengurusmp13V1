@@ -23,10 +23,10 @@ const NavItem: React.FC<{
   return (
     <button
       onClick={() => onNavigate(view)}
-      className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+      className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
         isActive
-          ? 'bg-blue-600 text-white'
-          : 'text-gray-300 hover:bg-slate-700 hover:text-white'
+          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+          : 'text-slate-300 hover:bg-slate-700 hover:text-white'
       }`}
     >
       {icon}
@@ -37,16 +37,16 @@ const NavItem: React.FC<{
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
   return (
-    <aside className="w-64 bg-slate-800 p-4 space-y-2 flex flex-col h-full">
+    <aside className="w-64 bg-slate-800 p-4 space-y-2 flex flex-col h-full border-r border-slate-700">
       <div className="flex items-center mb-6 px-2">
-        <h1 className="text-2xl font-bold text-blue-500">HadirKu</h1>
-        <span className="ml-2 px-2 py-1 text-xs font-semibold text-blue-200 bg-blue-500/30 rounded-full">Admin</span>
+        <h1 className="text-2xl font-bold text-indigo-400">HadirKu</h1>
+        <span className="ml-2 px-2 py-1 text-xs font-semibold text-indigo-200 bg-indigo-500/30 rounded-full">Admin</span>
       </div>
       <nav className="flex-1 space-y-2">
         <NavItem icon={<DashboardIcon />} label="Dashboard" view="dashboard" currentView={currentView} onNavigate={onNavigate} />
         
         <div className="pt-4">
-            <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Laporan</h3>
+            <h3 className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Laporan</h3>
             <div className="mt-2 space-y-2">
                 <NavItem icon={<ReportIcon />} label="Absensi Guru" view="teacher-attendance-report" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ReportIcon />} label="Absensi Siswa" view="student-absence-report" currentView={currentView} onNavigate={onNavigate} />
@@ -54,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
         </div>
         
         <div className="pt-4">
-            <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Manajemen</h3>
+            <h3 className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Manajemen</h3>
             <div className="mt-2 space-y-2">
                 <NavItem icon={<UsersIcon />} label="Guru & Pembina" view="manage-teachers" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<UsersIcon />} label="Admin" view="manage-admins" currentView={currentView} onNavigate={onNavigate} />

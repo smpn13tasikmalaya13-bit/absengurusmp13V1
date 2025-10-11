@@ -10,8 +10,8 @@ const Logo: React.FC<{ className?: string }> = ({ className }) => {
     >
       <defs>
         <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style={{ stopColor: '#3b82f6' }} />
-          <stop offset="100%" style={{ stopColor: '#60a5fa' }} />
+          <stop offset="0%" style={{ stopColor: '#6366f1' }} />
+          <stop offset="100%" style={{ stopColor: '#818cf8' }} />
         </linearGradient>
       </defs>
       
@@ -35,7 +35,7 @@ const Logo: React.FC<{ className?: string }> = ({ className }) => {
       <text 
         x="60" 
         y="42" 
-        fontFamily="sans-serif"
+        fontFamily="'Inter', sans-serif"
         fontSize="36" 
         fontWeight="bold" 
         fill="#e2e8f0"

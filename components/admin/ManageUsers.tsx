@@ -183,16 +183,16 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
         <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-white">{title}</h1>
             {!isTeachers && (
-              <Button onClick={handleOpenAddAdminModal} className="w-auto !bg-blue-600 hover:!bg-blue-700 px-6">Tambah Admin</Button>
+              <Button onClick={handleOpenAddAdminModal} className="w-auto px-6">Tambah Admin</Button>
             )}
         </div>
 
         {mode === 'admins' && isMainAdmin && (
-            <div className="bg-slate-700 p-4 rounded-lg border border-yellow-500/50 space-y-3">
+            <div className="bg-slate-800/50 backdrop-blur-sm border border-yellow-500/50 p-6 rounded-xl space-y-3">
                 <div>
                     <h3 className="font-bold text-lg text-yellow-400">Kode Pendaftaran Admin</h3>
                     <p className="text-slate-300 mt-1">Berikan kode berikut kepada pengguna yang ingin Anda daftarkan sebagai Admin baru. Hanya Anda yang dapat melihat dan mengubah kode ini.</p>
-                    <div className="mt-2 bg-slate-900 p-3 rounded-md">
+                    <div className="mt-3 bg-slate-900 p-3 rounded-md">
                         {isKeyLoading ? <Spinner /> : (
                             <p className="font-mono text-lg text-amber-300 select-all">{adminKey || 'Belum ada kode. Buat kode baru.'}</p>
                         )}
@@ -212,37 +212,36 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
         )}
 
 
-        <div className="bg-slate-900 rounded-lg shadow-lg overflow-hidden">
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             {isLoading ? (
               <div className="p-8"><Spinner /></div>
             ) : (
               <table className="w-full text-left">
-                <thead className="bg-slate-700/50">
+                <thead className="bg-slate-800">
                   <tr>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Nama</th>
-                    <th className="p-4 text-sm font-semibold text-gray-200">User ID (Email)</th>
-                    {isTeachers && <th className="p-4 text-sm font-semibold text-gray-200">Peran</th>}
-                    <th className="p-4 text-sm font-semibold text-gray-200">Aksi</th>
+                    <th className="p-4 text-sm font-semibold text-slate-200">Nama</th>
+                    <th className="p-4 text-sm font-semibold text-slate-200">User ID (Email)</th>
+                    {isTeachers && <th className="p-4 text-sm font-semibold text-slate-200">Peran</th>}
+                    <th className="p-4 text-sm font-semibold text-slate-200">Aksi</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-700">
                   {users.map((user) => (
-                    <tr key={user.id} className="border-b border-slate-700 last:border-0">
+                    <tr key={user.id} className="hover:bg-slate-800/50 transition-colors">
                       <td className="p-4 whitespace-nowrap font-medium">{user.name}</td>
-                      <td className="p-4 whitespace-nowrap text-gray-400">{user.email}</td>
+                      <td className="p-4 whitespace-nowrap text-slate-400">{user.email}</td>
                       {isTeachers && (
                         <td className="p-4">
-                          <span className="px-3 py-1 text-xs font-medium rounded-full bg-blue-500 text-white">
+                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${user.role === Role.Teacher ? 'bg-blue-500/30 text-blue-300' : 'bg-green-500/30 text-green-300'}`}>
                             {user.role}
                           </span>
                         </td>
                       )}
                       <td className="p-4">
-                        <div className="flex flex-col items-start space-y-1">
-                          {isTeachers && <button className="text-green-400 hover:underline text-sm">Kirim Pesan</button>}
-                          <button onClick={() => handleOpenResetModal(user)} className="text-blue-400 hover:underline text-sm">Reset Perangkat</button>
-                          <button onClick={() => handleOpenDeleteModal(user)} className="text-red-400 hover:underline text-sm">Hapus</button>
+                        <div className="flex items-center space-x-4">
+                          <button onClick={() => handleOpenResetModal(user)} className="text-indigo-400 hover:underline text-sm font-medium">Reset Perangkat</button>
+                          <button onClick={() => handleOpenDeleteModal(user)} className="text-red-400 hover:underline text-sm font-medium">Hapus</button>
                         </div>
                       </td>
                     </tr>
@@ -252,14 +251,13 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
             )}
           </div>
         </div>
-         <footer className="text-center text-gray-500 text-sm pt-4">
+         <footer className="text-center text-slate-500 text-sm pt-4">
           © 2025 Rullp. All rights reserved.
         </footer>
       </div>
 
       {/* MODALS */}
       
-      {/* ADD ADMIN MODAL */}
       <Modal isOpen={isAddAdminModalOpen} onClose={() => closeModal(setIsAddAdminModalOpen)} title="Tambah Admin Baru">
           <form onSubmit={handleAddAdminSubmit} className="space-y-4">
               <div>
@@ -277,39 +275,37 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
               {error && <p className="text-sm text-red-400">{error}</p>}
               {success && <p className="text-sm text-green-400">{success}</p>}
               <div className="flex justify-end space-x-3 pt-2">
-                  <Button type="button" onClick={() => closeModal(setIsAddAdminModalOpen)} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>Batal</Button>
+                  <Button type="button" onClick={() => closeModal(setIsAddAdminModalOpen)} variant="secondary" className="w-auto" disabled={isSubmitting}>Batal</Button>
                   <Button type="submit" isLoading={isSubmitting} className="w-auto">Simpan</Button>
               </div>
           </form>
       </Modal>
 
-      {/* RESET DEVICE CONFIRMATION MODAL */}
       {userToAction && (
           <Modal isOpen={isResetModalOpen} onClose={() => closeModal(setIsResetModalOpen)} title="Konfirmasi Reset Perangkat">
               <div className="space-y-4">
-                  <p className="text-gray-300">
+                  <p className="text-slate-300">
                       Apakah Anda yakin ingin mereset ikatan perangkat untuk <strong>{userToAction.name}</strong>? Pengguna akan dapat login dari perangkat baru setelah ini.
                   </p>
                   {error && <p className="text-sm text-red-400">{error}</p>}
                   {success && <p className="text-sm text-green-400">{success}</p>}
                   <div className="flex justify-end space-x-3 pt-2">
-                      <Button type="button" onClick={() => closeModal(setIsResetModalOpen)} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>Batal</Button>
-                      <Button onClick={handleConfirmReset} isLoading={isSubmitting} variant="primary" className="w-auto !bg-blue-600 hover:!bg-blue-700">Reset</Button>
+                      <Button type="button" onClick={() => closeModal(setIsResetModalOpen)} variant="secondary" className="w-auto" disabled={isSubmitting}>Batal</Button>
+                      <Button onClick={handleConfirmReset} isLoading={isSubmitting} variant="primary" className="w-auto">Reset</Button>
                   </div>
               </div>
           </Modal>
       )}
 
-      {/* DELETE CONFIRMATION MODAL */}
       {userToAction && (
         <Modal isOpen={isDeleteModalOpen} onClose={() => closeModal(setIsDeleteModalOpen)} title="Konfirmasi Hapus">
           <div className="space-y-4">
-            <p className="text-gray-300">
+            <p className="text-slate-300">
               Apakah Anda yakin ingin menghapus pengguna <strong>{userToAction.name}</strong>? Tindakan ini hanya menghapus profil dari database, bukan akun login.
             </p>
             {error && <p className="text-sm text-red-400">{error}</p>}
             <div className="flex justify-end space-x-3 pt-2">
-              <Button type="button" onClick={() => closeModal(setIsDeleteModalOpen)} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>
+              <Button type="button" onClick={() => closeModal(setIsDeleteModalOpen)} variant="secondary" className="w-auto" disabled={isSubmitting}>
                 Batal
               </Button>
               <Button onClick={handleConfirmDelete} isLoading={isSubmitting} variant="danger" className="w-auto">
