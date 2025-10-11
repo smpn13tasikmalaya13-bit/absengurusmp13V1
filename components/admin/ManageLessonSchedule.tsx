@@ -11,12 +11,13 @@ import { LessonSchedule, Class, User, Role } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { LESSON_TIME_SLOTS } from '../../constants';
 
 // Initial state for the form
 // FIX: Added missing teacherId to match the LessonSchedule type.
 const initialFormState: Omit<LessonSchedule, 'id'> = {
   day: 'Senin',
-  time: '',
+  time: LESSON_TIME_SLOTS[0],
   teacher: '',
   teacherId: '',
   subject: '',
@@ -170,8 +171,10 @@ const ManageLessonSchedule: React.FC = () => {
           </select>
         </div>
         <div>
-          <label htmlFor="time" className="block text-sm font-medium text-gray-300">Waktu (JJ:MM - JJ:MM)</label>
-          <input id="time" name="time" type="text" value={formData.time} onChange={handleFormChange} required placeholder="Contoh: 08:00 - 08:40" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+          <label htmlFor="time" className="block text-sm font-medium text-gray-300">Waktu</label>
+          <select id="time" name="time" value={formData.time} onChange={handleFormChange} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            {LESSON_TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}
+          </select>
         </div>
       </div>
        <div>

@@ -7,31 +7,30 @@ import { register } from '../../services/authService';
 // ========== PWA Install Prompt Component ==========
 const PwaInstallPrompt: React.FC = () => {
   const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
 
   useEffect(() => {
-    const beforeInstallPromptHandler = (e: Event) => {
-      e.preventDefault();
-      // Don't show the prompt if the app is already installed (in standalone mode)
-      if (window.matchMedia('(display-mode: standalone)').matches) {
+    // Check on mount if already in standalone mode, which means it's installed.
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        setIsAppInstalled(true);
         return;
-      }
+    }
+
+    const beforeInstallPromptHandler = (e: Event) => {
+      // Prevent the default browser prompt
+      e.preventDefault();
+      // Store the event so it can be triggered later.
       setInstallPromptEvent(e);
-      setIsVisible(true);
     };
 
     const appInstalledHandler = () => {
-      setIsVisible(false);
+      // Fired after the user accepts the installation prompt.
       setInstallPromptEvent(null);
+      setIsAppInstalled(true);
     };
 
     window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
     window.addEventListener('appinstalled', appInstalledHandler);
-
-    // Check on mount if already in standalone
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        setIsVisible(false);
-    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
@@ -41,16 +40,21 @@ const PwaInstallPrompt: React.FC = () => {
 
   const handleInstallClick = async () => {
     if (!installPromptEvent) return;
+    // Show the browser's installation prompt
     installPromptEvent.prompt();
+    // Wait for the user to respond to the prompt
     const { outcome } = await installPromptEvent.userChoice;
     console.log(`User response to the install prompt: ${outcome}`);
-    if (outcome === 'accepted') {
-      setIsVisible(false);
-    }
+    // We don't need to do anything here; the 'appinstalled' event will handle the UI update.
     setInstallPromptEvent(null);
   };
   
-  if (!isVisible) return null;
+  // If the app is already installed, don't show the prompt.
+  if (isAppInstalled) {
+    return null;
+  }
+
+  const isInstallable = !!installPromptEvent;
 
   return (
     <div className="mt-8 p-6 bg-slate-800 rounded-lg text-center border border-slate-700">
@@ -58,10 +62,11 @@ const PwaInstallPrompt: React.FC = () => {
       <p className="text-sm text-slate-400 mt-2">Akses lebih cepat dan fitur offline dengan menambahkan aplikasi ini ke layar utama (home screen) Anda.</p>
       <button
         onClick={handleInstallClick}
-        className="mt-4 w-full flex items-center justify-center py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors"
+        disabled={!isInstallable}
+        className="mt-4 w-full flex items-center justify-center py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-        Instal Aplikasi
+        {isInstallable ? 'Instal Aplikasi' : 'Instalasi Belum Siap'}
       </button>
     </div>
   );

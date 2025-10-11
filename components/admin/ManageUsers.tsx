@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAllUsers, deleteUser, resetDeviceBinding, register } from '../../services/authService';
+import {
+    getAllUsers,
+    deleteUser,
+    resetDeviceBinding,
+    register,
+    getAdminRegistrationKey,
+    updateAdminRegistrationKey
+} from '../../services/authService';
 import { Role, User } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { ADMIN_REGISTRATION_KEY } from '../../constants';
+import { MAIN_ADMIN_EMAIL } from '../../constants';
+import { useAuth } from '../../context/AuthContext';
+
 
 interface ManageUsersProps {
   mode: 'teachers' | 'admins';
@@ -27,7 +36,14 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Main Admin state
+  const { user: loggedInUser } = useAuth();
+  const [adminKey, setAdminKey] = useState<string | null>(null);
+  const [isKeyLoading, setIsKeyLoading] = useState(false);
 
+  // Directly check if the logged in user is the main admin.
+  const isMainAdmin = loggedInUser?.email === MAIN_ADMIN_EMAIL;
   const isTeachers = mode === 'teachers';
   const title = isTeachers ? 'Manajemen Guru & Pembina' : 'Manajemen Admin';
   
@@ -44,9 +60,25 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
     setIsLoading(false);
   }, [isTeachers]);
   
+  // Effect to fetch the list of users to display in the table.
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+  
+  // Effect to fetch the admin key, ONLY if the user is the main admin.
+  useEffect(() => {
+    if (mode === 'admins' && isMainAdmin) {
+      setIsKeyLoading(true);
+      setError('');
+      getAdminRegistrationKey()
+        .then(key => setAdminKey(key))
+        .catch(err => setError(err.message))
+        .finally(() => setIsKeyLoading(false));
+    } else {
+      // If not the main admin or not on the admins page, ensure the key is cleared.
+      setAdminKey(null);
+    }
+  }, [mode, isMainAdmin]);
   
   const clearMessages = () => {
     setError('');
@@ -99,6 +131,19 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
       setIsSubmitting(false);
     }
   };
+  
+  const handleGenerateNewKey = async () => {
+    setIsKeyLoading(true);
+    setError('');
+    try {
+      const newKey = await updateAdminRegistrationKey();
+      setAdminKey(newKey);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal membuat kunci baru.');
+    } finally {
+      setIsKeyLoading(false);
+    }
+  };
 
   // === ADD ADMIN MODAL LOGIC ===
   const handleOpenAddAdminModal = () => {
@@ -111,7 +156,8 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
     clearMessages();
     setIsSubmitting(true);
     try {
-      await register(newAdminData.name, newAdminData.email, newAdminData.password, Role.Admin, ADMIN_REGISTRATION_KEY);
+      // Pass the dynamic key for validation
+      await register(newAdminData.name, newAdminData.email, newAdminData.password, Role.Admin, adminKey || undefined);
       setSuccess(`Admin ${newAdminData.name} berhasil ditambahkan.`);
       await fetchUsers();
       setTimeout(() => {
@@ -141,15 +187,30 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
             )}
         </div>
 
-        {!isTeachers && (
-            <div className="bg-slate-700 p-4 rounded-lg border border-yellow-500/50">
-                <h3 className="font-bold text-lg text-yellow-400">Kode Pendaftaran Admin</h3>
-                <p className="text-slate-300 mt-1">Berikan kode berikut kepada pengguna yang ingin Anda daftarkan sebagai Admin baru:</p>
-                <div className="mt-2 bg-slate-900 p-3 rounded-md">
-                    <p className="font-mono text-lg text-amber-300 select-all">{ADMIN_REGISTRATION_KEY}</p>
+        {mode === 'admins' && isMainAdmin && (
+            <div className="bg-slate-700 p-4 rounded-lg border border-yellow-500/50 space-y-3">
+                <div>
+                    <h3 className="font-bold text-lg text-yellow-400">Kode Pendaftaran Admin</h3>
+                    <p className="text-slate-300 mt-1">Berikan kode berikut kepada pengguna yang ingin Anda daftarkan sebagai Admin baru. Hanya Anda yang dapat melihat dan mengubah kode ini.</p>
+                    <div className="mt-2 bg-slate-900 p-3 rounded-md">
+                        {isKeyLoading ? <Spinner /> : (
+                            <p className="font-mono text-lg text-amber-300 select-all">{adminKey || 'Belum ada kode. Buat kode baru.'}</p>
+                        )}
+                    </div>
+                </div>
+                <div>
+                    <Button 
+                        onClick={handleGenerateNewKey} 
+                        isLoading={isKeyLoading}
+                        variant="secondary"
+                        className="w-auto !bg-amber-600 hover:!bg-amber-700 !text-white"
+                    >
+                        Buat Kode Baru
+                    </Button>
                 </div>
             </div>
         )}
+
 
         <div className="bg-slate-900 rounded-lg shadow-lg overflow-hidden">
           <div className="overflow-x-auto">

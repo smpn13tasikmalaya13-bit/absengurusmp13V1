@@ -20,10 +20,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameId = useRef<number>();
+  // FIX: Initialize useRef with a value to satisfy TypeScript and allow for a nullable type.
+  const animationFrameId = useRef<number | null>(null);
 
   const stopCamera = useCallback(() => {
-    if (animationFrameId.current) {
+    // FIX: Check for null to avoid bugs where an animation frame ID could be 0.
+    if (animationFrameId.current !== null) {
       cancelAnimationFrame(animationFrameId.current);
     }
     if (streamRef.current) {

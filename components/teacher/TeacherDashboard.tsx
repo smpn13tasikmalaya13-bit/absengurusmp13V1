@@ -8,6 +8,7 @@ import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class } from '.
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
+import { LESSON_TIME_SLOTS } from '../../constants';
 
 // SVG Icons for the dashboard
 const LocationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>;
@@ -514,8 +515,11 @@ const TeacherDashboard: React.FC = () => {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Waktu (JJ:MM - JJ:MM)</label>
-                    <input type="text" name="time" value={newScheduleData.time} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="07:20 - 08:30" />
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Waktu</label>
+                    <select name="time" value={newScheduleData.time} onChange={handleFormChange} required className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="" disabled>Pilih Waktu</option>
+                      {LESSON_TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}
+                    </select>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Mata Pelajaran</label>
