@@ -18,8 +18,9 @@ export interface AttendanceRecord {
   teacherId: string;
   userName: string;
   timestamp: Date;
+  checkOutTimestamp?: Date; // To record clock-out time for staff
   date: string;
-  status: string; // e.g., 'Present', 'Late', 'Sakit'
+  status: string; // e.g., 'Present', 'Late', 'Sakit', 'Datang', 'Pulang'
   reason?: string;
   // Fields to link attendance to a specific lesson
   scheduleId?: string;

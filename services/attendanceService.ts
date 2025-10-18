@@ -1,6 +1,6 @@
 import { AttendanceRecord, LessonSchedule, User } from '../types';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, updateDoc, doc } from 'firebase/firestore';
 
 // FIX: Implement missing QR code generation and retrieval functions.
 // Key for storing the daily QR code data in localStorage
@@ -125,6 +125,68 @@ export const recordAttendance = async (
     return { success: false, message: 'Failed to record attendance.' };
   }
 };
+
+export const recordAdministrativeStaffAttendance = async (
+  user: User,
+  type: 'Datang' | 'Pulang'
+): Promise<{ success: boolean; message: string }> => {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const attendanceCol = collection(db, 'absenceRecords');
+
+  // Query for today's attendance record for this staff member
+  const q = query(
+    attendanceCol,
+    where('teacherId', '==', user.id),
+    where('timestamp', '>=', startOfDay),
+    where('timestamp', '<', endOfDay)
+  );
+  const querySnapshot = await getDocs(q);
+  const todaysRecord = querySnapshot.docs[0];
+
+  if (type === 'Datang') {
+    if (todaysRecord) {
+      return { success: false, message: 'Anda sudah melakukan absen datang hari ini.' };
+    }
+    try {
+      await addDoc(attendanceCol, {
+        teacherId: user.id,
+        userName: user.name,
+        timestamp: Timestamp.fromDate(now),
+        date: now.toISOString().split('T')[0],
+        status: 'Datang',
+      });
+      return { success: true, message: 'Absen datang berhasil direkam.' };
+    } catch (error) {
+      console.error("Error recording clock-in:", error);
+      return { success: false, message: 'Gagal merekam absen datang.' };
+    }
+  }
+
+  if (type === 'Pulang') {
+    if (!todaysRecord) {
+      return { success: false, message: 'Anda harus absen datang terlebih dahulu sebelum absen pulang.' };
+    }
+    if (todaysRecord.data().status === 'Pulang') {
+      return { success: false, message: 'Anda sudah melakukan absen pulang hari ini.' };
+    }
+    try {
+      const recordRef = doc(db, 'absenceRecords', todaysRecord.id);
+      await updateDoc(recordRef, {
+        status: 'Pulang',
+        checkOutTimestamp: Timestamp.fromDate(now),
+      });
+      return { success: true, message: 'Absen pulang berhasil direkam.' };
+    } catch (error) {
+      console.error("Error recording clock-out:", error);
+      return { success: false, message: 'Gagal merekam absen pulang.' };
+    }
+  }
+
+  return { success: false, message: 'Tipe absensi tidak valid.' };
+};
+
 
 export const getAttendanceReport = async (date: Date): Promise<AttendanceRecord[]> => {
   try {

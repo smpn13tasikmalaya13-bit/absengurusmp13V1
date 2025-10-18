@@ -83,12 +83,9 @@ class ErrorBoundary extends React.Component<Props, State> {
   }
 
   render() {
-    // FIX: Destructure state and props from `this` to correctly access them in a class component.
-    const { hasError, error } = this.state;
-    const { children } = this.props;
-
-    if (hasError) {
-        const isConfigError = error?.message.includes('api-key-not-valid');
+    // FIX: Directly access this.state and this.props to avoid typing issues.
+    if (this.state.hasError) {
+        const isConfigError = this.state.error?.message.includes('api-key-not-valid');
         
         if (isConfigError) {
             return <ApiConfigurationGuide />;
@@ -104,7 +101,7 @@ class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    return children;
+    return this.props.children;
   }
 }
 
