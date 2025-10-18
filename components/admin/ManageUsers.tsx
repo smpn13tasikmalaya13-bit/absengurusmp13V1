@@ -45,7 +45,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   // Directly check if the logged in user is the main admin.
   const isMainAdmin = loggedInUser?.email === MAIN_ADMIN_EMAIL;
   const isTeachers = mode === 'teachers';
-  const title = isTeachers ? 'Manajemen Guru & Pembina' : 'Manajemen Admin';
+  const title = isTeachers ? 'Manajemen Guru & Pembina' : 'Manajemen Admin & Staf';
   
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -54,7 +54,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
       if (isTeachers) {
         return user.role === Role.Teacher || user.role === Role.Coach;
       }
-      return user.role === Role.Admin;
+      return user.role === Role.Admin || user.role === Role.AdministrativeStaff;
     });
     setUsers(filteredUsers);
     setIsLoading(false);
@@ -177,6 +177,21 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
       setUserToAction(null);
   }
 
+  const getRoleBadgeClass = (role: Role) => {
+    switch (role) {
+      case Role.Admin:
+        return 'bg-purple-500/30 text-purple-300';
+      case Role.Teacher:
+        return 'bg-blue-500/30 text-blue-300';
+      case Role.Coach:
+        return 'bg-green-500/30 text-green-300';
+      case Role.AdministrativeStaff:
+        return 'bg-slate-500/30 text-slate-300';
+      default:
+        return 'bg-gray-500/30 text-gray-300';
+    }
+  };
+
   return (
     <>
       <div className="space-y-6">
@@ -222,7 +237,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
                   <tr>
                     <th className="p-4 text-sm font-semibold text-slate-200">Nama</th>
                     <th className="p-4 text-sm font-semibold text-slate-200">User ID (Email)</th>
-                    {isTeachers && <th className="p-4 text-sm font-semibold text-slate-200">Peran</th>}
+                    <th className="p-4 text-sm font-semibold text-slate-200">Peran</th>
                     <th className="p-4 text-sm font-semibold text-slate-200">Aksi</th>
                   </tr>
                 </thead>
@@ -231,13 +246,11 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
                     <tr key={user.id} className="hover:bg-slate-800/50 transition-colors">
                       <td className="p-4 whitespace-nowrap font-medium">{user.name}</td>
                       <td className="p-4 whitespace-nowrap text-slate-400">{user.email}</td>
-                      {isTeachers && (
-                        <td className="p-4">
-                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${user.role === Role.Teacher ? 'bg-blue-500/30 text-blue-300' : 'bg-green-500/30 text-green-300'}`}>
-                            {user.role}
-                          </span>
-                        </td>
-                      )}
+                      <td className="p-4">
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getRoleBadgeClass(user.role)}`}>
+                          {user.role}
+                        </span>
+                      </td>
                       <td className="p-4">
                         <div className="flex items-center space-x-4">
                           <button onClick={() => handleOpenResetModal(user)} className="text-indigo-400 hover:underline text-sm font-medium">Reset Perangkat</button>

@@ -57,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
             <h3 className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Manajemen</h3>
             <div className="mt-2 space-y-2">
                 <NavItem icon={<UsersIcon />} label="Guru & Pembina" view="manage-teachers" currentView={currentView} onNavigate={onNavigate} />
-                <NavItem icon={<UsersIcon />} label="Admin" view="manage-admins" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<UsersIcon />} label="Admin & Staf" view="manage-admins" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ScheduleIcon />} label="Jadwal Pelajaran" view="manage-lesson-schedule" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ScheduleIcon />} label="Jadwal Eskul" view="manage-eskul-schedule" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<DataIcon />} label="Data Kelas" view="manage-classes" currentView={currentView} onNavigate={onNavigate} />

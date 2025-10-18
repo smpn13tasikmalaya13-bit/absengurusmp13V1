@@ -22,11 +22,11 @@ const AppContent: React.FC = () => {
     return <Login />;
   }
   
-  if (user.role === Role.Admin) {
+  if (user.role === Role.Admin || user.role === Role.AdministrativeStaff) {
     return <Layout><AdminDashboard /></Layout>;
   }
 
-  if (user.role === Role.Teacher) {
+  if (user.role === Role.Teacher || user.role === Role.Coach) {
     return <TeacherDashboard />;
   }
 

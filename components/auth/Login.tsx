@@ -204,6 +204,7 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
           <FormSelect id="role" value={role} onChange={(e) => setRole(e.target.value as Role)} required>
             <option value={Role.Teacher}>Guru</option>
             <option value={Role.Coach}>Pembina Ekstrakurikuler</option>
+            <option value={Role.AdministrativeStaff}>Tenaga Administrasi</option>
             <option value={Role.Admin}>Admin</option>
           </FormSelect>
         </div>

@@ -2,6 +2,7 @@ export enum Role {
   Admin = 'ADMIN',
   Teacher = 'Guru',
   Coach = 'Pembina Ekstrakurikuler',
+  AdministrativeStaff = 'Tenaga Administrasi',
 }
 
 export interface User {
