@@ -5,58 +5,71 @@ import { Role } from '../../types';
 import { register } from '../../services/authService';
 import Logo from '../ui/Logo';
 
-// ========== PWA Install Prompt Logic ==========
-let deferredInstallPrompt: Event | null = null;
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredInstallPrompt = e;
-  window.dispatchEvent(new CustomEvent('pwa-install-ready'));
-});
-
 // ========== PWA Install Prompt Component ==========
 const PwaInstallPrompt: React.FC = () => {
-  const [installPromptEvent, setInstallPromptEvent] = useState<Event | null>(deferredInstallPrompt);
+  const [installPromptEvent, setInstallPromptEvent] = useState<Event | null>(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
 
   useEffect(() => {
+    // Check if the app is already installed and update the state.
     if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
         setIsAppInstalled(true);
-        return;
+        return; // Don't set up listeners if already installed.
     }
-    const installReadyHandler = () => setInstallPromptEvent(deferredInstallPrompt);
+
+    // Handler for the browser's install prompt event
+    const beforeInstallPromptHandler = (e: Event) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setInstallPromptEvent(e);
+    };
+
+    // Handler for when the app is successfully installed
     const appInstalledHandler = () => {
-      deferredInstallPrompt = null;
+      // Clear the deferred prompt, it can't be used again.
       setInstallPromptEvent(null);
       setIsAppInstalled(true);
     };
-    window.addEventListener('pwa-install-ready', installReadyHandler);
+
+    window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
     window.addEventListener('appinstalled', appInstalledHandler);
+
+    // Cleanup: remove the event listeners when the component unmounts
     return () => {
-      window.removeEventListener('pwa-install-ready', installReadyHandler);
+      window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
       window.removeEventListener('appinstalled', appInstalledHandler);
     };
   }, []);
 
   const handleInstallClick = async () => {
     if (!installPromptEvent) return;
+    
+    // Show the install prompt
     (installPromptEvent as any).prompt();
+    
+    // Wait for the user to respond to the prompt.
     await (installPromptEvent as any).userChoice;
+    
+    // We've used the prompt, and can't use it again, clear it.
     setInstallPromptEvent(null);
-    deferredInstallPrompt = null;
   };
   
-  if (isAppInstalled) return null;
+  // If the app is installed, don't render the component.
+  if (isAppInstalled) {
+    return null;
+  }
 
   const isInstallable = !!installPromptEvent;
 
   return (
     <div className="mt-8 p-6 bg-slate-800/50 rounded-lg text-center border border-slate-700">
       <h3 className="font-bold text-white">Instal Aplikasi untuk Pengalaman Terbaik</h3>
-      <p className="text-sm text-slate-400 mt-2">Akses lebih cepat dan fitur offline dengan menambahkan aplikasi ini ke layar utama Anda.</p>
+      <p className="text-sm text-slate-400 mt-2">Akses lebih cepat dan fitur offline dengan menambahkan aplikasi ini ke layar utama (home screen) Anda.</p>
       <Button
         onClick={handleInstallClick}
         disabled={!isInstallable}
-        className={`mt-4 w-full ${!isInstallable ? '!bg-slate-600 !cursor-not-allowed' : ''}`}
+        className={`mt-4 w-full transition-colors ${!isInstallable ? '!bg-slate-600 !cursor-not-allowed' : '!bg-green-600 hover:!bg-green-500 focus:!ring-green-500'}`}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
         {isInstallable ? 'Instal Aplikasi' : 'Instalasi Belum Siap'}
