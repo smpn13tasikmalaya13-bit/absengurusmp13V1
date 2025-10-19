@@ -135,55 +135,66 @@ export const recordStaffAttendanceWithQR = async (
   }
   
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const todayDateString = now.toISOString().split('T')[0];
   const attendanceCol = collection(db, 'absenceRecords');
 
-  // Query for today's attendance record for this staff member
+  // Query for ALL of today's attendance records for this staff member
+  // Using the date string is often more efficient and less likely to require a composite index
   const q = query(
     attendanceCol,
     where('teacherId', '==', user.id),
-    where('timestamp', '>=', startOfDay),
-    where('timestamp', '<', endOfDay)
+    where('date', '==', todayDateString)
   );
   
   try {
     const querySnapshot = await getDocs(q);
-    const todaysRecord = querySnapshot.docs[0];
+    const todaysRecords = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() as Omit<AttendanceRecord, 'id'> }));
 
-    if (!todaysRecord) {
-      // CLOCK IN
-      await addDoc(attendanceCol, {
-        teacherId: user.id,
-        userName: user.name,
-        timestamp: Timestamp.fromDate(now),
-        date: now.toISOString().split('T')[0],
-        status: 'Datang',
-      });
-      return { success: true, message: 'Absen datang berhasil direkam.' };
-    } 
-    
-    const recordData = todaysRecord.data();
-    if (recordData.status === 'Datang') {
-      // CLOCK OUT
-      const recordRef = doc(db, 'absenceRecords', todaysRecord.id);
+    // Check existing records to determine action
+    const clockedInRecord = todaysRecords.find(r => r.status === 'Datang');
+    const clockedOutRecord = todaysRecords.find(r => r.status === 'Pulang');
+    const otherStatusRecord = todaysRecords.find(r => r.status !== 'Datang' && r.status !== 'Pulang');
+
+    if (clockedOutRecord) {
+      // Already clocked out, nothing to do.
+      return { success: false, message: 'Anda sudah melakukan absen pulang hari ini.' };
+    }
+
+    if (otherStatusRecord) {
+      // Has another status like 'Sakit' or 'Izin', cannot use QR code.
+      return { success: false, message: `Anda sudah tercatat '${otherStatusRecord.status}' hari ini dan tidak bisa absen via QR.` };
+    }
+
+    if (clockedInRecord) {
+      // Has a 'Datang' record but no 'Pulang' record, so CLOCK OUT.
+      const recordRef = doc(db, 'absenceRecords', clockedInRecord.id);
       await updateDoc(recordRef, {
         status: 'Pulang',
         checkOutTimestamp: Timestamp.fromDate(now),
       });
       return { success: true, message: 'Absen pulang berhasil direkam.' };
-    }
-
-    if (recordData.status === 'Pulang') {
-      // Already clocked out
-      return { success: false, message: 'Anda sudah melakukan absen pulang hari ini.' };
-    }
+    } 
     
-    return { success: false, message: 'Status absensi Anda hari ini tidak dikenali.' };
+    // No relevant records found for today, so CLOCK IN.
+    await addDoc(attendanceCol, {
+      teacherId: user.id,
+      userName: user.name,
+      timestamp: Timestamp.fromDate(now),
+      date: todayDateString,
+      status: 'Datang',
+      checkOutTimestamp: null, // Explicitly set to null for consistency
+      reason: '',
+      scheduleId: null,
+      subject: null,
+      class: null,
+      period: null,
+    });
+    return { success: true, message: 'Absen datang berhasil direkam.' };
 
   } catch (error) {
     console.error("Error recording staff attendance with QR:", error);
-    return { success: false, message: 'Gagal merekam absensi. Terjadi kesalahan server.' };
+    // Make the error message more user-friendly
+    return { success: false, message: 'Gagal merekam absensi. Periksa koneksi internet Anda atau hubungi admin.' };
   }
 };
 
