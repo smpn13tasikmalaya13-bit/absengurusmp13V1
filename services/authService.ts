@@ -115,20 +115,49 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
     return firebaseUser;
 
   } catch (error: any) {
+    // --- SPECIAL HANDLING FOR FIRST ADMIN LOGIN ---
+    // If login fails for the default admin, try to register them automatically.
+    // This simplifies the setup process for a fresh installation.
+    if (error.code === 'auth/invalid-credential' && email === MAIN_ADMIN_EMAIL) {
+      try {
+        console.log("Main admin login failed, attempting to auto-register default admin...");
+        // Use the existing register function; it has the necessary logic for the first admin.
+        await register('Admin Utama', email, pass, Role.Admin);
+        
+        // If registration is successful, try signing in again.
+        const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+
+        // Verify profile was created, just in case.
+        const firebaseUser = userCredential.user;
+        const userProfile = await getUserProfile(firebaseUser.uid);
+        if (!userProfile) {
+            await signOut(auth);
+            throw new Error('Profil pengguna tidak ditemukan setelah pendaftaran otomatis.');
+        }
+        
+        // Admin is exempt from device binding.
+        return firebaseUser;
+
+      } catch (registrationError: any) {
+        console.error("Auto-registration for main admin failed:", registrationError);
+        // If the error is 'email-already-in-use', it means the account exists,
+        // so the original password was simply incorrect.
+        if (registrationError.code === 'auth/email-already-in-use') {
+          throw new Error('Email atau password salah.');
+        }
+        // For other registration errors, show a more specific message.
+        throw new Error(`Pendaftaran otomatis untuk admin utama gagal: ${registrationError.message}`);
+      }
+    }
+    // --- END SPECIAL HANDLING ---
+      
     console.error("Error signing in:", error);
     // Re-throw custom errors
     if (error.message.startsWith('Akun ini sudah terikat') || error.message.startsWith('Profil pengguna tidak ditemukan') || error.message.startsWith('Perangkat ini sudah digunakan oleh pengguna lain')) {
         throw error;
     }
     switch (error.code) {
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
         case 'auth/invalid-credential':
-            if (email === MAIN_ADMIN_EMAIL) {
-                // On a fresh install, the default admin account won't exist.
-                // Provide a more helpful error message to guide the user to register.
-                throw new Error('Akun admin default tidak ditemukan. Silakan gunakan menu \'Daftar\' untuk mendaftarkan akun Admin pertama.');
-            }
             throw new Error('Email atau password salah.');
         case 'auth/invalid-email':
             throw new Error('Format email tidak valid.');
@@ -149,16 +178,22 @@ export const logout = async (): Promise<void> => {
 export const register = async (name: string, email: string, pass: string, role: Role, adminKey?: string): Promise<User | null> => {
     let firebaseUser: FirebaseUser | null = null;
     try {
-        // --- Admin Registration Key Validation ---
+        // First, create the user in Firebase Auth.
+        // This authenticates them for subsequent Firestore operations.
+        const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+        firebaseUser = userCredential.user;
+
+        // --- Admin Registration Key Validation (now performed AFTER authentication) ---
         if (role === Role.Admin) {
             const storedKey = await getAdminRegistrationKey();
             if (email === MAIN_ADMIN_EMAIL) {
-                // If it's the first time the main admin is registering, allow it
-                // and set their key as the first key.
+                // If it's the main admin registering and no key exists, this is the initial setup.
+                // We allow it and create the first key. No validation needed.
                 if (!storedKey) {
                     await updateAdminRegistrationKey();
                 }
             } else {
+                // For any other admin, validate their provided key.
                 if (!storedKey) {
                     throw new Error('Kunci pendaftaran Admin belum di-set oleh Admin Utama.');
                 }
@@ -168,12 +203,9 @@ export const register = async (name: string, email: string, pass: string, role: 
             }
         }
 
-        const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-        firebaseUser = userCredential.user;
-
         const deviceId = getOrCreateDeviceId();
 
-        // Create the base user object
+        // Create the user profile object
         const newUser: User = {
             id: firebaseUser.uid,
             name,
@@ -181,12 +213,12 @@ export const register = async (name: string, email: string, pass: string, role: 
             role,
         };
         
-        // Conditionally add boundDeviceId only for non-admins to avoid 'undefined'
+        // Conditionally add boundDeviceId only for non-admins
         if (role !== Role.Admin) {
             newUser.boundDeviceId = deviceId;
         }
         
-        // This is the critical part: create the Firestore document.
+        // Create the user's profile document in Firestore.
         await setDoc(doc(db, "users", firebaseUser.uid), newUser);
 
         return newUser;
@@ -194,14 +226,14 @@ export const register = async (name: string, email: string, pass: string, role: 
     } catch (error: any) {
         console.error("Error registering user:", error);
 
-        // If Firestore profile creation fails after Auth user is created, roll back.
+        // IMPORTANT: If any Firestore operation fails after the Auth user is created,
+        // we must roll back by deleting the Auth user to prevent orphaned accounts.
         if (firebaseUser) {
             console.warn(`Registration failed after user creation for ${firebaseUser.email}. Rolling back Auth user.`);
             try {
                 await firebaseUser.delete();
             } catch (deleteError) {
                 console.error("Failed to roll back Firebase Auth user:", deleteError);
-                // The user might be stuck in a bad state, but at least we've logged it.
             }
         }
 
@@ -219,7 +251,7 @@ export const register = async (name: string, email: string, pass: string, role: 
             case 'auth/operation-not-allowed':
                  throw new Error('Pendaftaran dengan email/password belum diaktifkan oleh admin.');
             case 'permission-denied': // Firestore specific error
-                throw new Error('Pendaftaran gagal. Izin ditolak saat menyimpan profil. Hubungi admin.');
+                throw new Error('Pendaftaran gagal. Izin ditolak saat menyimpan profil. Hubungi admin dan periksa Aturan Keamanan Firestore.');
             default:
                 // This will now catch Firestore errors and provide a more relevant generic message.
                 throw new Error('Pendaftaran gagal. Gagal menyimpan profil pengguna.');

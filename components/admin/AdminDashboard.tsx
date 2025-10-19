@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from '../layout/Sidebar';
 import DashboardContent from './DashboardContent';
 import TeacherAttendanceReportPage from './TeacherAttendanceReportPage';
+import StaffAttendanceReportPage from './StaffAttendanceReportPage'; // Import baru
 import StudentAbsenceReportPage from './StudentAbsenceReportPage';
 import ManageUsers from './ManageUsers';
 import ManageLessonSchedule from './ManageLessonSchedule';
@@ -22,6 +23,8 @@ const AdminDashboard: React.FC = () => {
         return <DashboardContent />;
       case 'teacher-attendance-report':
         return <TeacherAttendanceReportPage />;
+      case 'staff-attendance-report': // Case baru
+        return <StaffAttendanceReportPage />;
       case 'student-absence-report':
         return <StudentAbsenceReportPage />;
       case 'manage-teachers':
