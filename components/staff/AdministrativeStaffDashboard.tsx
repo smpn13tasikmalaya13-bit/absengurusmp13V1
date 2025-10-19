@@ -68,13 +68,71 @@ const AdministrativeStaffDashboard: React.FC = () => {
         : isWithinRadius ? { text: 'Anda berada di dalam radius sekolah', color: 'text-emerald-400' }
         : { text: 'Anda berada di luar radius sekolah', color: 'text-red-400' };
 
-    // Determine attendance status for today
+    // Determine attendance status and time validity
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentDay = now.getDay(); // Sunday: 0, Friday: 5
+
+    // Check-in: 05:00 s.d. 07:15 (Mon-Fri)
+    const isCheckInTime = currentHour >= 5 && (currentHour < 7 || (currentHour === 7 && currentMinute <= 15));
+    
+    // Check-out logic
+    let isCheckOutTime = false;
+    let checkOutStartTime = "15:00";
+    let checkOutEndTime = "15:20";
+
+    if (currentDay === 5) { // It's Friday
+        checkOutStartTime = "11:30";
+        checkOutEndTime = "15:20";
+        const isAfterStart = currentHour > 11 || (currentHour === 11 && currentMinute >= 30);
+        const isBeforeEnd = currentHour < 15 || (currentHour === 15 && currentMinute <= 20);
+        isCheckOutTime = isAfterStart && isBeforeEnd;
+    } else { // It's Monday-Thursday
+        isCheckOutTime = currentHour === 15 && currentMinute >= 0 && currentMinute <= 20;
+    }
+
+
     const todayStr = new Date().toISOString().split('T')[0];
     const latestRecordToday = history.length > 0 && history[0].date === todayStr ? history[0] : null;
 
     const hasClockedIn = !!latestRecordToday;
     const hasClockedOut = latestRecordToday?.status === 'Pulang';
     
+    // Determine button state and text
+    let buttonText = 'Scan QR untuk Absen Datang';
+    let timeStatusMessage = 'Absen datang dibuka pukul 05:00 - 07:15.';
+    let isButtonDisabledByTime = true;
+
+    if (hasClockedOut) {
+        buttonText = 'Selesai Absen';
+        timeStatusMessage = 'Anda sudah menyelesaikan absensi hari ini.';
+        isButtonDisabledByTime = true;
+    } else if (hasClockedIn) {
+        buttonText = 'Scan QR untuk Absen Pulang';
+        if (isCheckOutTime) {
+            timeStatusMessage = `Absen pulang (${currentDay === 5 ? 'Jumat' : 'Senin-Kamis'}) dibuka pukul ${checkOutStartTime} - ${checkOutEndTime}. Silakan absen.`;
+            isButtonDisabledByTime = false;
+        } else {
+            timeStatusMessage = `Belum waktunya absen pulang. Dibuka pukul ${checkOutStartTime} - ${checkOutEndTime}.`;
+            isButtonDisabledByTime = true;
+        }
+    } else { // Not clocked in yet
+        if (isCheckInTime) {
+            timeStatusMessage = 'Absen datang dibuka pukul 05:00 - 07:15. Silakan absen.';
+            isButtonDisabledByTime = false;
+        } else {
+             if (currentHour < 5) {
+                timeStatusMessage = 'Belum waktunya absen datang. Dibuka pukul 05:00.';
+             } else {
+                timeStatusMessage = 'Waktu absen datang sudah berakhir pada 07:15.';
+             }
+             isButtonDisabledByTime = true;
+        }
+    }
+    
+    const isButtonDisabled = isWithinRadius !== true || isSubmitting || isButtonDisabledByTime;
+
     if (showScanner) {
         return <QRScanner onScanSuccess={handleScanSuccess} onClose={() => setShowScanner(false)} />;
     }
@@ -97,27 +155,17 @@ const AdministrativeStaffDashboard: React.FC = () => {
                     <div className="space-y-4 text-center">
                         <h3 className="text-xl font-bold text-white">Catat Kehadiran Hari Ini</h3>
                         <p className="text-slate-400">
-                            {hasClockedOut 
-                                ? 'Anda sudah menyelesaikan absensi hari ini.' 
-                                : hasClockedIn 
-                                ? `Anda telah absen datang pada pukul ${latestRecordToday?.timestamp.toLocaleTimeString('id-ID')}.`
-                                : 'Anda belum melakukan absensi hari ini.'
-                            }
+                           {timeStatusMessage}
                         </p>
                         <div className="pt-2">
                              <Button
                                 onClick={() => setShowScanner(true)}
                                 isLoading={isSubmitting}
-                                disabled={isWithinRadius !== true || isSubmitting || hasClockedOut}
+                                disabled={isButtonDisabled}
                                 variant="primary"
                                 className="w-full max-w-sm mx-auto"
                             >
-                                {hasClockedOut 
-                                    ? 'Selesai Absen'
-                                    : hasClockedIn 
-                                    ? 'Scan QR untuk Absen Pulang' 
-                                    : 'Scan QR untuk Absen Datang'
-                                }
+                                {buttonText}
                             </Button>
                         </div>
                         {message && (

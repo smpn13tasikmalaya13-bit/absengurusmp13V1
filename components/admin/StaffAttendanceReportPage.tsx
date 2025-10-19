@@ -9,6 +9,25 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
+// NEW: Add a type for the processed report data
+interface ProcessedStaffRecord extends AttendanceRecord {
+  keterangan: string;
+  denda: number;
+}
+
+// FIX: Moved interfaces outside of the component to be accessible for type annotations.
+interface SummaryDetails {
+    lateCount: number;
+    missedCheckoutCount: number;
+    totalLateFine: number;
+    missedCheckoutFine: number;
+    totalFine: number;
+}
+
+interface SummaryData {
+    [userName: string]: SummaryDetails;
+}
+
 const StaffAttendanceReportPage: React.FC = () => {
   // Filter state
   const [staffMembers, setStaffMembers] = useState<User[]>([]);
@@ -17,7 +36,8 @@ const StaffAttendanceReportPage: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   
   // Data state
-  const [reportData, setReportData] = useState<AttendanceRecord[]>([]);
+  const [reportData, setReportData] = useState<ProcessedStaffRecord[]>([]);
+  const [summaryData, setSummaryData] = useState<SummaryData>({});
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -29,6 +49,70 @@ const StaffAttendanceReportPage: React.FC = () => {
     };
     fetchFilterData();
   }, []);
+  
+  const processStaffReport = (records: AttendanceRecord[]): { processedRecords: ProcessedStaffRecord[], summary: SummaryData } => {
+    const lateFine = 2000;
+    const missedCheckoutFine = 20000;
+    const userStats: { [userName: string]: { lateCount: number; missedCheckoutCount: number } } = {};
+
+    // First pass: Calculate daily status and count occurrences
+    const processedRecords = records.map(record => {
+      if (!userStats[record.userName]) {
+        userStats[record.userName] = { lateCount: 0, missedCheckoutCount: 0 };
+      }
+
+      const recordDate = record.timestamp;
+      const day = recordDate.getDay(); // Sunday: 0, Monday: 1, ..., Friday: 5
+      let keterangan = '-';
+      let denda = 0;
+      let isLate = false;
+      let isMissedCheckout = false;
+
+      // Rules only apply from Monday to Friday
+      if (day >= 1 && day <= 5) {
+        const checkInHour = recordDate.getHours();
+        const checkInMinute = recordDate.getMinutes();
+        if (checkInHour > 7 || (checkInHour === 7 && checkInMinute > 15)) {
+          isLate = true;
+          userStats[record.userName].lateCount += 1;
+        }
+        if (!record.checkOutTimestamp) {
+          isMissedCheckout = true;
+          userStats[record.userName].missedCheckoutCount += 1;
+        }
+      }
+
+      if (isLate) {
+        keterangan = `Telat`;
+        denda = lateFine;
+      }
+      if (isMissedCheckout) {
+        keterangan = keterangan === '-' ? 'Tidak Absen Pulang' : `${keterangan}; Tidak Absen Pulang`;
+      }
+      
+      return { ...record, keterangan, denda };
+    });
+
+    const summary: SummaryData = {};
+    for (const userName in userStats) {
+      const stats = userStats[userName];
+      const totalLateFine = stats.lateCount * lateFine;
+      const finalMissedCheckoutFine = stats.missedCheckoutCount > 3 ? missedCheckoutFine : 0;
+      const totalFine = totalLateFine + finalMissedCheckoutFine;
+
+      if(totalFine > 0){
+        summary[userName] = {
+            lateCount: stats.lateCount,
+            missedCheckoutCount: stats.missedCheckoutCount,
+            totalLateFine,
+            missedCheckoutFine: finalMissedCheckoutFine,
+            totalFine,
+        };
+      }
+    }
+    
+    return { processedRecords, summary };
+  };
 
   const handleFetchReport = useCallback(async () => {
     if (!startDate || !endDate) {
@@ -38,6 +122,8 @@ const StaffAttendanceReportPage: React.FC = () => {
     
     setIsLoading(true);
     setHasSearched(true);
+    setReportData([]);
+    setSummaryData({});
     
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
@@ -48,13 +134,19 @@ const StaffAttendanceReportPage: React.FC = () => {
     const data = await getFilteredAttendanceReport({
       startDate: start,
       endDate: end,
-      teacherId: selectedStaff || undefined, // teacherId is used for any user ID
+      teacherId: selectedStaff || undefined,
     });
-    // Further filter to ensure we only get 'Datang' or 'Pulang' status which are unique to staff
-    const staffRecords = data.filter(d => d.status === 'Datang' || d.status === 'Pulang');
-    setReportData(staffRecords);
+    
+    // FIX: Filter staff records by checking teacherId against the staffMembers list,
+    // as AttendanceRecord does not have a 'role' property.
+    const staffIds = new Set(staffMembers.map(s => s.id));
+    const staffRecords = data.filter(d => staffIds.has(d.teacherId));
+    
+    const { processedRecords, summary } = processStaffReport(staffRecords);
+    setReportData(processedRecords);
+    setSummaryData(summary);
     setIsLoading(false);
-  }, [startDate, endDate, selectedStaff]);
+  }, [startDate, endDate, selectedStaff, staffMembers]);
 
   useEffect(() => {
       if (startDate && endDate) {
@@ -67,28 +159,66 @@ const StaffAttendanceReportPage: React.FC = () => {
     const doc = new jsPDF();
     doc.text("Laporan Absensi Tenaga Administrasi", 14, 16);
     (doc as any).autoTable({
-        head: [['Nama', 'Jabatan', 'Waktu Datang', 'Waktu Pulang']],
+        head: [['Nama', 'Jabatan', 'Waktu Datang', 'Waktu Pulang', 'Keterangan', 'Denda (Rp)']],
         body: reportData.map(r => [
             r.userName,
             Role.AdministrativeStaff,
             r.timestamp.toLocaleString('id-ID'),
-            r.checkOutTimestamp ? new Date(r.checkOutTimestamp).toLocaleString('id-ID') : 'Belum Absen Pulang'
+            r.checkOutTimestamp ? new Date(r.checkOutTimestamp).toLocaleString('id-ID') : '-',
+            r.keterangan,
+            r.denda.toLocaleString('id-ID')
         ]),
         startY: 20,
     });
+    if (Object.keys(summaryData).length > 0) {
+        (doc as any).autoTable({
+            head: [['Ringkasan Denda (Periode Laporan)']],
+            // FIX: Explicitly type 'data' to resolve property access errors.
+            body: Object.entries(summaryData).map(([name, data]: [string, SummaryDetails]) => {
+                let summaryText = `${name}:\n`;
+                summaryText += ` - Keterlambatan: ${data.lateCount} kali (Rp ${data.totalLateFine.toLocaleString('id-ID')})\n`;
+                summaryText += ` - Tdk Absen Pulang: ${data.missedCheckoutCount} kali (Denda: Rp ${data.missedCheckoutFine.toLocaleString('id-ID')})\n`;
+                summaryText += ` - Total Denda: Rp ${data.totalFine.toLocaleString('id-ID')}`;
+                return [summaryText];
+            }),
+            theme: 'striped',
+        });
+    }
     doc.save('laporan-absensi-staf.pdf');
   };
 
   const handleExportExcel = () => {
     if (reportData.length === 0) return;
-    const worksheet = XLSX.utils.json_to_sheet(reportData.map(r => ({
+    const reportSheet = reportData.map(r => ({
         'Nama': r.userName,
         'Jabatan': Role.AdministrativeStaff,
         'Waktu Datang': r.timestamp.toLocaleString('id-ID'),
-        'Waktu Pulang': r.checkOutTimestamp ? new Date(r.checkOutTimestamp).toLocaleString('id-ID') : 'Belum Absen Pulang'
-    })));
+        'Waktu Pulang': r.checkOutTimestamp ? new Date(r.checkOutTimestamp).toLocaleString('id-ID') : '-',
+        'Keterangan': r.keterangan,
+        'Denda Harian (Rp)': r.denda
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(reportSheet);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Absensi Staf");
+
+    if (Object.keys(summaryData).length > 0) {
+        const summarySheetData = [
+            ['Ringkasan Denda (Periode Laporan)'],
+            ['Nama Staf', 'Total Terlambat', 'Denda Terlambat', 'Total Tdk Absen Pulang', 'Denda Tdk Absen Pulang', 'Total Denda Keseluruhan'],
+             // FIX: Explicitly type 'data' to resolve property access errors.
+             ...Object.entries(summaryData).map(([name, data]: [string, SummaryDetails]) => [
+                name,
+                data.lateCount,
+                data.totalLateFine,
+                data.missedCheckoutCount,
+                data.missedCheckoutFine,
+                data.totalFine
+            ])
+        ];
+        const summarySheet = XLSX.utils.aoa_to_sheet(summarySheetData);
+        XLSX.utils.book_append_sheet(workbook, summarySheet, "Ringkasan Denda");
+    }
+
     XLSX.writeFile(workbook, 'laporan-absensi-staf.xlsx');
   };
 
@@ -99,26 +229,48 @@ const StaffAttendanceReportPage: React.FC = () => {
                 <thead className="bg-slate-700/50">
                   <tr>
                     <th className="p-4 text-sm font-semibold text-gray-200">Nama</th>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Jabatan</th>
                     <th className="p-4 text-sm font-semibold text-gray-200">Waktu Datang</th>
                     <th className="p-4 text-sm font-semibold text-gray-200">Waktu Pulang</th>
+                    <th className="p-4 text-sm font-semibold text-gray-200">Keterangan</th>
+                    <th className="p-4 text-sm font-semibold text-gray-200">Denda (Rp)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {reportData.map((record) => (
                     <tr key={record.id} className="border-b border-slate-700 last:border-0">
                       <td className="p-4 whitespace-nowrap font-medium">{record.userName}</td>
-                      <td className="p-4 whitespace-nowrap text-gray-400">{Role.AdministrativeStaff}</td>
                       <td className="p-4 whitespace-nowrap text-gray-400">{record.timestamp.toLocaleString('id-ID')}</td>
                       <td className="p-4 whitespace-nowrap text-gray-400">
                         {record.checkOutTimestamp ? new Date(record.checkOutTimestamp).toLocaleString('id-ID') : '-'}
                       </td>
+                      <td className="p-4 whitespace-nowrap text-yellow-400 text-xs">{record.keterangan}</td>
+                      <td className="p-4 whitespace-nowrap font-semibold text-red-400">{record.denda > 0 ? record.denda.toLocaleString('id-ID') : '-'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
         </div>
     </div>
+  );
+  
+  const SummaryCard = () => (
+    Object.keys(summaryData).length > 0 && (
+      <Card title="Ringkasan Konsekuensi">
+        <div className="space-y-4">
+          {/* FIX: Explicitly type 'data' to resolve property access errors. */}
+          {Object.entries(summaryData).map(([name, data]: [string, SummaryDetails]) => (
+            <div key={name} className="p-3 bg-slate-700/50 rounded-md">
+              <h4 className="font-semibold text-white">{name}</h4>
+              <ul className="list-disc list-inside text-sm text-slate-300 mt-1">
+                <li>Total Keterlambatan: {data.lateCount} kali (Denda: Rp {data.totalLateFine.toLocaleString('id-ID')})</li>
+                <li>Total Tidak Absen Pulang: {data.missedCheckoutCount} kali (Denda: Rp {data.missedCheckoutFine.toLocaleString('id-ID')})</li>
+              </ul>
+              <p className="font-bold text-amber-400 mt-2">Total Denda: Rp {data.totalFine.toLocaleString('id-ID')}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+    )
   );
 
   const ReportPlaceholder = () => (
@@ -160,6 +312,7 @@ const StaffAttendanceReportPage: React.FC = () => {
       </Card>
 
       {isLoading ? <Spinner /> : (reportData.length > 0 ? <ReportTable /> : <ReportPlaceholder />)}
+      {!isLoading && <SummaryCard />}
       
     </div>
   );
