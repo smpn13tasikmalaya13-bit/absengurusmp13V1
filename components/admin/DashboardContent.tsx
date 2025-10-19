@@ -7,9 +7,6 @@ import AttendancePieChart from './AttendancePieChart';
 import { Spinner } from '../ui/Spinner';
 import { Button } from '../ui/Button';
 import { seedDatabase } from '../../services/seedDatabase';
-import QRCodeGenerator from './QRCodeGenerator'; // For Teachers
-import StaffQRCodeGenerator from './StaffQRCodeGenerator'; // For Staff
-
 
 interface StatCardProps {
   title: string;
@@ -129,11 +126,6 @@ const DashboardContent: React.FC = () => {
             <StatCard title="Total Guru" value={stats.total} />
             <StatCard title="Guru Hadir Hari Ini" value={stats.present} colorClass="text-emerald-400" />
             <StatCard title="Guru Absen Hari Ini" value={stats.absent} colorClass="text-red-400" />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <QRCodeGenerator />
-            <StaffQRCodeGenerator />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

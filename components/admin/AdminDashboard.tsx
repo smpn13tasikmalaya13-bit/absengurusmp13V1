@@ -11,6 +11,7 @@ import ManageClasses from './ManageClasses';
 import ManageExtracurriculars from './ManageExtracurriculars';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
+import StaffQRCodeGenerator from './StaffQRCodeGenerator';
 
 const AdminDashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -39,6 +40,8 @@ const AdminDashboard: React.FC = () => {
         return <ManageClasses />;
       case 'manage-eskuls':
         return <ManageExtracurriculars />;
+      case 'staff-qr-code':
+        return <StaffQRCodeGenerator />;
       default:
         return <DashboardContent />;
     }
