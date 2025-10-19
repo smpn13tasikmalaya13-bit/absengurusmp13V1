@@ -64,8 +64,7 @@ interface State {
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
-  // FIX: The error "Property 'props' does not exist" can occur with some TypeScript/tooling configurations when using class property initializers.
-  // Switching to a constructor for state initialization resolves this ambiguity.
+  // FIX: Reverted to using a constructor for state initialization. The class property initializer was causing a TypeScript error where 'this.props' was not recognized on the component instance.
   constructor(props: Props) {
     super(props);
     this.state = {

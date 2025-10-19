@@ -126,10 +126,14 @@ export const recordAttendance = async (
   }
 };
 
-export const recordAdministrativeStaffAttendance = async (
+export const recordStaffAttendanceWithQR = async (
   user: User,
-  type: 'Datang' | 'Pulang'
+  qrCodeData: string
 ): Promise<{ success: boolean; message: string }> => {
+  if (!qrCodeData) {
+    return { success: false, message: 'Data QR Code tidak valid.' };
+  }
+  
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
@@ -142,14 +146,13 @@ export const recordAdministrativeStaffAttendance = async (
     where('timestamp', '>=', startOfDay),
     where('timestamp', '<', endOfDay)
   );
-  const querySnapshot = await getDocs(q);
-  const todaysRecord = querySnapshot.docs[0];
+  
+  try {
+    const querySnapshot = await getDocs(q);
+    const todaysRecord = querySnapshot.docs[0];
 
-  if (type === 'Datang') {
-    if (todaysRecord) {
-      return { success: false, message: 'Anda sudah melakukan absen datang hari ini.' };
-    }
-    try {
+    if (!todaysRecord) {
+      // CLOCK IN
       await addDoc(attendanceCol, {
         teacherId: user.id,
         userName: user.name,
@@ -158,33 +161,30 @@ export const recordAdministrativeStaffAttendance = async (
         status: 'Datang',
       });
       return { success: true, message: 'Absen datang berhasil direkam.' };
-    } catch (error) {
-      console.error("Error recording clock-in:", error);
-      return { success: false, message: 'Gagal merekam absen datang.' };
-    }
-  }
-
-  if (type === 'Pulang') {
-    if (!todaysRecord) {
-      return { success: false, message: 'Anda harus absen datang terlebih dahulu sebelum absen pulang.' };
-    }
-    if (todaysRecord.data().status === 'Pulang') {
-      return { success: false, message: 'Anda sudah melakukan absen pulang hari ini.' };
-    }
-    try {
+    } 
+    
+    const recordData = todaysRecord.data();
+    if (recordData.status === 'Datang') {
+      // CLOCK OUT
       const recordRef = doc(db, 'absenceRecords', todaysRecord.id);
       await updateDoc(recordRef, {
         status: 'Pulang',
         checkOutTimestamp: Timestamp.fromDate(now),
       });
       return { success: true, message: 'Absen pulang berhasil direkam.' };
-    } catch (error) {
-      console.error("Error recording clock-out:", error);
-      return { success: false, message: 'Gagal merekam absen pulang.' };
     }
-  }
 
-  return { success: false, message: 'Tipe absensi tidak valid.' };
+    if (recordData.status === 'Pulang') {
+      // Already clocked out
+      return { success: false, message: 'Anda sudah melakukan absen pulang hari ini.' };
+    }
+    
+    return { success: false, message: 'Status absensi Anda hari ini tidak dikenali.' };
+
+  } catch (error) {
+    console.error("Error recording staff attendance with QR:", error);
+    return { success: false, message: 'Gagal merekam absensi. Terjadi kesalahan server.' };
+  }
 };
 
 
@@ -209,6 +209,7 @@ export const getAttendanceReport = async (date: Date): Promise<AttendanceRecord[
         id: doc.id,
         ...data,
         timestamp: (data.timestamp as Timestamp).toDate(),
+        checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
       } as AttendanceRecord;
     });
   } catch (error) {
@@ -247,6 +248,7 @@ export const getFilteredAttendanceReport = async ({
                 id: doc.id,
                 ...data,
                 timestamp: (data.timestamp as Timestamp).toDate(),
+                checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
             } as AttendanceRecord;
         });
     } catch (error) {
@@ -270,6 +272,7 @@ export const getFullReport = async (recordLimit?: number): Promise<AttendanceRec
         id: doc.id,
         ...data,
         timestamp: (data.timestamp as Timestamp).toDate(),
+        checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
       } as AttendanceRecord;
     });
   } catch (error) {
@@ -343,6 +346,7 @@ export const getAttendanceForTeacher = async (teacherId: string, recordLimit?: n
           id: doc.id,
           ...data,
           timestamp: (data.timestamp as Timestamp).toDate(),
+          checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
         } as AttendanceRecord;
       });
     } catch (error) {

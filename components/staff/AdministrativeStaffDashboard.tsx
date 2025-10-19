@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
-import { recordAdministrativeStaffAttendance, getAttendanceForTeacher } from '../../services/attendanceService';
+import { recordStaffAttendanceWithQR, getAttendanceForTeacher } from '../../services/attendanceService';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
 import { AttendanceRecord } from '../../types';
 import { Card } from '../ui/Card';
+import QRScanner from './QRScanner';
 
 const AdministrativeStaffDashboard: React.FC = () => {
     const { user, logout } = useAuth();
@@ -15,6 +16,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const [history, setHistory] = useState<AttendanceRecord[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+    const [showScanner, setShowScanner] = useState(false);
 
     useEffect(() => {
         const checkLocation = async () => {
@@ -45,11 +47,12 @@ const AdministrativeStaffDashboard: React.FC = () => {
         }
     }, [user]);
 
-    const handleAttendance = async (type: 'Datang' | 'Pulang') => {
+    const handleScanSuccess = async (qrData: string) => {
         if (!user) return;
+        setShowScanner(false);
         setIsSubmitting(true);
         setMessage(null);
-        const result = await recordAdministrativeStaffAttendance(user, type);
+        const result = await recordStaffAttendanceWithQR(user, qrData);
         if (result.success) {
             setMessage({ text: result.message, type: 'success' });
             fetchHistory(); // Refresh history
@@ -64,6 +67,17 @@ const AdministrativeStaffDashboard: React.FC = () => {
         : isWithinRadius === null ? { text: 'Mengecek lokasi...', color: 'text-yellow-400' }
         : isWithinRadius ? { text: 'Anda berada di dalam radius sekolah', color: 'text-emerald-400' }
         : { text: 'Anda berada di luar radius sekolah', color: 'text-red-400' };
+
+    // Determine attendance status for today
+    const todayStr = new Date().toISOString().split('T')[0];
+    const latestRecordToday = history.length > 0 && history[0].date === todayStr ? history[0] : null;
+
+    const hasClockedIn = !!latestRecordToday;
+    const hasClockedOut = latestRecordToday?.status === 'Pulang';
+    
+    if (showScanner) {
+        return <QRScanner onScanSuccess={handleScanSuccess} onClose={() => setShowScanner(false)} />;
+    }
 
     return (
         <div className="bg-slate-900 text-slate-300 min-h-screen">
@@ -80,28 +94,34 @@ const AdministrativeStaffDashboard: React.FC = () => {
                 </div>
 
                 <Card>
-                    <div className="space-y-4">
+                    <div className="space-y-4 text-center">
                         <h3 className="text-xl font-bold text-white">Catat Kehadiran Hari Ini</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Button
-                                onClick={() => handleAttendance('Datang')}
+                        <p className="text-slate-400">
+                            {hasClockedOut 
+                                ? 'Anda sudah menyelesaikan absensi hari ini.' 
+                                : hasClockedIn 
+                                ? `Anda telah absen datang pada pukul ${latestRecordToday?.timestamp.toLocaleTimeString('id-ID')}.`
+                                : 'Anda belum melakukan absensi hari ini.'
+                            }
+                        </p>
+                        <div className="pt-2">
+                             <Button
+                                onClick={() => setShowScanner(true)}
                                 isLoading={isSubmitting}
-                                disabled={isWithinRadius !== true || isSubmitting}
+                                disabled={isWithinRadius !== true || isSubmitting || hasClockedOut}
                                 variant="primary"
+                                className="w-full max-w-sm mx-auto"
                             >
-                                Absen Datang
-                            </Button>
-                            <Button
-                                onClick={() => handleAttendance('Pulang')}
-                                isLoading={isSubmitting}
-                                disabled={isWithinRadius !== true || isSubmitting}
-                                variant="secondary"
-                            >
-                                Absen Pulang
+                                {hasClockedOut 
+                                    ? 'Selesai Absen'
+                                    : hasClockedIn 
+                                    ? 'Scan QR untuk Absen Pulang' 
+                                    : 'Scan QR untuk Absen Datang'
+                                }
                             </Button>
                         </div>
                         {message && (
-                            <p className={`text-sm text-center p-2 rounded-md ${message.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+                            <p className={`text-sm text-center p-2 rounded-md mt-4 ${message.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
                                 {message.text}
                             </p>
                         )}
@@ -118,7 +138,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
                                             <p className="font-semibold text-white">{new Date(record.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                                             <p className="text-sm text-slate-400">
                                                 Datang: {record.timestamp.toLocaleTimeString('id-ID')}
-                                                {record.checkOutTimestamp && ` - Pulang: ${new Date(record.checkOutTimestamp).toLocaleTimeString('id-ID')}`}
+                                                {record.checkOutTimestamp && ` - Pulang: ${record.checkOutTimestamp.toLocaleTimeString('id-ID')}`}
                                             </p>
                                         </div>
                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${record.status === 'Datang' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-blue-500/30 text-blue-200'}`}>
