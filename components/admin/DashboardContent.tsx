@@ -7,6 +7,8 @@ import AttendancePieChart from './AttendancePieChart';
 import { Spinner } from '../ui/Spinner';
 import { Button } from '../ui/Button';
 import { seedDatabase } from '../../services/seedDatabase';
+import QRCodeGenerator from './QRCodeGenerator'; // For Teachers
+import StaffQRCodeGenerator from './StaffQRCodeGenerator'; // For Staff
 
 
 interface StatCardProps {
@@ -26,7 +28,7 @@ const EmptyStateDashboard: React.FC<{ onSeedClick: () => void; isSeeding: boolea
   <Card title="Selamat Datang di HadirKu">
     <div className="text-center py-8">
       <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-        <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+        <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2-2H5a2 2 0 01-2-2z" />
       </svg>
       <h3 className="mt-2 text-lg font-medium text-white">Database Kosong</h3>
       <p className="mt-1 text-sm text-gray-400">
@@ -127,6 +129,11 @@ const DashboardContent: React.FC = () => {
             <StatCard title="Total Guru" value={stats.total} />
             <StatCard title="Guru Hadir Hari Ini" value={stats.present} colorClass="text-emerald-400" />
             <StatCard title="Guru Absen Hari Ini" value={stats.absent} colorClass="text-red-400" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <QRCodeGenerator />
+            <StaffQRCodeGenerator />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

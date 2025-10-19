@@ -4,11 +4,10 @@ import { Button } from '../ui/Button';
 import { generateQrCodeData, getCurrentQrCodeData } from '../../services/attendanceService';
 import { QRCodeSVG } from 'qrcode.react';
 
-const QRCodeGenerator: React.FC = () => {
+const StaffQRCodeGenerator: React.FC = () => {
   const [qrData, setQrData] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if a QR code was already generated for today
     const existingQrData = getCurrentQrCodeData();
     if (existingQrData) {
       setQrData(existingQrData);
@@ -21,7 +20,7 @@ const QRCodeGenerator: React.FC = () => {
   };
 
   return (
-    <Card title="QR Code Absensi Guru & Pembina">
+    <Card title="QR Code Absensi Staf Administrasi">
       <div className="flex flex-col items-center space-y-6">
         {qrData ? (
           <div className="p-4 bg-white border rounded-lg">
@@ -39,11 +38,11 @@ const QRCodeGenerator: React.FC = () => {
           </Button>
         </div>
         <p className="text-sm text-slate-400 text-center">
-          QR code ini berlaku untuk hari ini. Guru dan Pembina memindai kode ini untuk absensi per jam pelajaran.
+          QR code ini berlaku untuk hari ini. Staf harus memindai kode ini di area sekolah untuk mencatat waktu datang dan pulang.
         </p>
       </div>
     </Card>
   );
 };
 
-export default QRCodeGenerator;
+export default StaffQRCodeGenerator;

@@ -64,7 +64,7 @@ interface State {
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
-  // FIX: Replaced public class field initialization with a constructor to ensure 'this.props' is correctly typed and available.
+  // FIX: The component was throwing errors because `this.state` and `this.props` were not being recognized. Initializing state within a standard constructor ensures that the component instance is set up correctly before rendering.
   constructor(props: Props) {
     super(props);
     this.state = {
