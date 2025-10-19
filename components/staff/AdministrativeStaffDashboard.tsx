@@ -9,13 +9,19 @@ import { Card } from '../ui/Card';
 import QRScanner from './QRScanner';
 import { Modal } from '../ui/Modal';
 
+// Add a new interface for processed records with fine information
+interface ProcessedHistoryRecord extends AttendanceRecord {
+  denda: number;
+}
+
+
 const AdministrativeStaffDashboard: React.FC = () => {
     const { user, logout } = useAuth();
     const [isWithinRadius, setIsWithinRadius] = useState<boolean | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-    const [history, setHistory] = useState<AttendanceRecord[]>([]);
+    const [history, setHistory] = useState<ProcessedHistoryRecord[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [showScanner, setShowScanner] = useState(false);
 
@@ -44,11 +50,38 @@ const AdministrativeStaffDashboard: React.FC = () => {
     const fetchHistory = async () => {
         if (user) {
             setIsLoadingHistory(true);
-            const records = await getAttendanceForTeacher(user.id, 10);
-            setHistory(records);
+            const allRecords = await getAttendanceForTeacher(user.id);
+
+            // Filter for the last 30 days
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const recentRecords = allRecords.filter(r => new Date(r.timestamp) >= thirtyDaysAgo);
+
+            // Process records to add fine information
+            const lateFine = 2000;
+            const processed = recentRecords.map(record => {
+                let denda = 0;
+                const recordDate = new Date(record.timestamp);
+                const day = recordDate.getDay(); // 0 = Sunday, 6 = Saturday
+
+                // Fine rules apply only on weekdays (Monday-Friday) for 'Datang' status
+                if (record.status === 'Datang' && day >= 1 && day <= 5) {
+                    const checkInHour = recordDate.getHours();
+                    const checkInMinute = recordDate.getMinutes();
+                    // Check if clocked in late (after 07:15)
+                    if (checkInHour > 7 || (checkInHour === 7 && checkInMinute > 15)) {
+                        denda = lateFine;
+                    }
+                }
+                
+                return { ...record, denda };
+            });
+
+            setHistory(processed);
             setIsLoadingHistory(false);
         }
     };
+
 
     useEffect(() => {
         if(user) {
@@ -93,6 +126,34 @@ const AdministrativeStaffDashboard: React.FC = () => {
             setModalError(result.message);
         }
         setIsSubmitting(false);
+    };
+
+    const getStatusBadge = (record: ProcessedHistoryRecord) => {
+        let statusText = record.status;
+        let className = '';
+
+        if (record.denda > 0 && record.status === 'Datang') {
+            statusText = 'Telat';
+            className = 'bg-red-500/30 text-red-200';
+        } else {
+            switch (record.status) {
+                case 'Datang':
+                    className = 'bg-emerald-500/30 text-emerald-200';
+                    break;
+                case 'Pulang':
+                    className = 'bg-blue-500/30 text-blue-200';
+                    break;
+                default: // Sakit, Izin, etc.
+                    className = 'bg-yellow-500/30 text-yellow-200';
+                    break;
+            }
+        }
+        
+        return (
+            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${className}`}>
+                {statusText}
+            </span>
+        );
     };
 
 
@@ -249,7 +310,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
                         </div>
                     </Card>
                     
-                    <Card title="Riwayat Absensi Terkini">
+                    <Card title="Riwayat Absensi Terkini (1 Bulan Terakhir)">
                         {isLoadingHistory ? <Spinner /> : (
                             history.length > 0 ? (
                                 <ul className="space-y-3">
@@ -258,19 +319,18 @@ const AdministrativeStaffDashboard: React.FC = () => {
                                             <div>
                                                 <p className="font-semibold text-white">{new Date(record.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                                                 <p className="text-sm text-slate-400">
-                                                    {record.status === 'Datang' || record.status === 'Pulang' 
+                                                    {record.status === 'Datang' || record.status === 'Pulang' || (record.denda > 0)
                                                         ? `Datang: ${record.timestamp.toLocaleTimeString('id-ID')} ${record.checkOutTimestamp ? ` - Pulang: ${record.checkOutTimestamp.toLocaleTimeString('id-ID')}` : ''}`
                                                         : record.reason || new Date(record.timestamp).toLocaleTimeString('id-ID')
                                                     }
                                                 </p>
+                                                {record.denda > 0 && (
+                                                    <p className="text-sm font-semibold text-red-400 mt-1">
+                                                        Denda: Rp {record.denda.toLocaleString('id-ID')}
+                                                    </p>
+                                                )}
                                             </div>
-                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                                record.status === 'Datang' ? 'bg-emerald-500/30 text-emerald-200' 
-                                                : record.status === 'Pulang' ? 'bg-blue-500/30 text-blue-200' 
-                                                : 'bg-yellow-500/30 text-yellow-200'
-                                                }`}>
-                                                {record.status}
-                                            </span>
+                                            {getStatusBadge(record)}
                                         </li>
                                     ))}
                                 </ul>
