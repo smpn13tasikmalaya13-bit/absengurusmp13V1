@@ -80,15 +80,15 @@ const PwaInstallPrompt: React.FC = () => {
 
 // ========== Common Header and Footer for Auth Pages ==========
 const AuthHeader: React.FC = () => (
-  <header className="text-center mb-8 flex flex-col items-center">
-    <Logo className="h-20 w-auto" />
-    <p className="text-slate-400 mt-4 text-base">Sistem Absensi Guru Digital</p>
+  <header className="text-center mb-6 flex flex-col items-center">
+    <Logo className="h-16 w-auto" />
+    <p className="text-slate-400 mt-2 text-sm">Sistem Absensi Guru Digital</p>
   </header>
 );
 
 const AuthFooter: React.FC = () => (
-  <footer className="text-center text-slate-500 text-sm mt-8">
-    © 2025 Rullp. All rights reserved.
+  <footer className="text-center text-slate-500 text-sm mt-6">
+    © 2024 HadirKu. All rights reserved.
   </footer>
 );
 
@@ -131,7 +131,7 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
   return (
     <main>
       <form onSubmit={handleSubmit} className="space-y-6">
-        <h2 className="text-center text-3xl font-bold text-white mb-6">Login</h2>
+        <h2 className="text-center text-2xl font-bold text-white mb-6">Login</h2>
         
         <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium text-slate-400">Email</label>
@@ -195,7 +195,7 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
   return (
     <main>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <h2 className="text-center text-3xl font-bold text-white mb-6">Daftar Akun Baru</h2>
+        <h2 className="text-center text-2xl font-bold text-white mb-6">Daftar Akun Baru</h2>
         
         <div>
           <label htmlFor="name" className="text-sm font-medium text-slate-400 block mb-1">Nama Lengkap</label>

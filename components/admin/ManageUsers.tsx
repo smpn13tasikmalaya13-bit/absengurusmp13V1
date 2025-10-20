@@ -19,6 +19,7 @@ interface ManageUsersProps {
   mode: 'teachers' | 'admins';
 }
 
+// FIX: Using React.FC to resolve JSX namespace error.
 const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +73,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
       setError('');
       getAdminRegistrationKey()
         .then(key => setAdminKey(key))
-        .catch(err => setError(err.message))
+        .catch((err: any) => setError(err.message))
         .finally(() => setIsKeyLoading(false));
     } else {
       // If not the main admin or not on the admins page, ensure the key is cleared.
@@ -100,7 +101,8 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
       setIsDeleteModalOpen(false);
       setUserToAction(null);
       await fetchUsers();
-    } catch (err) {
+      // FIX: Explicitly type error in catch block.
+    } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Gagal menghapus pengguna.');
     } finally {
       setIsSubmitting(false);
@@ -125,7 +127,8 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
         setUserToAction(null);
         clearMessages();
       }, 2000);
-    } catch (err) {
+      // FIX: Explicitly type error in catch block.
+    } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Gagal mereset perangkat.');
     } finally {
       setIsSubmitting(false);
@@ -138,7 +141,8 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
     try {
       const newKey = await updateAdminRegistrationKey();
       setAdminKey(newKey);
-    } catch (err) {
+      // FIX: Explicitly type error in catch block.
+    } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Gagal membuat kunci baru.');
     } finally {
       setIsKeyLoading(false);
@@ -164,7 +168,8 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
         setIsAddAdminModalOpen(false);
         clearMessages();
       }, 2000);
-    } catch (err) {
+      // FIX: Explicitly type error in catch block.
+    } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Gagal menambah admin.');
     } finally {
       setIsSubmitting(false);
@@ -196,7 +201,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
     <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-white">{title}</h1>
+            <h1 className="text-xl font-bold text-white">{title}</h1>
             {!isTeachers && (
               <Button onClick={handleOpenAddAdminModal} className="w-auto px-6">Tambah Admin</Button>
             )}
@@ -226,46 +231,51 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
             </div>
         )}
 
-
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            {isLoading ? (
-              <div className="p-8"><Spinner /></div>
-            ) : (
-              <table className="w-full text-left">
-                <thead className="bg-slate-800">
-                  <tr>
-                    <th className="p-4 text-sm font-semibold text-slate-200">Nama</th>
-                    <th className="p-4 text-sm font-semibold text-slate-200">User ID (Email)</th>
-                    <th className="p-4 text-sm font-semibold text-slate-200">Peran</th>
-                    <th className="p-4 text-sm font-semibold text-slate-200">Aksi</th>
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg overflow-x-auto">
+          {isLoading ? (
+            <div className="p-8"><Spinner /></div>
+          ) : (
+            <table className="w-full text-left">
+              <thead className="bg-slate-800">
+                <tr className="hidden md:table-row">
+                  <th className="p-4 text-sm font-semibold text-slate-200">Nama</th>
+                  <th className="p-4 text-sm font-semibold text-slate-200">User ID (Email)</th>
+                  <th className="p-4 text-sm font-semibold text-slate-200">Peran</th>
+                  <th className="p-4 text-sm font-semibold text-slate-200">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700">
+                {users.map((user) => (
+                  <tr key={user.id} className="block p-4 space-y-3 md:table-row md:p-0 md:space-y-0 hover:bg-slate-800/50 transition-colors">
+                    <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap font-medium">
+                      <span className="text-sm font-semibold text-slate-400 md:hidden">Nama</span>
+                      <span>{user.name}</span>
+                    </td>
+                    <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-slate-400">
+                      <span className="text-sm font-semibold text-slate-400 md:hidden">Email</span>
+                      <span className="text-right break-all">{user.email}</span>
+                    </td>
+                    <td className="flex justify-between items-center md:table-cell md:p-4">
+                      <span className="text-sm font-semibold text-slate-400 md:hidden">Peran</span>
+                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getRoleBadgeClass(user.role)}`}>
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="flex justify-between items-center md:table-cell md:p-4">
+                      <span className="text-sm font-semibold text-slate-400 md:hidden">Aksi</span>
+                      <div className="flex items-center space-x-4">
+                        <button onClick={() => handleOpenResetModal(user)} className="text-indigo-400 hover:underline text-sm font-medium">Reset Perangkat</button>
+                        <button onClick={() => handleOpenDeleteModal(user)} className="text-red-400 hover:underline text-sm font-medium">Hapus</button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-700">
-                  {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-slate-800/50 transition-colors">
-                      <td className="p-4 whitespace-nowrap font-medium">{user.name}</td>
-                      <td className="p-4 whitespace-nowrap text-slate-400">{user.email}</td>
-                      <td className="p-4">
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getRoleBadgeClass(user.role)}`}>
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-4">
-                          <button onClick={() => handleOpenResetModal(user)} className="text-indigo-400 hover:underline text-sm font-medium">Reset Perangkat</button>
-                          <button onClick={() => handleOpenDeleteModal(user)} className="text-red-400 hover:underline text-sm font-medium">Hapus</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
          <footer className="text-center text-slate-500 text-sm pt-4">
-          © 2025 Rullp. All rights reserved.
+          © 2024 HadirKu. All rights reserved.
         </footer>
       </div>
 

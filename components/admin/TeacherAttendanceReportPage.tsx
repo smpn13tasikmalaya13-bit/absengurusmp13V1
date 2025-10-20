@@ -118,42 +118,51 @@ const TeacherAttendanceReportPage: React.FC = () => {
   );
 
   const ReportTable = () => (
-    <div className="bg-slate-900 rounded-lg shadow-lg overflow-hidden mt-6">
-        <div className="overflow-x-auto">
-             <table className="w-full text-left">
-                <thead className="bg-slate-700/50">
-                  <tr>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Nama Guru</th>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Tanggal</th>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Waktu</th>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Status</th>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Keterangan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.map((record) => (
-                    <tr key={record.id} className="border-b border-slate-700 last:border-0">
-                      <td className="p-4 whitespace-nowrap font-medium">{record.userName}</td>
-                      <td className="p-4 whitespace-nowrap text-gray-400">{record.timestamp.toLocaleDateString('id-ID')}</td>
-                      <td className="p-4 whitespace-nowrap text-gray-400">{record.timestamp.toLocaleTimeString('id-ID')}</td>
-                      <td className="p-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          record.status === 'Present' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {record.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-gray-400 text-xs">{record.reason || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-        </div>
+    <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg mt-6 overflow-x-auto">
+      <table className="w-full text-left">
+        <thead className="bg-slate-800">
+          <tr className="hidden md:table-row">
+            <th className="p-4 text-sm font-semibold text-gray-200">Nama Guru</th>
+            <th className="p-4 text-sm font-semibold text-gray-200">Tanggal</th>
+            <th className="p-4 text-sm font-semibold text-gray-200">Waktu</th>
+            <th className="p-4 text-sm font-semibold text-gray-200">Status</th>
+            <th className="p-4 text-sm font-semibold text-gray-200">Keterangan</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-700">
+          {reportData.map((record) => (
+            <tr key={record.id} className="block p-4 space-y-3 md:table-row md:p-0 md:space-y-0 hover:bg-slate-800/50 transition-colors">
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap font-medium">
+                <span className="text-sm font-semibold text-slate-400 md:hidden">Nama Guru</span>
+                <span>{record.userName}</span>
+              </td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400">
+                <span className="text-sm font-semibold text-slate-400 md:hidden">Tanggal</span>
+                <span>{record.timestamp.toLocaleDateString('id-ID')}</span>
+              </td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400">
+                <span className="text-sm font-semibold text-slate-400 md:hidden">Waktu</span>
+                <span>{record.timestamp.toLocaleTimeString('id-ID')}</span>
+              </td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap">
+                <span className="text-sm font-semibold text-slate-400 md:hidden">Status</span>
+                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${record.status === 'Present' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                  {record.status}
+                </span>
+              </td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 text-gray-400 text-xs">
+                 <span className="text-sm font-semibold text-slate-400 md:hidden">Keterangan</span>
+                 <span>{record.reason || '-'}</span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 
   const ReportPlaceholder = () => (
-     <div className="text-center py-10 px-4 bg-slate-900 rounded-lg mt-6">
+     <div className="text-center py-10 px-4 bg-slate-800/50 border border-slate-700 rounded-lg mt-6">
         <p className="font-medium text-white">
             {hasSearched ? 'Tidak ada data absensi yang ditemukan untuk kriteria yang dipilih.' : 'Pilih rentang tanggal untuk menampilkan laporan.'}
         </p>
@@ -163,7 +172,7 @@ const TeacherAttendanceReportPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-white">Laporan Absensi Guru</h1>
+      <h1 className="text-xl font-bold text-white">Laporan Absensi Guru</h1>
       <div className="border-b border-slate-700">
         <TabButton tabId="kelas" label="Absensi Kelas" />
         <TabButton tabId="ekstrakurikuler" label="Absensi Ekstrakurikuler" />
@@ -173,14 +182,14 @@ const TeacherAttendanceReportPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
                 <label className="text-sm text-gray-400">Guru</label>
-                <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md">
+                <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md">
                     <option value="">Semua Guru</option>
                     {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
             </div>
             <div>
                 <label className="text-sm text-gray-400">{activeTab === 'kelas' ? 'Kelas' : 'Eskul'}</label>
-                <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md">
+                <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md">
                     <option value="">{activeTab === 'kelas' ? 'Semua Kelas' : 'Semua Eskul'}</option>
                     {/* Note: Filtering by class/eskul is not yet implemented in the backend. */}
                     {activeTab === 'kelas' 
@@ -191,11 +200,11 @@ const TeacherAttendanceReportPage: React.FC = () => {
             </div>
             <div>
                 <label className="text-sm text-gray-400">Tanggal Mulai</label>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md placeholder-gray-400"/>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md placeholder-gray-400"/>
             </div>
              <div>
                 <label className="text-sm text-gray-400">Tanggal Selesai</label>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md placeholder-gray-400"/>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md placeholder-gray-400"/>
             </div>
           </div>
           <div className="flex justify-end space-x-4">

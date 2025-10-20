@@ -17,7 +17,7 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({ title, value, colorClass = 'text-white' }) => (
   <Card>
     <h4 className="text-sm font-medium text-gray-400">{title}</h4>
-    <p className={`text-4xl font-bold ${colorClass}`}>{value}</p>
+    <p className={`text-3xl font-bold ${colorClass}`}>{value}</p>
   </Card>
 );
 
@@ -47,7 +47,7 @@ const EmptyStateDashboard: React.FC<{ onSeedClick: () => void; isSeeding: boolea
 
 const DashboardContent: React.FC = () => {
   const [stats, setStats] = useState({ total: 0, present: 0, absent: 0 });
-  const [recentRecords, setRecentRecords] = useState<AttendanceRecord[]>([]);
+  const [recentRecords, setRecentRecords] = useState<(AttendanceRecord & { role?: Role })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
 
@@ -56,6 +56,8 @@ const DashboardContent: React.FC = () => {
       setIsLoading(true);
       try {
         const allUsers = await getAllUsers();
+        const userMap = new Map(allUsers.map(user => [user.id, user.role]));
+
         const totalTeachers = allUsers.filter(u => u.role === Role.Teacher || u.role === Role.Coach).length;
         
         const today = new Date();
@@ -63,13 +65,17 @@ const DashboardContent: React.FC = () => {
         const presentCount = presentRecords.length;
 
         const recent = await getFullReport(5);
+        const recentWithRoles = recent.map(record => ({
+            ...record,
+            role: userMap.get(record.teacherId)
+        }));
 
         setStats({
           total: totalTeachers,
           present: presentCount,
           absent: totalTeachers - presentCount,
         });
-        setRecentRecords(recent);
+        setRecentRecords(recentWithRoles);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
@@ -111,11 +117,27 @@ const DashboardContent: React.FC = () => {
   }
   
   const isDataEmpty = stats.total === 0 && recentRecords.length === 0;
+  
+    const getRoleBadgeClass = (role?: Role) => {
+    if (!role) return 'bg-gray-500/30 text-gray-300';
+    switch (role) {
+      case Role.Admin:
+        return 'bg-purple-500/30 text-purple-300';
+      case Role.Teacher:
+        return 'bg-blue-500/30 text-blue-300';
+      case Role.Coach:
+        return 'bg-green-500/30 text-green-300';
+      case Role.AdministrativeStaff:
+        return 'bg-slate-500/30 text-slate-300';
+      default:
+        return 'bg-gray-500/30 text-gray-300';
+    }
+  };
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
       </div>
 
       {isDataEmpty ? (
@@ -140,7 +162,8 @@ const DashboardContent: React.FC = () => {
                         <table className="w-full text-left">
                             <thead>
                                 <tr className="border-b border-slate-600 text-sm font-semibold text-gray-200">
-                                    <th className="p-3">Guru</th>
+                                    <th className="p-3">Pengguna</th>
+                                    <th className="p-3">Peran</th>
                                     <th className="p-3">Waktu</th>
                                 </tr>
                             </thead>
@@ -148,11 +171,16 @@ const DashboardContent: React.FC = () => {
                                 {recentRecords.length > 0 ? recentRecords.map(record => (
                                     <tr key={record.id} className="border-b border-slate-700 last:border-0 text-sm">
                                         <td className="p-3 whitespace-nowrap">{record.userName}</td>
+                                        <td className="p-3">
+                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeClass(record.role)}`}>
+                                                {record.role || 'N/A'}
+                                            </span>
+                                        </td>
                                         <td className="p-3 text-gray-400">{formatDate(record.timestamp)}</td>
                                     </tr>
                                 )) : (
                                     <tr>
-                                      <td colSpan={2} className="p-3 text-center text-gray-400">Belum ada aktivitas.</td>
+                                      <td colSpan={3} className="p-3 text-center text-gray-400">Belum ada aktivitas.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -179,7 +207,7 @@ const DashboardContent: React.FC = () => {
       </Card>
 
       <footer className="text-center text-gray-500 text-sm pt-4">
-        © 2025 Rullp. All rights reserved.
+        © 2024 HadirKu. All rights reserved.
       </footer>
     </div>
   );

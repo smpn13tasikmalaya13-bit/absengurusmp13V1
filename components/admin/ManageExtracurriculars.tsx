@@ -108,41 +108,45 @@ const ManageEskuls: React.FC = () => {
     <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-white">Manajemen Eskul</h1>
+          <h1 className="text-xl font-bold text-white">Manajemen Eskul</h1>
           <Button onClick={handleOpenAddModal} className="w-auto !bg-blue-600 hover:!bg-blue-700 px-6">Tambah</Button>
         </div>
-        <div className="bg-slate-900 rounded-lg shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            {isLoading ? (
-              <div className="p-8"><Spinner /></div>
-            ) : (
-              <table className="w-full text-left">
-                <thead className="bg-slate-700/50">
-                  <tr>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Nama Kegiatan</th>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Aksi</th>
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg overflow-x-auto">
+          {isLoading ? (
+            <div className="p-8"><Spinner /></div>
+          ) : (
+            <table className="w-full text-left">
+              <thead className="bg-slate-800">
+                <tr className="hidden md:table-row">
+                  <th className="p-4 text-sm font-semibold text-gray-200">Nama Kegiatan</th>
+                  <th className="p-4 text-sm font-semibold text-gray-200">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700">
+                {eskuls.length > 0 ? eskuls.map((eskul) => (
+                  <tr key={eskul.id} className="block p-4 space-y-3 md:table-row md:p-0 md:space-y-0 hover:bg-slate-800/50 transition-colors">
+                    <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap font-medium">
+                        <span className="text-sm font-semibold text-slate-400 md:hidden">Nama Kegiatan</span>
+                        <span>{eskul.name}</span>
+                    </td>
+                    <td className="flex justify-between items-center md:table-cell md:p-4">
+                        <span className="text-sm font-semibold text-slate-400 md:hidden">Aksi</span>
+                        <div className="flex items-center space-x-4">
+                            <button onClick={() => handleOpenQrModal(eskul)} className="text-blue-400 hover:underline font-medium text-sm">QR Code</button>
+                            <button onClick={() => handleOpenDeleteModal(eskul)} className="text-red-400 hover:underline font-medium text-sm">Hapus</button>
+                        </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {eskuls.length > 0 ? eskuls.map((eskul) => (
-                    <tr key={eskul.id} className="border-b border-slate-700 last:border-0">
-                      <td className="p-4 whitespace-nowrap font-medium">{eskul.name}</td>
-                      <td className="p-4 space-x-4">
-                        <button onClick={() => handleOpenQrModal(eskul)} className="text-blue-400 hover:underline font-medium">QR Code</button>
-                        <button onClick={() => handleOpenDeleteModal(eskul)} className="text-red-400 hover:underline font-medium">Hapus</button>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={2} className="p-4 text-center text-gray-400">
-                        Tidak ada data eskul. Coba jalankan 'Seed Initial Data' dari Dashboard.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
+                )) : (
+                  <tr>
+                    <td colSpan={2} className="p-4 text-center text-gray-400">
+                      Tidak ada data eskul. Coba jalankan 'Seed Initial Data' dari Dashboard.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

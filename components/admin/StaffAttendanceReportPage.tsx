@@ -223,33 +223,29 @@ const StaffAttendanceReportPage: React.FC = () => {
   };
 
   const ReportTable = () => (
-    <div className="bg-slate-900 rounded-lg shadow-lg overflow-hidden mt-6">
-        <div className="overflow-x-auto">
-             <table className="w-full text-left">
-                <thead className="bg-slate-700/50">
-                  <tr>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Nama</th>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Waktu Datang</th>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Waktu Pulang</th>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Keterangan</th>
-                    <th className="p-4 text-sm font-semibold text-gray-200">Denda (Rp)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.map((record) => (
-                    <tr key={record.id} className="border-b border-slate-700 last:border-0">
-                      <td className="p-4 whitespace-nowrap font-medium">{record.userName}</td>
-                      <td className="p-4 whitespace-nowrap text-gray-400">{record.timestamp.toLocaleString('id-ID')}</td>
-                      <td className="p-4 whitespace-nowrap text-gray-400">
-                        {record.checkOutTimestamp ? new Date(record.checkOutTimestamp).toLocaleString('id-ID') : '-'}
-                      </td>
-                      <td className="p-4 whitespace-nowrap text-yellow-400 text-xs">{record.keterangan}</td>
-                      <td className="p-4 whitespace-nowrap font-semibold text-red-400">{record.denda > 0 ? record.denda.toLocaleString('id-ID') : '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-        </div>
+    <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg mt-6 overflow-x-auto">
+      <table className="w-full text-left">
+        <thead className="bg-slate-800">
+          <tr className="hidden md:table-row">
+            <th className="p-4 text-sm font-semibold text-gray-200">Nama</th>
+            <th className="p-4 text-sm font-semibold text-gray-200">Waktu Datang</th>
+            <th className="p-4 text-sm font-semibold text-gray-200">Waktu Pulang</th>
+            <th className="p-4 text-sm font-semibold text-gray-200">Keterangan</th>
+            <th className="p-4 text-sm font-semibold text-gray-200">Denda (Rp)</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-700">
+          {reportData.map((record) => (
+            <tr key={record.id} className="block p-4 space-y-3 md:table-row md:p-0 md:space-y-0 hover:bg-slate-800/50 transition-colors">
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap font-medium"><span className="text-sm font-semibold text-slate-400 md:hidden">Nama</span><span>{record.userName}</span></td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Waktu Datang</span><span>{record.timestamp.toLocaleString('id-ID')}</span></td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Waktu Pulang</span><span>{record.checkOutTimestamp ? new Date(record.checkOutTimestamp).toLocaleString('id-ID') : '-'}</span></td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-yellow-400 text-xs"><span className="text-sm font-semibold text-slate-400 md:hidden">Keterangan</span><span>{record.keterangan}</span></td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap font-semibold text-red-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Denda (Rp)</span><span>{record.denda > 0 ? record.denda.toLocaleString('id-ID') : '-'}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
   
@@ -274,7 +270,7 @@ const StaffAttendanceReportPage: React.FC = () => {
   );
 
   const ReportPlaceholder = () => (
-     <div className="text-center py-10 px-4 bg-slate-900 rounded-lg mt-6">
+     <div className="text-center py-10 px-4 bg-slate-800/50 border border-slate-700 rounded-lg mt-6">
         <p className="font-medium text-white">
             {hasSearched ? 'Tidak ada data absensi yang ditemukan untuk kriteria yang dipilih.' : 'Pilih rentang tanggal untuk menampilkan laporan.'}
         </p>
@@ -283,25 +279,25 @@ const StaffAttendanceReportPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-white">Laporan Absensi Tenaga Administrasi</h1>
+      <h1 className="text-xl font-bold text-white">Laporan Absensi Tenaga Administrasi</h1>
       
       <Card>
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label className="text-sm text-gray-400">Nama Staf</label>
-                <select value={selectedStaff} onChange={e => setSelectedStaff(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md">
+                <select value={selectedStaff} onChange={e => setSelectedStaff(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md">
                     <option value="">Semua Staf</option>
                     {staffMembers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
             </div>
             <div>
                 <label className="text-sm text-gray-400">Tanggal Mulai</label>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md placeholder-gray-400"/>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md placeholder-gray-400"/>
             </div>
              <div>
                 <label className="text-sm text-gray-400">Tanggal Selesai</label>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md placeholder-gray-400"/>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md placeholder-gray-400"/>
             </div>
           </div>
           <div className="flex justify-end space-x-4">

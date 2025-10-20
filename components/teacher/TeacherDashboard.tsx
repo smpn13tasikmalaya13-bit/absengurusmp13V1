@@ -385,51 +385,58 @@ const TeacherDashboard: React.FC = () => {
     <>
       <div className="bg-slate-900 text-slate-300 min-h-screen">
         <header className="flex justify-between items-center p-4 border-b border-slate-700/50 sticky top-0 bg-slate-900/50 backdrop-blur-sm z-10">
-          <h1 className="text-xl font-bold text-white">Dashboard Guru</h1>
-          <Button onClick={logout} variant="secondary" className="w-auto py-1.5 px-3 text-sm">Keluar</Button>
+            <h1 className="text-xl font-bold text-white">Dashboard Guru</h1>
+            <div className="flex items-center">
+                <div className="text-left mr-4">
+                    <p className="text-xs text-slate-400 whitespace-nowrap">Selamat datang,</p>
+                    <p className="font-semibold text-white -mt-1 whitespace-nowrap">{user?.name}</p>
+                </div>
+                <Button onClick={logout} variant="secondary" className="w-auto py-1.5 px-4 text-sm flex-shrink-0">
+                    Logout
+                </Button>
+            </div>
         </header>
 
-        <main className="p-6 md:p-8 space-y-8">
+        <main className="p-6 md:p-8 space-y-6">
           <div>
-            <h2 className="text-3xl font-bold text-white">Dashboard Guru</h2>
-            <p className="text-slate-400 mt-1">Selamat datang, {user?.name || 'Guru'}</p>
+            <h2 className="text-2xl font-bold text-white">Dashboard</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <button onClick={() => setShowScanner(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-indigo-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed group" disabled={isWithinRadius !== true}>
               <ScanIcon/>
-              <h3 className="font-bold text-xl mt-4 text-white">Scan QR Code</h3>
+              <h3 className="font-bold text-lg mt-4 text-white">Scan QR Code</h3>
               <p className="text-sm text-slate-400 mt-1">Scan QR Code kelas untuk absensi</p>
               <p className={`text-sm mt-2 font-semibold ${locationStatus.color}`}>{locationStatus.text}</p>
             </button>
             <button onClick={() => setIsScheduleModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-blue-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
               <ScheduleIcon/>
-              <h3 className="font-bold text-xl mt-4 text-white">Jadwal Mengajar</h3>
+              <h3 className="font-bold text-lg mt-4 text-white">Jadwal Mengajar</h3>
               <p className="text-sm text-slate-400 mt-1">Lihat & tambah jadwal mengajar Anda</p>
             </button>
             <button onClick={() => setIsReportAbsenceModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-yellow-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-500">
               <ReportIcon/>
-              <h3 className="font-bold text-xl mt-4 text-white">Lapor Ketidakhadiran</h3>
+              <h3 className="font-bold text-lg mt-4 text-white">Lapor Ketidakhadiran</h3>
               <p className="text-sm text-slate-400 mt-1">Laporkan jika tidak dapat hadir hari ini</p>
             </button>
             <button onClick={() => { if (todaysSchedule.length > 0) setIsReportStudentModalOpen(true) }} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-orange-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled={todaysSchedule.length === 0}>
               <StudentIcon/>
-              <h3 className="font-bold text-xl mt-4 text-white">Lapor Siswa Absen</h3>
+              <h3 className="font-bold text-lg mt-4 text-white">Lapor Siswa Absen</h3>
               <p className="text-sm text-slate-400 mt-1">Input siswa yang tidak hadir hari ini</p>
-              {isLoadingSchedule ? <p className="text-sm mt-2 font-semibold text-gray-400">Memuat jadwal...</p> : todaysSchedule.length === 0 && <p className="text-sm mt-2 font-semibold text-yellow-400">Tidak ada jadwal hari ini</p>}
+              {isLoadingSchedule ? <p className="text-xs mt-2 font-semibold text-gray-400">Memuat jadwal...</p> : todaysSchedule.length === 0 && <p className="text-xs mt-2 font-semibold text-yellow-400">Tidak ada jadwal hari ini</p>}
             </button>
           </div>
             
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div><div><p className="text-sm text-slate-400">Absensi Hari Ini</p>{isLoadingStats ? <div className="h-8 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-3xl font-bold text-white">{stats.today}</p>}</div></div>
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-sm text-slate-400">Minggu Ini</p>{isLoadingStats ? <div className="h-8 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-3xl font-bold text-white">{stats.week}</p>}</div></div>
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div><div><p className="text-sm text-slate-400">Total Absensi</p>{isLoadingStats ? <div className="h-8 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-3xl font-bold text-white">{stats.total}</p>}</div></div>
+            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div><div><p className="text-sm text-slate-400">Absensi Hari Ini</p>{isLoadingStats ? <div className="h-7 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-2xl font-bold text-white">{stats.today}</p>}</div></div>
+            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-sm text-slate-400">Minggu Ini</p>{isLoadingStats ? <div className="h-7 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-2xl font-bold text-white">{stats.week}</p>}</div></div>
+            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div><div><p className="text-sm text-slate-400">Total Absensi</p>{isLoadingStats ? <div className="h-7 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-2xl font-bold text-white">{stats.total}</p>}</div></div>
           </div>
 
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
-              <h3 className="font-bold text-xl text-white mb-4">Jadwal Hari Ini</h3>
+              <h3 className="font-bold text-lg text-white mb-4">Jadwal Hari Ini</h3>
               {isLoadingSchedule ? <Spinner/> : todaysSchedule.length > 0 ? (
                 <ul className="space-y-3">
                   {todaysSchedule.map(s => {
@@ -437,7 +444,7 @@ const TeacherDashboard: React.FC = () => {
                     return (
                       <li key={s.id} className={`flex justify-between items-center p-4 rounded-lg transition-colors ${isAttended ? 'bg-slate-800 opacity-60' : 'bg-slate-700/50'}`}>
                         <div>
-                          <p className={`font-semibold text-lg ${isAttended ? 'text-slate-400 line-through' : 'text-white'}`}>{s.subject} <span className="text-slate-400 font-normal">- Jam ke-{s.period}</span></p>
+                          <p className={`font-semibold text-base ${isAttended ? 'text-slate-400 line-through' : 'text-white'}`}>{s.subject} <span className="text-slate-400 font-normal">- Jam ke-{s.period}</span></p>
                           <p className="text-sm text-slate-400">{s.class} • {s.time}</p>
                         </div>
                         {isAttended ? <CheckCircleIcon /> : <span className="px-2 py-1 text-xs font-semibold text-blue-300 bg-blue-500/30 rounded-full">Belum Absen</span>}
@@ -454,7 +461,7 @@ const TeacherDashboard: React.FC = () => {
             </div>
             
             <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
-              <h3 className="font-bold text-xl text-white mb-4">Riwayat Absensi Terkini</h3>
+              <h3 className="font-bold text-lg text-white mb-4">Riwayat Absensi Terkini</h3>
               {isLoadingHistory ? <Spinner/> : attendanceHistory.length > 0 ? (
                 <ul className="space-y-3">
                   {attendanceHistory.slice(0, 10).map(r => (
@@ -476,7 +483,7 @@ const TeacherDashboard: React.FC = () => {
             </div>
 
             <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl lg:col-span-2">
-              <h3 className="font-bold text-xl text-white mb-4">Siswa Absen Dilaporkan Hari Ini</h3>
+              <h3 className="font-bold text-lg text-white mb-4">Siswa Absen Dilaporkan Hari Ini</h3>
               {isLoadingReported ? <Spinner/> : reportedAbsences.length > 0 ? (
                  <ul className="space-y-3">
                   {reportedAbsences.map(r => (
@@ -497,7 +504,7 @@ const TeacherDashboard: React.FC = () => {
             </div>
           </div>
           <footer className="text-center text-slate-500 text-sm pt-4">
-            © 2025 Rullp. All rights reserved.
+            © 2024 HadirKu. All rights reserved.
           </footer>
         </main>
       </div>

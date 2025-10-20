@@ -7,7 +7,7 @@ const StaffQRCodeGenerator: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-white">QR Code Absensi Staf Administrasi</h1>
+        <h1 className="text-2xl font-bold text-white">QR Code Absensi Staf Administrasi</h1>
       </div>
       <Card>
         <div className="flex flex-col items-center space-y-6 max-w-md mx-auto text-center">
@@ -20,7 +20,7 @@ const StaffQRCodeGenerator: React.FC = () => {
         </div>
       </Card>
        <footer className="text-center text-slate-500 text-sm pt-4">
-        © 2025 Rullp. All rights reserved.
+        © 2024 HadirKu. All rights reserved.
       </footer>
     </div>
   );

@@ -24,6 +24,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
     const [history, setHistory] = useState<ProcessedHistoryRecord[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [showScanner, setShowScanner] = useState(false);
+    const [totalFine, setTotalFine] = useState(0); // State for total fine
 
     // New states for absence reporting modal
     const [isReportAbsenceModalOpen, setIsReportAbsenceModalOpen] = useState(false);
@@ -64,8 +65,8 @@ const AdministrativeStaffDashboard: React.FC = () => {
                 const recordDate = new Date(record.timestamp);
                 const day = recordDate.getDay(); // 0 = Sunday, 6 = Saturday
 
-                // Fine rules apply only on weekdays (Monday-Friday) for 'Datang' status
-                if (record.status === 'Datang' && day >= 1 && day <= 5) {
+                // Fine rules apply on weekdays for 'Datang' or 'Pulang' status, based on clock-in time
+                if ((record.status === 'Datang' || record.status === 'Pulang') && day >= 1 && day <= 5) {
                     const checkInHour = recordDate.getHours();
                     const checkInMinute = recordDate.getMinutes();
                     // Check if clocked in late (after 07:15)
@@ -76,6 +77,9 @@ const AdministrativeStaffDashboard: React.FC = () => {
                 
                 return { ...record, denda };
             });
+
+            const totalDenda = processed.reduce((acc, record) => acc + record.denda, 0);
+            setTotalFine(totalDenda);
 
             setHistory(processed);
             setIsLoadingHistory(false);
@@ -132,8 +136,8 @@ const AdministrativeStaffDashboard: React.FC = () => {
         let statusText = record.status;
         let className = '';
 
-        if (record.denda > 0 && record.status === 'Datang') {
-            statusText = 'Telat';
+        if (record.denda > 0 && (record.status === 'Datang' || record.status === 'Pulang')) {
+            statusText = record.status === 'Datang' ? 'Telat Datang' : 'Pulang (Telat)';
             className = 'bg-red-500/30 text-red-200';
         } else {
             switch (record.status) {
@@ -259,20 +263,27 @@ const AdministrativeStaffDashboard: React.FC = () => {
             <div className="bg-slate-900 text-slate-300 min-h-screen">
                 <header className="flex justify-between items-center p-4 border-b border-slate-700/50 sticky top-0 bg-slate-900/50 backdrop-blur-sm z-10">
                     <h1 className="text-xl font-bold text-white">Dashboard Staf</h1>
-                    <Button onClick={logout} variant="secondary" className="w-auto py-1.5 px-3 text-sm">Keluar</Button>
+                     <div className="flex items-center">
+                        <div className="text-left mr-4">
+                            <p className="text-xs text-slate-400 whitespace-nowrap">Selamat datang,</p>
+                            <p className="font-semibold text-white -mt-1 whitespace-nowrap">{user?.name}</p>
+                        </div>
+                        <Button onClick={logout} variant="secondary" className="w-auto py-1.5 px-4 text-sm flex-shrink-0">
+                            Logout
+                        </Button>
+                    </div>
                 </header>
 
-                <main className="p-6 md:p-8 space-y-8 max-w-4xl mx-auto">
+                <main className="p-6 md:p-8 space-y-6 max-w-4xl mx-auto">
                     <div>
-                        <h2 className="text-3xl font-bold text-white">Absensi Tenaga Administrasi</h2>
-                        <p className="text-slate-400 mt-1">Selamat datang, {user?.name || 'Staf'}</p>
-                        <p className={`text-sm mt-2 font-semibold ${locationStatus.color}`}>{locationStatus.text}</p>
+                        <h2 className="text-2xl font-bold text-white">Dashboard Staf</h2>
+                        <p className={`text-sm mt-1 font-semibold ${locationStatus.color}`}>{locationStatus.text}</p>
                     </div>
 
                     <Card>
                         <div className="space-y-4 text-center">
-                            <h3 className="text-xl font-bold text-white">Catat Kehadiran Hari Ini</h3>
-                            <p className="text-slate-400">
+                            <h3 className="text-lg font-bold text-white">Catat Kehadiran Hari Ini</h3>
+                            <p className="text-slate-400 text-sm">
                             {timeStatusMessage}
                             </p>
                             <div className="pt-2">
@@ -296,7 +307,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
 
                     <Card title="Opsi Lain">
                         <div className="text-center">
-                            <p className="text-slate-400 mb-4">Jika Anda tidak dapat hadir hari ini, silakan laporkan di sini.</p>
+                            <p className="text-slate-400 mb-4 text-sm">Jika Anda tidak dapat hadir hari ini, silakan laporkan di sini.</p>
                             <Button
                                 onClick={() => setIsReportAbsenceModalOpen(true)}
                                 variant="secondary"
@@ -308,7 +319,16 @@ const AdministrativeStaffDashboard: React.FC = () => {
                         </div>
                     </Card>
                     
-                    <Card title="Riwayat Absensi Terkini (1 Bulan Terakhir)">
+                    <Card title="Ringkasan Denda (30 Hari Terakhir)">
+                        <div className="text-center space-y-2">
+                            <p className="text-slate-400 text-base">Total Denda Keterlambatan Anda:</p>
+                            <p className="text-3xl font-bold text-amber-400">
+                                Rp {totalFine.toLocaleString('id-ID')}
+                            </p>
+                        </div>
+                    </Card>
+
+                    <Card title="Riwayat Absensi (30 Hari Terakhir)">
                         {isLoadingHistory ? <Spinner /> : (
                             history.length > 0 ? (
                                 <ul className="space-y-3">
@@ -338,7 +358,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
                         )}
                     </Card>
                     <footer className="text-center text-slate-500 text-sm pt-4">
-                        © 2025 Rullp. All rights reserved.
+                        © 2024 HadirKu. All rights reserved.
                     </footer>
                 </main>
             </div>

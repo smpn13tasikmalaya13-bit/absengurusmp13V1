@@ -101,7 +101,7 @@ const StudentAbsenceReportPage: React.FC = () => {
   };
   
   const ReportPlaceholder = () => (
-     <div className="text-center py-10 px-4 bg-slate-900 rounded-lg mt-6">
+     <div className="text-center py-10 px-4 bg-slate-800/50 border border-slate-700 rounded-lg mt-6">
         <p className="font-medium text-white">
             {hasSearched ? 'Tidak ada data siswa tidak hadir yang ditemukan untuk kriteria yang dipilih.' : 'Pilih rentang tanggal untuk menampilkan laporan.'}
         </p>
@@ -110,31 +110,31 @@ const StudentAbsenceReportPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-white">Laporan Siswa Tidak Hadir</h1>
+      <h1 className="text-xl font-bold text-white">Laporan Siswa Tidak Hadir</h1>
       <Card>
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
                 <label className="text-sm text-gray-400">Guru Pelapor</label>
-                <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md">
+                <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md">
                     <option value="">Semua Guru</option>
                     {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
             </div>
             <div>
                 <label className="text-sm text-gray-400">Kelas</label>
-                <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md">
+                <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md">
                     <option value="">Semua Kelas</option>
                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
             </div>
             <div>
                 <label className="text-sm text-gray-400">Tanggal Mulai</label>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md placeholder-gray-400"/>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md placeholder-gray-400"/>
             </div>
              <div>
                 <label className="text-sm text-gray-400">Tanggal Selesai</label>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-600 border border-slate-500 rounded-md placeholder-gray-400"/>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md placeholder-gray-400"/>
             </div>
           </div>
           <div className="flex justify-end space-x-4">
@@ -147,41 +147,37 @@ const StudentAbsenceReportPage: React.FC = () => {
       {isLoading ? (
         <Spinner />
       ) : (
-        <div className="bg-slate-900 rounded-lg shadow-lg overflow-hidden mt-6">
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg mt-6 overflow-x-auto">
             {reportData.length > 0 ? (
-                 <div className="overflow-x-auto">
-                     <table className="w-full text-left">
-                        <thead className="bg-slate-700/50">
-                          <tr>
-                            <th className="p-4 text-sm font-semibold text-gray-200">Nama Siswa</th>
-                            <th className="p-4 text-sm font-semibold text-gray-200">Kelas</th>
-                            <th className="p-4 text-sm font-semibold text-gray-200">Tanggal</th>
-                            <th className="p-4 text-sm font-semibold text-gray-200">Keterangan</th>
-                            <th className="p-4 text-sm font-semibold text-gray-200">Jam Ke-</th>
-                            <th className="p-4 text-sm font-semibold text-gray-200">Dilaporkan Oleh</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {reportData.map((record) => (
-                            <tr key={record.id} className="border-b border-slate-700 last:border-0">
-                              <td className="p-4 whitespace-nowrap font-medium">{record.studentName}</td>
-                              <td className="p-4 whitespace-nowrap text-gray-400">{record.class}</td>
-                              <td className="p-4 whitespace-nowrap text-gray-400">{new Date(record.date).toLocaleDateString('id-ID', { timeZone: 'UTC' })}</td>
-                              <td className="p-4 whitespace-nowrap">
-                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  record.reason === 'Sakit' ? 'bg-yellow-100 text-yellow-800' :
-                                  record.reason === 'Izin' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
-                                }`}>
-                                  {record.reason}
-                                </span>
-                              </td>
-                              <td className="p-4 whitespace-nowrap text-gray-400">{record.absentPeriods?.join(', ') || '-'}</td>
-                               <td className="p-4 whitespace-nowrap text-gray-400">{record.reportedBy}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                </div>
+                 <table className="w-full text-left">
+                    <thead className="bg-slate-800">
+                      <tr className="hidden md:table-row">
+                        <th className="p-4 text-sm font-semibold text-gray-200">Nama Siswa</th>
+                        <th className="p-4 text-sm font-semibold text-gray-200">Kelas</th>
+                        <th className="p-4 text-sm font-semibold text-gray-200">Tanggal</th>
+                        <th className="p-4 text-sm font-semibold text-gray-200">Keterangan</th>
+                        <th className="p-4 text-sm font-semibold text-gray-200">Jam Ke-</th>
+                        <th className="p-4 text-sm font-semibold text-gray-200">Dilaporkan Oleh</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700">
+                      {reportData.map((record) => (
+                        <tr key={record.id} className="block p-4 space-y-3 md:table-row md:p-0 md:space-y-0 hover:bg-slate-800/50 transition-colors">
+                          <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap font-medium"><span className="text-sm font-semibold text-slate-400 md:hidden">Nama</span><span>{record.studentName}</span></td>
+                          <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Kelas</span><span>{record.class}</span></td>
+                          <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Tanggal</span><span>{new Date(record.date).toLocaleDateString('id-ID', { timeZone: 'UTC' })}</span></td>
+                          <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap">
+                            <span className="text-sm font-semibold text-slate-400 md:hidden">Keterangan</span>
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${record.reason === 'Sakit' ? 'bg-yellow-100 text-yellow-800' : record.reason === 'Izin' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
+                              {record.reason}
+                            </span>
+                          </td>
+                          <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Jam Ke-</span><span>{record.absentPeriods?.join(', ') || '-'}</span></td>
+                          <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Pelapor</span><span>{record.reportedBy}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
             ) : (
                 <ReportPlaceholder />
             )}

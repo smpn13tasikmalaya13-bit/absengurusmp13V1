@@ -19,6 +19,7 @@ const initialFormState: Omit<EskulSchedule, 'id'> = {
   activity: '',
 };
 
+// FIX: Using React.FC to resolve JSX namespace error.
 const ManageEskulSchedule: React.FC = () => {
   const [schedules, setSchedules] = useState<EskulSchedule[]>([]);
   const [eskuls, setEskuls] = useState<Eskul[]>([]);
@@ -47,7 +48,8 @@ const ManageEskulSchedule: React.FC = () => {
       setSchedules(scheduleData);
       setEskuls(eskulData);
       setCoaches(userData.filter(u => u.role === Role.Coach || u.role === Role.Teacher));
-    } catch (err) {
+      // FIX: Explicitly type error in catch block.
+    } catch (err: any) {
       setError("Gagal memuat data. Silakan coba lagi.");
       console.error(err);
     } finally {
@@ -103,7 +105,8 @@ const ManageEskulSchedule: React.FC = () => {
       }
       handleCloseModal();
       await fetchData();
-    } catch (err) {
+      // FIX: Explicitly type error in catch block.
+    } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan jadwal.');
     } finally {
       setIsSubmitting(false);
@@ -130,7 +133,8 @@ const ManageEskulSchedule: React.FC = () => {
       await deleteEskulSchedule(scheduleToDelete.id);
       handleCloseDeleteModal();
       await fetchData();
-    } catch (err) {
+      // FIX: Explicitly type error in catch block.
+    } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Gagal menghapus jadwal.');
     } finally {
       setIsSubmitting(false);
@@ -179,50 +183,51 @@ const ManageEskulSchedule: React.FC = () => {
     <>
     <div className="space-y-6">
        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-white">Manajemen Jadwal Eskul</h1>
+          <h1 className="text-xl font-bold text-white">Manajemen Jadwal Eskul</h1>
           <Button onClick={handleOpenAddModal} className="w-auto !bg-blue-600 hover:!bg-blue-700 px-6">Tambah Jadwal</Button>
         </div>
-      <div className="bg-slate-900 rounded-lg shadow-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="p-8"><Spinner /></div>
-          ) : (
-            <table className="w-full text-left">
-              <thead className="bg-slate-700/50">
-                <tr>
-                  <th className="p-4 text-sm font-semibold text-gray-200">Hari</th>
-                  <th className="p-4 text-sm font-semibold text-gray-200">Waktu</th>
-                  <th className="p-4 text-sm font-semibold text-gray-200">Pembina</th>
-                  <th className="p-4 text-sm font-semibold text-gray-200">Kegiatan</th>
-                  <th className="p-4 text-sm font-semibold text-gray-200">Aksi</th>
+      <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg overflow-x-auto">
+        {isLoading ? (
+          <div className="p-8"><Spinner /></div>
+        ) : (
+          <table className="w-full text-left">
+            <thead className="bg-slate-800">
+              <tr className="hidden md:table-row">
+                <th className="p-4 text-sm font-semibold text-gray-200">Hari</th>
+                <th className="p-4 text-sm font-semibold text-gray-200">Waktu</th>
+                <th className="p-4 text-sm font-semibold text-gray-200">Pembina</th>
+                <th className="p-4 text-sm font-semibold text-gray-200">Kegiatan</th>
+                <th className="p-4 text-sm font-semibold text-gray-200">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700">
+              {schedules.length > 0 ? schedules.map((item) => (
+                <tr key={item.id} className="block p-4 space-y-3 md:table-row md:p-0 md:space-y-0 hover:bg-slate-800/50 transition-colors">
+                  <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap"><span className="text-sm font-semibold text-slate-400 md:hidden">Hari</span><span>{item.day}</span></td>
+                  <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Waktu</span><span>{item.time}</span></td>
+                  <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap"><span className="text-sm font-semibold text-slate-400 md:hidden">Pembina</span><span>{item.coach}</span></td>
+                  <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Kegiatan</span><span>{item.activity}</span></td>
+                  <td className="flex justify-between items-center md:table-cell md:p-4">
+                      <span className="text-sm font-semibold text-slate-400 md:hidden">Aksi</span>
+                      <div className="flex items-center space-x-4">
+                          <button onClick={() => handleOpenEditModal(item)} className="text-blue-400 hover:underline font-medium text-sm">Ubah</button>
+                          <button onClick={() => handleOpenDeleteModal(item)} className="text-red-400 hover:underline font-medium text-sm">Hapus</button>
+                      </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {schedules.length > 0 ? schedules.map((item) => (
-                  <tr key={item.id} className="border-b border-slate-700 last:border-0">
-                    <td className="p-4 whitespace-nowrap font-medium">{item.day}</td>
-                    <td className="p-4 whitespace-nowrap text-gray-400">{item.time}</td>
-                    <td className="p-4 whitespace-nowrap font-medium">{item.coach}</td>
-                    <td className="p-4 whitespace-nowrap text-gray-400">{item.activity}</td>
-                    <td className="p-4 space-x-4">
-                      <button onClick={() => handleOpenEditModal(item)} className="text-blue-400 hover:underline font-medium">Ubah</button>
-                      <button onClick={() => handleOpenDeleteModal(item)} className="text-red-400 hover:underline font-medium">Hapus</button>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={5} className="p-4 text-center text-gray-400">
-                      Tidak ada data jadwal eskul. Klik 'Tambah Jadwal' untuk memulai.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+              )) : (
+                <tr>
+                  <td colSpan={5} className="p-4 text-center text-gray-400">
+                    Tidak ada data jadwal eskul. Klik 'Tambah Jadwal' untuk memulai.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
       <footer className="text-center text-gray-500 text-sm pt-4">
-        © 2025 Rullp. All rights reserved.
+        © 2024 HadirKu. All rights reserved.
       </footer>
     </div>
 
