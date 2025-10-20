@@ -1,6 +1,7 @@
 import { AttendanceRecord, LessonSchedule, User } from '../types';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, updateDoc, doc } from 'firebase/firestore';
+import { STAFF_QR_CODE_DATA } from '../constants';
 
 // FIX: Implement missing QR code generation and retrieval functions.
 // Key for storing the daily QR code data in localStorage
@@ -130,8 +131,8 @@ export const recordStaffAttendanceWithQR = async (
   user: User,
   qrCodeData: string
 ): Promise<{ success: boolean; message: string }> => {
-  if (!qrCodeData) {
-    return { success: false, message: 'Data QR Code tidak valid.' };
+  if (qrCodeData !== STAFF_QR_CODE_DATA) {
+    return { success: false, message: 'QR Code tidak valid untuk absensi staf.' };
   }
   
   const now = new Date();

@@ -170,9 +170,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
     const currentDay = now.getDay(); // Sunday: 0, Monday: 1, ..., Saturday: 6
 
     const isWeekend = currentDay === 0 || currentDay === 6;
-
-    // Weekday check-in: 05:00 s.d. 07:15
-    const isCheckInTime = !isWeekend && currentHour >= 5 && (currentHour < 7 || (currentHour === 7 && currentMinute <= 15));
     
     // Weekday check-out logic
     let isCheckOutTime = false;
@@ -208,44 +205,45 @@ const AdministrativeStaffDashboard: React.FC = () => {
         buttonText = 'Ketidakhadiran Telah Dilaporkan';
         timeStatusMessage = `Anda sudah tercatat '${latestRecordToday.status}' hari ini.`;
         isButtonDisabledByTime = true;
-    } else if (isWeekend) {
-        if (hasClockedOut) {
-            buttonText = 'Selesai Absen Lembur';
-            timeStatusMessage = 'Anda sudah menyelesaikan absensi lembur hari ini.';
-            isButtonDisabledByTime = true;
-        } else if (hasClockedIn) {
-            buttonText = 'Scan QR untuk Absen Pulang (Lembur)';
+    } else if (hasClockedOut) {
+        buttonText = isWeekend ? 'Selesai Absen Lembur' : 'Selesai Absen';
+        timeStatusMessage = `Anda sudah menyelesaikan absensi ${isWeekend ? 'lembur ' : ''}hari ini.`;
+        isButtonDisabledByTime = true;
+    } else if (hasClockedIn) {
+        buttonText = `Scan QR untuk Absen Pulang${isWeekend ? ' (Lembur)' : ''}`;
+        if (isWeekend) {
             timeStatusMessage = 'Absensi lembur di akhir pekan. Silakan catat waktu pulang Anda.';
+            isButtonDisabledByTime = false;
+        } else if (isCheckOutTime) {
+            timeStatusMessage = `Absen pulang (${currentDay === 5 ? 'Jumat' : 'Senin-Kamis'}) dibuka pukul ${checkOutStartTime} - ${checkOutEndTime}. Silakan absen.`;
+            isButtonDisabledByTime = false;
         } else {
-            buttonText = 'Scan QR untuk Absen Datang (Lembur)';
-            timeStatusMessage = 'Absensi lembur di akhir pekan. Silakan catat kehadiran Anda.';
-        }
-    } else {
-        if (hasClockedOut) {
-            buttonText = 'Selesai Absen';
-            timeStatusMessage = 'Anda sudah menyelesaikan absensi hari ini.';
+            timeStatusMessage = `Belum waktunya absen pulang. Dibuka pukul ${checkOutStartTime} - ${checkOutEndTime}.`;
             isButtonDisabledByTime = true;
-        } else if (hasClockedIn) {
-            buttonText = 'Scan QR untuk Absen Pulang';
-            if (isCheckOutTime) {
-                timeStatusMessage = `Absen pulang (${currentDay === 5 ? 'Jumat' : 'Senin-Kamis'}) dibuka pukul ${checkOutStartTime} - ${checkOutEndTime}. Silakan absen.`;
-                isButtonDisabledByTime = false;
-            } else {
-                timeStatusMessage = `Belum waktunya absen pulang. Dibuka pukul ${checkOutStartTime} - ${checkOutEndTime}.`;
+        }
+    } else { // Not clocked in yet
+        buttonText = `Scan QR untuk Absen Datang${isWeekend ? ' (Lembur)' : ''}`;
+        if (isWeekend) {
+            timeStatusMessage = 'Absensi lembur di akhir pekan. Silakan catat kehadiran Anda.';
+            isButtonDisabledByTime = false;
+        } else { // It's a weekday
+            const isBeforeWork = currentHour < 5;
+            const isAfterWork = currentHour > 15 || (currentHour === 15 && currentMinute > 20); // After 15:20
+
+            if (isBeforeWork) {
+                timeStatusMessage = 'Belum waktunya absen datang. Dibuka pukul 05:00.';
                 isButtonDisabledByTime = true;
-            }
-        } else { // Not clocked in yet
-            buttonText = 'Scan QR untuk Absen Datang';
-            if (isCheckInTime) {
-                timeStatusMessage = 'Absen datang dibuka pukul 05:00 - 07:15. Silakan absen.';
-                isButtonDisabledByTime = false;
-            } else {
-                 if (currentHour < 5) {
-                    timeStatusMessage = 'Belum waktunya absen datang. Dibuka pukul 05:00.';
-                 } else {
-                    timeStatusMessage = 'Waktu absen datang sudah berakhir pada 07:15.';
-                 }
-                 isButtonDisabledByTime = true;
+            } else if (isAfterWork) {
+                timeStatusMessage = 'Waktu kerja sudah berakhir. Tidak bisa absen datang.';
+                isButtonDisabledByTime = true;
+            } else { // It's during work hours (5:00 - 15:20)
+                isButtonDisabledByTime = false; // Enable the button
+                const isLate = currentHour > 7 || (currentHour === 7 && currentMinute > 15);
+                if (isLate) {
+                    timeStatusMessage = 'Anda akan diabsen sebagai TELAT (setelah 07:15). Silakan absen.';
+                } else {
+                    timeStatusMessage = 'Waktu absen datang: 05:00 - 07:15. Silakan absen.';
+                }
             }
         }
     }
