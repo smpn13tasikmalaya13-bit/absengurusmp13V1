@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Sidebar from '../layout/Sidebar';
 import DashboardContent from './DashboardContent';
@@ -47,19 +48,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const HeaderContent = () => (
-     <div className="flex items-center">
-        <div className="text-left mr-4">
-            <p className="text-xs text-slate-400 whitespace-nowrap">Selamat datang,</p>
-            <p className="font-semibold text-white -mt-1 whitespace-nowrap">{user?.name}</p>
-        </div>
-        <Button onClick={logout} variant="secondary" className="w-auto py-1.5 px-4 text-sm flex-shrink-0">
-            Logout
-        </Button>
-    </div>
-  );
-
-
   return (
     <div className="min-h-screen flex bg-slate-900 text-slate-300">
       {/* Sidebar for larger screens */}
@@ -77,15 +65,35 @@ const AdminDashboard: React.FC = () => {
       )}
       
       <div className="flex-1 flex flex-col">
+        {/* Mobile Header */}
         <header className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 md:hidden p-4 flex justify-between items-center sticky top-0 z-20">
-            <button onClick={() => setIsSidebarOpen(true)} className="text-white">
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
+            <div className="flex items-center gap-4">
+                <button onClick={() => setIsSidebarOpen(true)} className="text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
+                </button>
+                 <div className="text-left">
+                    <p className="text-xs text-slate-400 whitespace-nowrap">Selamat datang,</p>
+                    <p className="font-semibold text-white -mt-1 whitespace-nowrap">{user?.name}</p>
+                </div>
+            </div>
+            <button onClick={logout} aria-label="Logout" className="p-2 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+                </svg>
             </button>
-            <HeaderContent />
         </header>
 
-         <header className="hidden md:flex bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 p-4 justify-end items-center sticky top-0 z-20">
-            <HeaderContent />
+        {/* Desktop Header */}
+         <header className="hidden md:flex bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 p-4 justify-between items-center sticky top-0 z-20">
+            <div className="text-left">
+                <p className="text-xs text-slate-400 whitespace-nowrap">Selamat datang,</p>
+                <p className="font-semibold text-white -mt-1 whitespace-nowrap">{user?.name}</p>
+            </div>
+            <button onClick={logout} aria-label="Logout" className="p-2 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+                </svg>
+            </button>
         </header>
 
 

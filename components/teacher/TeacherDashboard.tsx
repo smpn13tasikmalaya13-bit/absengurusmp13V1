@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
@@ -385,16 +386,15 @@ const TeacherDashboard: React.FC = () => {
     <>
       <div className="bg-slate-900 text-slate-300 min-h-screen">
         <header className="flex justify-between items-center p-4 border-b border-slate-700/50 sticky top-0 bg-slate-900/50 backdrop-blur-sm z-10">
-            <h1 className="text-xl font-bold text-white">Dashboard Guru</h1>
-            <div className="flex items-center">
-                <div className="text-left mr-4">
-                    <p className="text-xs text-slate-400 whitespace-nowrap">Selamat datang,</p>
-                    <p className="font-semibold text-white -mt-1 whitespace-nowrap">{user?.name}</p>
-                </div>
-                <Button onClick={logout} variant="secondary" className="w-auto py-1.5 px-4 text-sm flex-shrink-0">
-                    Logout
-                </Button>
+            <div className="text-left">
+                <p className="text-xs text-slate-400 whitespace-nowrap">Selamat datang,</p>
+                <p className="font-semibold text-white -mt-1 whitespace-nowrap">{user?.name}</p>
             </div>
+            <button onClick={logout} aria-label="Logout" className="p-2 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-indigo-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+                </svg>
+            </button>
         </header>
 
         <main className="p-6 md:p-8 space-y-6">

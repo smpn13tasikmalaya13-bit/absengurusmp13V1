@@ -17,9 +17,11 @@ const Header: React.FC = () => {
             <span className="text-gray-700 mr-4">
               Welcome, <span className="font-medium">{user?.name}</span>
             </span>
-            <Button onClick={logout} variant="secondary" className="w-auto py-1 px-3 text-sm">
-              Logout
-            </Button>
+            <button onClick={logout} aria-label="Logout" className="p-2 rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-indigo-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+                </svg>
+            </button>
           </div>
         </div>
       </div>

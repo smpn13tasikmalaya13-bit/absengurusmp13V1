@@ -65,7 +65,7 @@ const PwaInstallPrompt: React.FC = () => {
   return (
     <div className="mt-8 p-6 bg-slate-800/50 rounded-lg text-center border border-slate-700">
       <h3 className="font-bold text-white">Instal Aplikasi untuk Pengalaman Terbaik</h3>
-      <p className="text-sm text-slate-400 mt-2">Akses lebih cepat dan fitur offline dengan menambahkan aplikasi ini ke layar utama (home screen) Anda.</p>
+      <p className="text-sm text-slate-400 mt-2 leading-tight">Akses lebih cepat dan fitur offline dengan menambahkan aplikasi ini ke layar utama (home screen) Anda.</p>
       <Button
         onClick={handleInstallClick}
         disabled={!isInstallable}
@@ -80,9 +80,9 @@ const PwaInstallPrompt: React.FC = () => {
 
 // ========== Common Header and Footer for Auth Pages ==========
 const AuthHeader: React.FC = () => (
-  <header className="text-center mb-6 flex flex-col items-center">
+  <header className="text-center mb-1 flex flex-col items-center">
     <Logo className="h-16 w-auto" />
-    <p className="text-slate-400 mt-2 text-sm">Sistem Absensi Guru Digital</p>
+    <p className="text-slate-400 text-sm -mt-2">Sistem Absensi Guru Digital</p>
   </header>
 );
 
@@ -131,7 +131,7 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
   return (
     <main>
       <form onSubmit={handleSubmit} className="space-y-6">
-        <h2 className="text-center text-2xl font-bold text-white mb-6">Login</h2>
+        <h2 className="text-center text-2xl font-bold text-white mb-4">Login</h2>
         
         <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium text-slate-400">Email</label>
@@ -195,7 +195,7 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
   return (
     <main>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <h2 className="text-center text-2xl font-bold text-white mb-6">Daftar Akun Baru</h2>
+        <h2 className="text-center text-2xl font-bold text-white mb-4">Daftar Akun Baru</h2>
         
         <div>
           <label htmlFor="name" className="text-sm font-medium text-slate-400 block mb-1">Nama Lengkap</label>
