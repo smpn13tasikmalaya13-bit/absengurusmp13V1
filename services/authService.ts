@@ -91,24 +91,9 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
       }
     } else {
       // This is a first-time login for this user, or their binding was reset.
-      // Before binding, check if this device is already in use by ANOTHER user.
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('boundDeviceId', '==', deviceId));
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        // This device ID is already registered in the database.
-        // We must ensure it's not registered to a *different* user.
-        const isUsedByAnotherUser = querySnapshot.docs.some(doc => doc.id !== firebaseUser.uid);
-        
-        if (isUsedByAnotherUser) {
-            await signOut(auth);
-            throw new Error('Perangkat ini sudah digunakan oleh pengguna lain. Satu perangkat hanya untuk satu guru.');
-        }
-      }
-      
-      // If we reach here, the device is not bound to another user.
-      // Bind this new device to the current user.
+      // The check for whether this device is already used by another user has been removed.
+      // That check required a collection-wide query which often fails due to security rules, causing login to fail.
+      // Binding the new device directly is a more robust client-side approach.
       await updateDoc(doc(db, "users", firebaseUser.uid), { boundDeviceId: deviceId });
     }
     

@@ -1,6 +1,7 @@
-import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord } from '../types';
+import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User } from '../types';
 import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 
 // ========================================================================
@@ -55,6 +56,45 @@ export const MOCK_EXTRA_SCHEDULE: Omit<EskulSchedule, 'id'>[] = [
     { day: 'Kamis', time: '14:30 - 16:30', coach: 'Suherlan', activity: 'Pramuka' },
     { day: 'Jumat', time: '13:00 - 16:00', coach: 'Suherlan', activity: 'Pramuka' },
 ];
+
+// ========================================================================
+// FIRESTORE DATA MUTATION FUNCTIONS
+// ========================================================================
+
+/**
+ * Uploads a profile photo to Firebase Storage.
+ * @param file The image file to upload.
+ * @param userId The ID of the user.
+ * @returns The public download URL of the uploaded image.
+ */
+export const uploadProfilePhoto = async (file: File, userId: string): Promise<string> => {
+    try {
+        const filePath = `profile-pictures/${userId}/${file.name}`;
+        const storageRef = ref(storage, filePath);
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        return downloadURL;
+    } catch (error) {
+        console.error("Error uploading profile photo:", error);
+        throw new Error("Gagal mengunggah foto profil.");
+    }
+};
+
+/**
+ * Updates a user's profile data in Firestore.
+ * @param userId The ID of the user to update.
+ * @param data The partial user data to update.
+ */
+export const updateUserProfile = async (userId: string, data: Partial<User>): Promise<void> => {
+    try {
+        const userDocRef = doc(db, 'users', userId);
+        await updateDoc(userDocRef, data);
+    } catch (error) {
+        console.error("Error updating user profile:", error);
+        throw new Error("Gagal memperbarui profil pengguna.");
+    }
+};
+
 
 // ========================================================================
 // FIRESTORE DATA FETCHING FUNCTIONS
@@ -298,6 +338,29 @@ export const getStudentAbsencesByTeacherForDate = async (teacherId: string, date
         return [];
     }
 };
+
+// Fetch all student absences reported by a specific teacher
+export const getStudentAbsencesByTeacher = async (teacherId: string): Promise<StudentAbsenceRecord[]> => {
+    try {
+        const studentAbsencesCol = collection(db, 'studentAbsenceRecords');
+        const q = query(
+            studentAbsencesCol,
+            where('teacherId', '==', teacherId)
+            // orderBy('date', 'desc') // This requires a composite index. Removing for now.
+        );
+        const snapshot = await getDocs(q);
+        const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentAbsenceRecord));
+        
+        // Sort client-side to avoid needing a composite index
+        records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        return records;
+    } catch (error) {
+        console.error("Error fetching all student absences for teacher:", error);
+        return [];
+    }
+};
+
 
 export const getFilteredStudentAbsenceReport = async ({
     startDate,

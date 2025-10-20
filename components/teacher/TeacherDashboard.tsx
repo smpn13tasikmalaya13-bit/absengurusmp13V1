@@ -1,17 +1,19 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import QRScanner from './QRScanner';
-import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacherForDate, getAllClasses, addLessonSchedule, checkScheduleConflict } from '../../services/dataService';
+import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, addLessonSchedule, checkScheduleConflict, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile } from '../../services/dataService';
 import { getAttendanceForTeacher, reportTeacherAbsence, recordAttendance } from '../../services/attendanceService';
-import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class } from '../../types';
+import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, User } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
 
-// SVG Icons for the dashboard
-const LocationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>;
+// SVG Icons for the dashboard & navbar
+const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>;
+const HistoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+const StudentHistoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>;
+const ProfileIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
 const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-emerald-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>;
 const ScanIcon = () => <svg className="h-12 w-12 text-indigo-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H4C3.44772 3 3 3.44772 3 4V7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M17 3H20C20.5523 3 21 3.44772 21 4V7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 21H4C3.44772 21 3 20.5523 3 20V17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M17 21H20C20.5523 21 21 20.5523 21 20V17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 8V16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 12H16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const ScheduleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
@@ -22,7 +24,8 @@ const EmptyScheduleIcon = () => <svg className="h-16 w-16 text-slate-600" fill="
 const EmptyReportIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
 
 const TeacherDashboard: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserContext } = useAuth();
+  const [activeView, setActiveView] = useState('beranda');
   const [showScanner, setShowScanner] = useState(false);
   const [isWithinRadius, setIsWithinRadius] = useState<boolean | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -36,6 +39,7 @@ const TeacherDashboard: React.FC = () => {
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [reportedAbsences, setReportedAbsences] = useState<StudentAbsenceRecord[]>([]);
+  const [allStudentAbsences, setAllStudentAbsences] = useState<StudentAbsenceRecord[]>([]);
   const [isLoadingReported, setIsLoadingReported] = useState(true);
   
   // Modal states
@@ -43,6 +47,8 @@ const TeacherDashboard: React.FC = () => {
   const [isReportAbsenceModalOpen, setIsReportAbsenceModalOpen] = useState(false);
   const [isReportStudentModalOpen, setIsReportStudentModalOpen] = useState(false);
   const [isSelectScheduleModalOpen, setIsSelectScheduleModalOpen] = useState(false);
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+
 
   // Form states
   const [absenceReason, setAbsenceReason] = useState<'Sakit' | 'Izin' | 'Tugas Luar'>('Sakit');
@@ -52,6 +58,11 @@ const TeacherDashboard: React.FC = () => {
   const [studentClass, setStudentClass] = useState('');
   const [studentReason, setStudentReason] = useState<'Sakit' | 'Izin' | 'Alpa'>('Sakit');
   const [studentAbsentPeriods, setStudentAbsentPeriods] = useState<number[]>([]);
+  
+  // Profile form states
+  const [profileData, setProfileData] = useState<Partial<User>>({});
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
 
   // General UI state
@@ -95,6 +106,10 @@ const TeacherDashboard: React.FC = () => {
     const reported = await getStudentAbsencesByTeacherForDate(user.id, todayStr);
     setReportedAbsences(reported);
 
+    const allReported = await getStudentAbsencesByTeacher(user.id);
+    setAllStudentAbsences(allReported);
+
+
     setIsLoadingStats(false);
     setIsLoadingHistory(false);
     setIsLoadingReported(false);
@@ -127,11 +142,12 @@ const TeacherDashboard: React.FC = () => {
       setIsLoadingStats(true);
       setIsLoadingReported(true);
       try {
-        const [allSchedules, allAttendance, reported, classesData] = await Promise.all([
+        const [allSchedules, allAttendance, reported, classesData, allReportedStudents] = await Promise.all([
           getSchedulesByTeacher(user.id),
           getAttendanceForTeacher(user.id),
           getStudentAbsencesByTeacherForDate(user.id, new Date().toISOString().split('T')[0]),
           getAllClasses(),
+          getStudentAbsencesByTeacher(user.id)
         ]);
 
         setFullSchedule(allSchedules);
@@ -150,6 +166,7 @@ const TeacherDashboard: React.FC = () => {
         setAttendanceHistory(allAttendance);
         
         setReportedAbsences(reported);
+        setAllStudentAbsences(allReportedStudents);
       } catch (error) {
         console.error("Failed to fetch teacher dashboard data:", error);
       } finally {
@@ -251,6 +268,20 @@ const TeacherDashboard: React.FC = () => {
         [name]: name === 'period' ? (parseInt(value, 10) || 0) : value,
     }));
   };
+  
+  const handleProfileFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setProfilePhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
 
   const handleStudentPeriodChange = (period: number) => {
     setStudentAbsentPeriods(prev =>
@@ -362,6 +393,56 @@ const TeacherDashboard: React.FC = () => {
 
     setIsSubmitting(false);
   };
+  
+  const handleEditProfile = () => {
+    if (user) {
+        setProfileData(user); // Pre-fill with existing user data
+        setPhotoPreview(user.photoURL || null); // Show current photo
+        setProfilePhotoFile(null); // Clear any previous selection
+        setModalError('');
+        setModalSuccess('');
+        setIsEditProfileModalOpen(true);
+    }
+  };
+
+  const handleProfileUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setIsSubmitting(true);
+    setModalError('');
+    setModalSuccess('');
+
+    try {
+        let photoURL = user.photoURL; // Start with the existing photo URL
+
+        // If a new photo file is selected, upload it
+        if (profilePhotoFile) {
+            photoURL = await uploadProfilePhoto(profilePhotoFile, user.id);
+        }
+
+        // Prepare data for Firestore update, excluding fields that shouldn't be there
+        const { id, boundDeviceId, email, role, ...updatableProfileData } = profileData;
+        const dataToUpdate = { ...updatableProfileData, photoURL: photoURL || null };
+
+        // Update Firestore
+        await updateUserProfile(user.id, dataToUpdate);
+        
+        // Update local context to reflect changes immediately
+        updateUserContext(dataToUpdate);
+
+        setModalSuccess('Profil berhasil diperbarui!');
+        setTimeout(() => {
+            setIsEditProfileModalOpen(false);
+            setModalSuccess('');
+        }, 2000);
+    } catch (err) {
+        setModalError(err instanceof Error ? err.message : 'Gagal memperbarui profil.');
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
 
 
   const uniqueTodayClasses = useMemo(() => {
@@ -381,135 +462,312 @@ const TeacherDashboard: React.FC = () => {
   }, {} as Record<string, LessonSchedule[]>);
   const scheduleOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   const daysOfWeek = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  
+  const getRoleBadgeClass = (role: Role) => {
+    switch (role) {
+      case Role.Admin:
+        return 'bg-purple-500/30 text-purple-300';
+      case Role.Teacher:
+        return 'bg-blue-500/30 text-blue-300';
+      case Role.Coach:
+        return 'bg-green-500/30 text-green-300';
+      case Role.AdministrativeStaff:
+        return 'bg-slate-500/30 text-slate-300';
+      default:
+        return 'bg-gray-500/30 text-gray-300';
+    }
+  };
+  
+  const BerandaContent = () => (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <button onClick={() => setShowScanner(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-indigo-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed group" disabled={isWithinRadius !== true}>
+          <ScanIcon/>
+          <h3 className="font-bold text-lg mt-4 text-white">Scan QR Code</h3>
+          <p className="text-sm text-slate-400 mt-1">Scan QR Code kelas untuk absensi</p>
+          <p className={`text-sm mt-2 font-semibold ${locationStatus.color}`}>{locationStatus.text}</p>
+        </button>
+        <button onClick={() => setIsScheduleModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-blue-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <ScheduleIcon/>
+          <h3 className="font-bold text-lg mt-4 text-white">Jadwal Mengajar</h3>
+          <p className="text-sm text-slate-400 mt-1">Lihat & tambah jadwal mengajar Anda</p>
+        </button>
+        <button onClick={() => setIsReportAbsenceModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-yellow-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+          <ReportIcon/>
+          <h3 className="font-bold text-lg mt-4 text-white">Lapor Ketidakhadiran</h3>
+          <p className="text-sm text-slate-400 mt-1">Laporkan jika tidak dapat hadir hari ini</p>
+        </button>
+        <button onClick={() => { if (todaysSchedule.length > 0) setIsReportStudentModalOpen(true) }} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-orange-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled={todaysSchedule.length === 0}>
+          <StudentIcon/>
+          <h3 className="font-bold text-lg mt-4 text-white">Lapor Siswa Absen</h3>
+          <p className="text-sm text-slate-400 mt-1">Input siswa yang tidak hadir hari ini</p>
+          {isLoadingSchedule ? <p className="text-xs mt-2 font-semibold text-gray-400">Memuat jadwal...</p> : todaysSchedule.length === 0 && <p className="text-xs mt-2 font-semibold text-yellow-400">Tidak ada jadwal hari ini</p>}
+        </button>
+      </div>
+        
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div><div><p className="text-sm text-slate-400">Absensi Hari Ini</p>{isLoadingStats ? <div className="h-7 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-2xl font-bold text-white">{stats.today}</p>}</div></div>
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-sm text-slate-400">Minggu Ini</p>{isLoadingStats ? <div className="h-7 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-2xl font-bold text-white">{stats.week}</p>}</div></div>
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div><div><p className="text-sm text-slate-400">Total Absensi</p>{isLoadingStats ? <div className="h-7 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-2xl font-bold text-white">{stats.total}</p>}</div></div>
+      </div>
+
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
+          <h3 className="font-bold text-lg text-white mb-4">Jadwal Hari Ini</h3>
+          {isLoadingSchedule ? <Spinner/> : todaysSchedule.length > 0 ? (
+            <ul className="space-y-3">
+              {todaysSchedule.map(s => {
+                const isAttended = attendedTodaySet.has(s.id);
+                return (
+                  <li key={s.id} className={`flex justify-between items-center p-4 rounded-lg transition-colors ${isAttended ? 'bg-slate-800 opacity-60' : 'bg-slate-700/50'}`}>
+                    <div>
+                      <p className={`font-semibold text-base ${isAttended ? 'text-slate-400 line-through' : 'text-white'}`}>{s.subject} <span className="text-slate-400 font-normal">- Jam ke-{s.period}</span></p>
+                      <p className="text-sm text-slate-400">{s.class} • {s.time}</p>
+                    </div>
+                    {isAttended ? <CheckCircleIcon /> : <span className="px-2 py-1 text-xs font-semibold text-blue-300 bg-blue-500/30 rounded-full">Belum Absen</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="text-center py-10">
+              <EmptyScheduleIcon/>
+              <p className="mt-4 text-slate-400">Tidak ada jadwal mengajar hari ini.</p>
+            </div>
+          )}
+        </div>
+        
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
+          <h3 className="font-bold text-lg text-white mb-4">Riwayat Absensi Terkini</h3>
+          {isLoadingHistory ? <Spinner/> : attendanceHistory.length > 0 ? (
+            <ul className="space-y-3">
+              {attendanceHistory.slice(0, 5).map(r => (
+                <li key={r.id} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg">
+                  <div>
+                    <p className="font-semibold text-white">{r.subject ? `${r.subject} (${r.class})` : new Date(r.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                    <p className="text-sm text-slate-400">{new Date(r.timestamp).toLocaleString('id-ID')}</p>
+                  </div>
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.status === 'Present' ? 'bg-emerald-500/30 text-emerald-200' : r.status === 'Late' ? 'bg-yellow-500/30 text-yellow-200' : 'bg-red-500/30 text-red-200'}`}>{r.status}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+              <div className="text-center py-10">
+              <EmptyHistoryIcon/>
+              <p className="mt-4 text-slate-400">Belum ada riwayat absensi.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl lg:col-span-2">
+          <h3 className="font-bold text-lg text-white mb-4">Siswa Absen Dilaporkan Hari Ini</h3>
+          {isLoadingReported ? <Spinner/> : reportedAbsences.length > 0 ? (
+              <ul className="space-y-3">
+              {reportedAbsences.map(r => (
+                <li key={r.id} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg">
+                  <div>
+                    <p className="font-semibold text-white">{r.studentName} <span className="text-slate-400 font-normal">({r.class})</span></p>
+                  </div>
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.reason === 'Sakit' ? 'bg-yellow-500/30 text-yellow-200' : r.reason === 'Izin' ? 'bg-blue-500/30 text-blue-200' : 'bg-red-500/30 text-red-200'}`}>{r.reason}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-center py-10">
+              <EmptyReportIcon/>
+              <p className="mt-4 text-slate-400">Belum ada siswa yang dilaporkan absen hari ini.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      <footer className="text-center text-slate-500 text-sm pt-4">
+        © 2024 HadirKu. All rights reserved.
+      </footer>
+    </>
+  );
+
+  const RiwayatAbsenContent = () => (
+    <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
+        <h3 className="font-bold text-lg text-white mb-4">Semua Riwayat Absensi</h3>
+        {isLoadingHistory ? <Spinner/> : attendanceHistory.length > 0 ? (
+        <ul className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {attendanceHistory.map(r => (
+            <li key={r.id} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg">
+                <div>
+                <p className="font-semibold text-white">{r.subject ? `${r.subject} (${r.class})` : new Date(r.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                <p className="text-sm text-slate-400">{new Date(r.timestamp).toLocaleString('id-ID')}</p>
+                </div>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.status === 'Present' ? 'bg-emerald-500/30 text-emerald-200' : r.status === 'Late' ? 'bg-yellow-500/30 text-yellow-200' : 'bg-red-500/30 text-red-200'}`}>{r.status}</span>
+            </li>
+            ))}
+        </ul>
+        ) : (
+            <div className="text-center py-10">
+            <EmptyHistoryIcon/>
+            <p className="mt-4 text-slate-400">Belum ada riwayat absensi.</p>
+        </div>
+        )}
+    </div>
+  );
+
+  const RiwayatSiswaContent = () => (
+    <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
+        <h3 className="font-bold text-lg text-white mb-4">Semua Riwayat Laporan Siswa</h3>
+        {isLoadingReported ? <Spinner/> : allStudentAbsences.length > 0 ? (
+            <ul className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {allStudentAbsences.map(r => (
+                <li key={r.id} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg">
+                <div>
+                    <p className="font-semibold text-white">{r.studentName} <span className="text-slate-400 font-normal">({r.class})</span></p>
+                    <p className="text-sm text-slate-400">{new Date(r.date).toLocaleDateString('id-ID', { timeZone: 'UTC', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.reason === 'Sakit' ? 'bg-yellow-500/30 text-yellow-200' : r.reason === 'Izin' ? 'bg-blue-500/30 text-blue-200' : 'bg-red-500/30 text-red-200'}`}>{r.reason}</span>
+                </li>
+            ))}
+            </ul>
+        ) : (
+            <div className="text-center py-10">
+                <EmptyReportIcon/>
+                <p className="mt-4 text-slate-400">Belum ada siswa yang dilaporkan absen.</p>
+            </div>
+        )}
+    </div>
+  );
+  
+  const ProfilContent = () => (
+     <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
+        <h3 className="font-bold text-lg text-white mb-4">Profil Anda</h3>
+        {user && (
+             <div className="space-y-4">
+                 <div className="flex items-center space-x-4">
+                    <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.name.replace(' ', '+')}&background=0f172a&color=cbd5e1`} alt="Profile" className="h-20 w-20 rounded-full object-cover border-2 border-slate-600" />
+                    <div>
+                        <p className="text-white font-semibold text-xl">{user.name}</p>
+                        <p className="text-slate-400 text-sm">{user.email}</p>
+                        <span className={`mt-1 inline-block px-3 py-1 text-xs font-semibold rounded-full ${getRoleBadgeClass(user.role)}`}>{user.role}</span>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-700">
+                    <div>
+                        <label className="text-sm text-slate-400">Jabatan</label>
+                        <p className="text-white font-semibold">{user.position || '-'}</p>
+                    </div>
+                    <div>
+                        <label className="text-sm text-slate-400">Gol/Pangkat</label>
+                        <p className="text-white font-semibold">{user.rank || '-'}</p>
+                    </div>
+                </div>
+
+                <div className="pt-4">
+                    <Button onClick={handleEditProfile} variant="primary" className="w-full max-w-xs mx-auto">Ubah Profil</Button>
+                </div>
+            </div>
+        )}
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (activeView) {
+      case 'beranda': return <BerandaContent />;
+      case 'riwayatAbsen': return <RiwayatAbsenContent />;
+      case 'riwayatSiswa': return <RiwayatSiswaContent />;
+      case 'profil': return <ProfilContent />;
+      default: return <BerandaContent />;
+    }
+  };
+
+
+  const NavItem = ({ view, label, icon }: { view: string; label: string; icon: React.ReactNode }) => (
+    <button onClick={() => setActiveView(view)} className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-colors duration-200 ${activeView === view ? 'text-indigo-400' : 'text-slate-400 hover:text-white'}`}>
+      {icon}
+      <span className="text-xs mt-1">{label}</span>
+    </button>
+  );
 
   return (
     <>
-      <div className="bg-slate-900 text-slate-300 min-h-screen">
+      <div className="bg-slate-900 text-slate-300 min-h-screen pb-24">
         <header className="flex justify-between items-center p-4 border-b border-slate-700/50 sticky top-0 bg-slate-900/50 backdrop-blur-sm z-10">
-            <div className="text-left">
-                <p className="text-xs text-slate-400 whitespace-nowrap">Selamat datang,</p>
-                <p className="font-semibold text-white -mt-1 whitespace-nowrap">{user?.name}</p>
+            <div className="flex items-center gap-3">
+                <img src={user?.photoURL || `https://ui-avatars.com/api/?name=${user?.name.replace(' ', '+')}&background=1e293b&color=cbd5e1&size=128`} alt="Avatar" className="h-10 w-10 rounded-full object-cover"/>
+                <div className="text-left">
+                    <p className="text-xs text-slate-400 whitespace-nowrap">Selamat datang,</p>
+                    <p className="font-semibold text-white -mt-1 whitespace-nowrap">{user?.name}</p>
+                </div>
             </div>
-            <button onClick={logout} aria-label="Logout" className="p-2 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-indigo-500">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
-                </svg>
-            </button>
+            <div className="flex-1 text-center">
+                <h2 className="text-xl font-bold text-white capitalize hidden md:block">{activeView === 'riwayatAbsen' ? 'Riwayat Absen' : activeView === 'riwayatSiswa' ? 'Riwayat Siswa' : activeView}</h2>
+            </div>
+            <div className="flex-1 text-right">
+                <button onClick={logout} aria-label="Logout" className="p-2 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+                    </svg>
+                </button>
+            </div>
         </header>
 
         <main className="p-6 md:p-8 space-y-6">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Dashboard</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <button onClick={() => setShowScanner(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-indigo-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed group" disabled={isWithinRadius !== true}>
-              <ScanIcon/>
-              <h3 className="font-bold text-lg mt-4 text-white">Scan QR Code</h3>
-              <p className="text-sm text-slate-400 mt-1">Scan QR Code kelas untuk absensi</p>
-              <p className={`text-sm mt-2 font-semibold ${locationStatus.color}`}>{locationStatus.text}</p>
-            </button>
-            <button onClick={() => setIsScheduleModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-blue-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <ScheduleIcon/>
-              <h3 className="font-bold text-lg mt-4 text-white">Jadwal Mengajar</h3>
-              <p className="text-sm text-slate-400 mt-1">Lihat & tambah jadwal mengajar Anda</p>
-            </button>
-            <button onClick={() => setIsReportAbsenceModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-yellow-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-              <ReportIcon/>
-              <h3 className="font-bold text-lg mt-4 text-white">Lapor Ketidakhadiran</h3>
-              <p className="text-sm text-slate-400 mt-1">Laporkan jika tidak dapat hadir hari ini</p>
-            </button>
-            <button onClick={() => { if (todaysSchedule.length > 0) setIsReportStudentModalOpen(true) }} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-orange-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled={todaysSchedule.length === 0}>
-              <StudentIcon/>
-              <h3 className="font-bold text-lg mt-4 text-white">Lapor Siswa Absen</h3>
-              <p className="text-sm text-slate-400 mt-1">Input siswa yang tidak hadir hari ini</p>
-              {isLoadingSchedule ? <p className="text-xs mt-2 font-semibold text-gray-400">Memuat jadwal...</p> : todaysSchedule.length === 0 && <p className="text-xs mt-2 font-semibold text-yellow-400">Tidak ada jadwal hari ini</p>}
-            </button>
-          </div>
-            
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div><div><p className="text-sm text-slate-400">Absensi Hari Ini</p>{isLoadingStats ? <div className="h-7 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-2xl font-bold text-white">{stats.today}</p>}</div></div>
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><div><p className="text-sm text-slate-400">Minggu Ini</p>{isLoadingStats ? <div className="h-7 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-2xl font-bold text-white">{stats.week}</p>}</div></div>
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-5 rounded-xl flex items-center"><div className="p-3 bg-slate-700 rounded-lg mr-4 text-slate-300"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div><div><p className="text-sm text-slate-400">Total Absensi</p>{isLoadingStats ? <div className="h-7 w-10 bg-slate-700 rounded-md animate-pulse mt-1"></div> : <p className="text-2xl font-bold text-white">{stats.total}</p>}</div></div>
-          </div>
-
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
-              <h3 className="font-bold text-lg text-white mb-4">Jadwal Hari Ini</h3>
-              {isLoadingSchedule ? <Spinner/> : todaysSchedule.length > 0 ? (
-                <ul className="space-y-3">
-                  {todaysSchedule.map(s => {
-                    const isAttended = attendedTodaySet.has(s.id);
-                    return (
-                      <li key={s.id} className={`flex justify-between items-center p-4 rounded-lg transition-colors ${isAttended ? 'bg-slate-800 opacity-60' : 'bg-slate-700/50'}`}>
-                        <div>
-                          <p className={`font-semibold text-base ${isAttended ? 'text-slate-400 line-through' : 'text-white'}`}>{s.subject} <span className="text-slate-400 font-normal">- Jam ke-{s.period}</span></p>
-                          <p className="text-sm text-slate-400">{s.class} • {s.time}</p>
-                        </div>
-                        {isAttended ? <CheckCircleIcon /> : <span className="px-2 py-1 text-xs font-semibold text-blue-300 bg-blue-500/30 rounded-full">Belum Absen</span>}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <div className="text-center py-10">
-                  <EmptyScheduleIcon/>
-                  <p className="mt-4 text-slate-400">Tidak ada jadwal mengajar hari ini.</p>
-                </div>
-              )}
-            </div>
-            
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
-              <h3 className="font-bold text-lg text-white mb-4">Riwayat Absensi Terkini</h3>
-              {isLoadingHistory ? <Spinner/> : attendanceHistory.length > 0 ? (
-                <ul className="space-y-3">
-                  {attendanceHistory.slice(0, 10).map(r => (
-                    <li key={r.id} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-white">{r.subject ? `${r.subject} (${r.class})` : new Date(r.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                        <p className="text-sm text-slate-400">{new Date(r.timestamp).toLocaleString('id-ID')}</p>
-                      </div>
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.status === 'Present' ? 'bg-emerald-500/30 text-emerald-200' : r.status === 'Late' ? 'bg-yellow-500/30 text-yellow-200' : 'bg-red-500/30 text-red-200'}`}>{r.status}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                 <div className="text-center py-10">
-                  <EmptyHistoryIcon/>
-                  <p className="mt-4 text-slate-400">Belum ada riwayat absensi.</p>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl lg:col-span-2">
-              <h3 className="font-bold text-lg text-white mb-4">Siswa Absen Dilaporkan Hari Ini</h3>
-              {isLoadingReported ? <Spinner/> : reportedAbsences.length > 0 ? (
-                 <ul className="space-y-3">
-                  {reportedAbsences.map(r => (
-                    <li key={r.id} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-white">{r.studentName} <span className="text-slate-400 font-normal">({r.class})</span></p>
-                      </div>
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.reason === 'Sakit' ? 'bg-yellow-500/30 text-yellow-200' : r.reason === 'Izin' ? 'bg-blue-500/30 text-blue-200' : 'bg-red-500/30 text-red-200'}`}>{r.reason}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="text-center py-10">
-                  <EmptyReportIcon/>
-                  <p className="mt-4 text-slate-400">Belum ada siswa yang dilaporkan absen hari ini.</p>
-                </div>
-              )}
-            </div>
-          </div>
-          <footer className="text-center text-slate-500 text-sm pt-4">
-            © 2024 HadirKu. All rights reserved.
-          </footer>
+          {renderContent()}
         </main>
+        
+        <footer className="fixed bottom-0 left-0 right-0 bg-slate-800/80 backdrop-blur-lg border-t border-slate-700 z-20 flex justify-around">
+            <NavItem view="beranda" label="Beranda" icon={<HomeIcon />} />
+            <NavItem view="riwayatAbsen" label="Absensi" icon={<HistoryIcon />} />
+            <NavItem view="riwayatSiswa" label="Siswa" icon={<StudentHistoryIcon />} />
+            <NavItem view="profil" label="Profil" icon={<ProfileIcon />} />
+        </footer>
       </div>
 
       {/* --- MODALS --- */}
+       <Modal isOpen={isEditProfileModalOpen} onClose={() => setIsEditProfileModalOpen(false)} title="Ubah Profil">
+         <form onSubmit={handleProfileUpdateSubmit} className="space-y-4">
+            <div className="flex items-center space-x-4">
+                <img src={photoPreview || `https://ui-avatars.com/api/?name=${profileData.name?.replace(' ', '+')}&background=0f172a&color=cbd5e1`} alt="Preview" className="h-20 w-20 rounded-full object-cover border-2 border-slate-600" />
+                <div>
+                    <label htmlFor="photo-upload" className="cursor-pointer bg-slate-600 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors">
+                        Unggah Foto
+                    </label>
+                    <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                    <p className="text-xs text-slate-400 mt-2">JPG, PNG. Max 2MB.</p>
+                </div>
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">Nama Lengkap & Gelar</label>
+                    <input name="name" value={profileData.name || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
+                 </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">Jabatan</label>
+                    <input name="position" value={profileData.position || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="Contoh: Guru Mapel"/>
+                 </div>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-300">Gol/Pangkat</label>
+                    <input name="rank" value={profileData.rank || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="Contoh: III/d, Penata Tk. I"/>
+                </div>
+                {(user?.role === Role.Teacher || user?.role === Role.Coach) && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300">Mata Pelajaran</label>
+                        <input name="subject" value={profileData.subject || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="Contoh: Matematika"/>
+                    </div>
+                )}
+             </div>
+             <div>
+                <label className="block text-sm font-medium text-gray-300">Email</label>
+                <input value={profileData.email || ''} type="email" disabled className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
+             </div>
+             {modalError && <p className="text-sm text-red-400">{modalError}</p>}
+             {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
+             <div className="flex justify-end pt-2">
+                 <Button type="submit" isLoading={isSubmitting} className="w-full">Simpan Perubahan</Button>
+             </div>
+         </form>
+       </Modal>
+
 
       <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title="Jadwal Mengajar Lengkap">
         <div className="max-h-[70vh] overflow-y-auto space-y-4 pr-2">

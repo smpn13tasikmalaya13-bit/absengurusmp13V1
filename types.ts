@@ -11,6 +11,12 @@ export interface User {
   email: string;
   role: Role;
   boundDeviceId?: string; // Unique ID for device binding
+  // New editable profile fields
+  title?: string; // e.g., S.Pd, M.Kom
+  position?: string; // e.g., Guru Mapel, Kepala TU
+  rank?: string; // e.g., III/d, Penata Tk. I
+  subject?: string; // Specific subject taught
+  photoURL?: string; // URL to profile picture in storage
 }
 
 export interface AttendanceRecord {

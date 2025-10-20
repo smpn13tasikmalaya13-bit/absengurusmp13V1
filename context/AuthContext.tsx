@@ -11,6 +11,7 @@ interface AuthContextType {
   isAuthLoading: boolean;
   login: (email: string, pass: string) => Promise<FirebaseUser>;
   logout: () => void;
+  updateUserContext: (updatedData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -54,8 +55,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // The onAuthStateChanged listener will handle setting user to null.
   };
 
+  const updateUserContext = (updatedData: Partial<User>) => {
+    setUser(currentUser => currentUser ? { ...currentUser, ...updatedData } : null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isAuthLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthLoading, login, logout, updateUserContext }}>
       {children}
     </AuthContext.Provider>
   );
