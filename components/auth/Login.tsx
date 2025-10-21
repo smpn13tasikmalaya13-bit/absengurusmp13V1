@@ -15,20 +15,23 @@ const PwaInstallPrompt: React.FC = () => {
         return;
     }
 
-    // Handler for the browser's install prompt event.
-    // This event will only fire if the app is installable and not already installed.
     const beforeInstallPromptHandler = (e: Event) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
-      // Stash the event so it can be triggered later.
       setInstallPromptEvent(e);
     };
 
-    window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
+    const appInstalledHandler = () => {
+      // Clear the prompt event so the button disappears
+      setInstallPromptEvent(null);
+    };
 
-    // Cleanup: remove the event listener when the component unmounts
+    window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
+    window.addEventListener('appinstalled', appInstalledHandler);
+
+    // Cleanup: remove the event listeners when the component unmounts
     return () => {
       window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
+      window.removeEventListener('appinstalled', appInstalledHandler);
     };
   }, []);
 
@@ -42,13 +45,15 @@ const PwaInstallPrompt: React.FC = () => {
     const { outcome } = await (installPromptEvent as any).userChoice;
     console.log(`User response to the install prompt: ${outcome}`);
     
-    // The prompt can only be used once, so we clear it.
-    // This will also cause the component to unmount/hide.
-    setInstallPromptEvent(null);
+    // We don't need to clear the event here anymore because the `appinstalled`
+    // event will handle it. However, if the user dismisses the prompt,
+    // the event might still be usable, but for simplicity, we'll clear it.
+    if (outcome !== 'accepted') {
+        setInstallPromptEvent(null);
+    }
   };
   
   // Only render the component if the `beforeinstallprompt` event has been fired.
-  // This correctly handles cases where the app is already installed or not installable.
   if (!installPromptEvent) {
     return null;
   }
