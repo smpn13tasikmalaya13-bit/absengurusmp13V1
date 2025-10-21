@@ -375,7 +375,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
                 </div>
             </Card>
 
-            <Card title="Lapor Ketidakhadiran">
+            <Card title="Lapor tidak hadir">
                 <div className="text-center">
                     <p className="text-slate-400 mb-4 text-sm">Jika Anda tidak dapat hadir hari ini, silakan laporkan di sini.</p>
                     <Button
@@ -384,7 +384,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
                         className="w-full max-w-sm mx-auto"
                         disabled={!!latestRecordToday}
                     >
-                        Lapor Ketidakhadiran
+                        Laporkan
                     </Button>
                 </div>
             </Card>
