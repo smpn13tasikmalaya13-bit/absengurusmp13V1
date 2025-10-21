@@ -132,7 +132,7 @@ export const recordStaffAttendanceWithQR = async (
   qrCodeData: string
 ): Promise<{ success: boolean; message: string }> => {
   if (qrCodeData !== STAFF_QR_CODE_DATA) {
-    return { success: false, message: 'QR Code tidak valid untuk absensi staf.' };
+    return { success: false, message: 'QR Code tidak valid untuk absensi tendik.' };
   }
   
   const now = new Date();

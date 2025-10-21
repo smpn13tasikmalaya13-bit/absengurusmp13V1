@@ -596,7 +596,7 @@ const TeacherDashboard: React.FC = () => {
         </div>
       </div>
       <footer className="text-center text-slate-500 text-sm pt-4">
-        © 2024 HadirKu. All rights reserved.
+        © Rullp 2025 HadirKu. All rights reserved.
       </footer>
     </>
   );

@@ -227,7 +227,7 @@ const ManageEskulSchedule: React.FC = () => {
         )}
       </div>
       <footer className="text-center text-gray-500 text-sm pt-4">
-        © 2024 HadirKu. All rights reserved.
+        © Rullp 2025 HadirKu. All rights reserved.
       </footer>
     </div>
 

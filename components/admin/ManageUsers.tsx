@@ -42,7 +42,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   // Directly check if the logged in user is the main admin.
   const isMainAdmin = loggedInUser?.email === MAIN_ADMIN_EMAIL;
   const isTeachers = mode === 'teachers';
-  const title = isTeachers ? 'Manajemen Guru & Pembina' : 'Manajemen Admin & Staf';
+  const title = isTeachers ? 'Manajemen Guru & Pembina' : 'Manajemen Admin & Tendik';
   
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -230,7 +230,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
           )}
         </div>
          <footer className="text-center text-slate-500 text-sm pt-4">
-          © 2024 HadirKu. All rights reserved.
+          © Rullp 2025 HadirKu. All rights reserved.
         </footer>
       </div>
 

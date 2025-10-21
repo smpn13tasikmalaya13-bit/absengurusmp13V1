@@ -157,7 +157,7 @@ const StaffAttendanceReportPage: React.FC = () => {
   const handleExportPDF = () => {
     if (reportData.length === 0) return;
     const doc = new jsPDF();
-    doc.text("Laporan Absensi Tenaga Administrasi", 14, 16);
+    doc.text("Laporan Absensi Tendik", 14, 16);
     (doc as any).autoTable({
         head: [['Nama', 'Jabatan', 'Waktu Datang', 'Waktu Pulang', 'Keterangan', 'Denda (Rp)']],
         body: reportData.map(r => [
@@ -184,7 +184,7 @@ const StaffAttendanceReportPage: React.FC = () => {
             theme: 'striped',
         });
     }
-    doc.save('laporan-absensi-staf.pdf');
+    doc.save('laporan-absensi-tendik.pdf');
   };
 
   const handleExportExcel = () => {
@@ -199,12 +199,12 @@ const StaffAttendanceReportPage: React.FC = () => {
     }));
     const worksheet = XLSX.utils.json_to_sheet(reportSheet);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Absensi Staf");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Absensi Tendik");
 
     if (Object.keys(summaryData).length > 0) {
         const summarySheetData = [
             ['Ringkasan Denda (Periode Laporan)'],
-            ['Nama Staf', 'Total Terlambat', 'Denda Terlambat', 'Total Tdk Absen Pulang', 'Denda Tdk Absen Pulang', 'Total Denda Keseluruhan'],
+            ['Nama Tendik', 'Total Terlambat', 'Denda Terlambat', 'Total Tdk Absen Pulang', 'Denda Tdk Absen Pulang', 'Total Denda Keseluruhan'],
              // FIX: Explicitly type 'data' to resolve property access errors.
              ...Object.entries(summaryData).map(([name, data]: [string, SummaryDetails]) => [
                 name,
@@ -219,7 +219,7 @@ const StaffAttendanceReportPage: React.FC = () => {
         XLSX.utils.book_append_sheet(workbook, summarySheet, "Ringkasan Denda");
     }
 
-    XLSX.writeFile(workbook, 'laporan-absensi-staf.xlsx');
+    XLSX.writeFile(workbook, 'laporan-absensi-tendik.xlsx');
   };
 
   const ReportTable = () => (

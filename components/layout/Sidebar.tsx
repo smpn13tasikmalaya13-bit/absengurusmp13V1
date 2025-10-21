@@ -50,7 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
             <h3 className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Laporan</h3>
             <div className="mt-2 space-y-2">
                 <NavItem icon={<ReportIcon />} label="Absensi Guru" view="teacher-attendance-report" currentView={currentView} onNavigate={onNavigate} />
-                <NavItem icon={<ReportIcon />} label="Absensi Staf" view="staff-attendance-report" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<ReportIcon />} label="Absensi Tendik" view="staff-attendance-report" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ReportIcon />} label="Absensi Siswa" view="student-absence-report" currentView={currentView} onNavigate={onNavigate} />
             </div>
         </div>
@@ -59,12 +59,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
             <h3 className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Manajemen</h3>
             <div className="mt-2 space-y-2">
                 <NavItem icon={<UsersIcon />} label="Guru & Pembina" view="manage-teachers" currentView={currentView} onNavigate={onNavigate} />
-                <NavItem icon={<UsersIcon />} label="Admin & Staf" view="manage-admins" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<UsersIcon />} label="Admin & Tendik" view="manage-admins" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ScheduleIcon />} label="Jadwal Pelajaran" view="manage-lesson-schedule" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ScheduleIcon />} label="Jadwal Eskul" view="manage-eskul-schedule" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<DataIcon />} label="Data Kelas" view="manage-classes" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<DataIcon />} label="Data Eskul" view="manage-eskuls" currentView={currentView} onNavigate={onNavigate} />
-                <NavItem icon={<QRIcon />} label="QR Code Staf" view="staff-qr-code" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<QRIcon />} label="QR Code Tendik" view="staff-qr-code" currentView={currentView} onNavigate={onNavigate} />
             </div>
         </div>
 

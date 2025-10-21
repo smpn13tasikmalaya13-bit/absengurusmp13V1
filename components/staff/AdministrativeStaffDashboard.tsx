@@ -498,12 +498,12 @@ const AdministrativeStaffDashboard: React.FC = () => {
 
                 <main className="p-6 md:p-8 space-y-6 max-w-4xl mx-auto">
                     <div>
-                        <h2 className="text-2xl font-bold text-white">Dashboard Staf</h2>
+                        <h2 className="text-2xl font-bold text-white">Dashboard Tendik</h2>
                         <p className={`text-sm mt-1 font-semibold ${locationStatus.color}`}>{locationStatus.text}</p>
                     </div>
                     {renderContent()}
                     <footer className="text-center text-slate-500 text-sm pt-4">
-                        © 2024 HadirKu. All rights reserved.
+                        © Rullp 2025 HadirKu. All rights reserved.
                     </footer>
                 </main>
 
