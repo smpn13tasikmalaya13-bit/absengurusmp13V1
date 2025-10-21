@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hadirku-cache-v2';
+const CACHE_NAME = 'hadirku-cache-v3';
 const urlsToCache = [
   '/',
   '/index.html',
