@@ -7,6 +7,7 @@ import AttendancePieChart from './AttendancePieChart';
 import { Spinner } from '../ui/Spinner';
 import { Button } from '../ui/Button';
 import { seedDatabase } from '../../services/seedDatabase';
+import QRCodeGenerator from './QRCodeGenerator';
 
 interface StatCardProps {
   title: string;
@@ -151,10 +152,11 @@ const DashboardContent: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-6">
                 <Card title="Ringkasan Absensi Hari Ini">
                     <AttendancePieChart present={stats.present} absent={stats.absent} />
                 </Card>
+                <QRCodeGenerator />
             </div>
             <div className="lg:col-span-3">
                 <Card title="Aktivitas Absensi Terbaru" className="h-full">
