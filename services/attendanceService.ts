@@ -201,11 +201,8 @@ export const recordStaffAttendanceWithQR = async (
 
 
 export const getAttendanceReport = async (date: Date): Promise<AttendanceRecord[]> => {
-  try {
     const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
-    
-    // Query the top-level 'absenceRecords' collection directly
     const attendanceCol = collection(db, 'absenceRecords');
     const q = query(
       attendanceCol,
@@ -213,7 +210,7 @@ export const getAttendanceReport = async (date: Date): Promise<AttendanceRecord[
       where('timestamp', '<', endOfDay),
       orderBy('timestamp', 'desc')
     );
-
+  try {
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => {
       const data = doc.data();
@@ -224,9 +221,12 @@ export const getAttendanceReport = async (date: Date): Promise<AttendanceRecord[
         checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
       } as AttendanceRecord;
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching attendance report for date:", error);
-    return [];
+    if (error.code === 'permission-denied') {
+        throw new Error("Gagal mengambil laporan: Izin ditolak.");
+    }
+    throw new Error("Gagal mengambil laporan absensi. Coba lagi.");
   }
 };
 
@@ -263,20 +263,25 @@ export const getFilteredAttendanceReport = async ({
                 checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
             } as AttendanceRecord;
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching filtered attendance report:", error);
-        return [];
+        if (error.code === 'permission-denied') {
+            throw new Error("Gagal mengambil laporan: Izin ditolak. Periksa aturan keamanan Firestore Anda.");
+        }
+        if (error.code === 'failed-precondition') {
+            throw new Error("Query gagal: Indeks komposit Firestore mungkin diperlukan. Periksa konsol developer (F12) untuk detail.");
+        }
+        throw new Error("Gagal mengambil laporan absensi. Silakan coba lagi.");
     }
 };
 
 
 export const getFullReport = async (recordLimit?: number): Promise<AttendanceRecord[]> => {
-  try {
     const attendanceCol = collection(db, 'absenceRecords');
     const q = recordLimit 
       ? query(attendanceCol, orderBy('timestamp', 'desc'), limit(recordLimit))
       : query(attendanceCol, orderBy('timestamp', 'desc'));
-
+  try {
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => {
       const data = doc.data();
@@ -287,9 +292,12 @@ export const getFullReport = async (recordLimit?: number): Promise<AttendanceRec
         checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
       } as AttendanceRecord;
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching full attendance report:", error);
-    return [];
+    if (error.code === 'permission-denied') {
+        throw new Error("Gagal mengambil laporan: Izin ditolak.");
+    }
+    throw new Error("Gagal mengambil laporan absensi lengkap.");
   }
 };
 
@@ -361,11 +369,14 @@ export const getAttendanceForTeacher = async (teacherId: string, recordLimit?: n
           checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
         } as AttendanceRecord;
       });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching attendance records for teacher:", error);
-        if ((error as any).code === 'failed-precondition') {
-            alert("Query to fetch attendance history failed. A composite index might be required in Firestore. Please check the developer console (F12) for a link to create it.");
+        if (error.code === 'permission-denied') {
+            throw new Error("Gagal mengambil data absensi: Izin ditolak. Periksa aturan keamanan Firestore Anda.");
         }
-        return [];
+        if (error.code === 'failed-precondition') {
+            throw new Error("Query gagal: Indeks komposit Firestore mungkin diperlukan. Periksa konsol developer (F12) untuk detail.");
+        }
+        throw new Error("Gagal mengambil riwayat absensi. Silakan coba lagi.");
     }
 };

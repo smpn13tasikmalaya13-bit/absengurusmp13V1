@@ -127,6 +127,8 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
       setIsLoading(false);
     }
   };
+  
+  const deviceBindingErrorMessage = 'Akun ini sudah terikat pada perangkat lain. Silakan hubungi Admin untuk melakukan reset perangkat.';
 
   return (
     <main>
@@ -146,7 +148,24 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
           <FormInput id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
         
-        {error && <p className="text-sm text-red-400 text-center bg-red-500/10 py-2 px-4 rounded-md border border-red-500/30">{error}</p>}
+        {error && (
+          error === deviceBindingErrorMessage ? (
+            <div className="text-sm text-amber-300 bg-amber-500/10 p-4 rounded-md border border-amber-500/30 space-y-2">
+              <h3 className="font-bold flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.03-1.742 3.03H4.42c-1.532 0-2.492-1.696-1.742-3.03l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Login Gagal: Perangkat Tidak Dikenali
+              </h3>
+              <p className="text-amber-300/80">Untuk alasan keamanan, akun Anda hanya dapat digunakan pada satu perangkat yang terdaftar.</p>
+              <p className="text-amber-300/80">
+                <strong>Solusi:</strong> Hubungi Admin untuk melakukan <strong className="font-semibold text-white">"Reset Perangkat"</strong>. Setelah direset, Anda akan bisa login dari perangkat ini.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-red-400 text-center bg-red-500/10 py-2 px-4 rounded-md border border-red-500/30">{error}</p>
+          )
+        )}
 
         <Button type="submit" isLoading={isLoading}>
           Login

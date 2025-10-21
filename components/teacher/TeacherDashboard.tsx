@@ -29,6 +29,7 @@ const TeacherDashboard: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [isWithinRadius, setIsWithinRadius] = useState<boolean | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
   // Dynamic data states
   const [stats, setStats] = useState({ today: 0, week: 0, total: 0 });
@@ -88,31 +89,36 @@ const TeacherDashboard: React.FC = () => {
     setIsLoadingStats(true);
     setIsLoadingHistory(true);
     setIsLoadingReported(true);
+    setDashboardError(null); 
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    
-    // Refresh stats and history
-    const allAttendance = await getAttendanceForTeacher(user.id);
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeek = new Date(startOfToday);
-    startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() === 0 ? 6 : startOfWeek.getDay() - 1));
-    const todayCount = allAttendance.filter(r => r.timestamp >= startOfToday && r.scheduleId).length;
-    const weekCount = allAttendance.filter(r => r.timestamp >= startOfWeek).length;
-    setStats({ today: todayCount, week: weekCount, total: allAttendance.length });
-    setAttendanceHistory(allAttendance); // Fetch all history for accurate checks
+    try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        // Refresh stats and history
+        const allAttendance = await getAttendanceForTeacher(user.id);
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfWeek = new Date(startOfToday);
+        startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() === 0 ? 6 : startOfWeek.getDay() - 1));
+        const todayCount = allAttendance.filter(r => r.timestamp >= startOfToday && r.scheduleId).length;
+        const weekCount = allAttendance.filter(r => r.timestamp >= startOfWeek).length;
+        setStats({ today: todayCount, week: weekCount, total: allAttendance.length });
+        setAttendanceHistory(allAttendance); // Fetch all history for accurate checks
 
-    // Refresh reported absences
-    const reported = await getStudentAbsencesByTeacherForDate(user.id, todayStr);
-    setReportedAbsences(reported);
+        // Refresh reported absences
+        const reported = await getStudentAbsencesByTeacherForDate(user.id, todayStr);
+        setReportedAbsences(reported);
 
-    const allReported = await getStudentAbsencesByTeacher(user.id);
-    setAllStudentAbsences(allReported);
-
-
-    setIsLoadingStats(false);
-    setIsLoadingHistory(false);
-    setIsLoadingReported(false);
+        const allReported = await getStudentAbsencesByTeacher(user.id);
+        setAllStudentAbsences(allReported);
+    } catch (error) {
+        console.error("Failed to refresh data:", error);
+        setDashboardError(error instanceof Error ? error.message : 'Gagal memuat ulang data.');
+    } finally {
+        setIsLoadingStats(false);
+        setIsLoadingHistory(false);
+        setIsLoadingReported(false);
+    }
   };
 
 
@@ -141,6 +147,7 @@ const TeacherDashboard: React.FC = () => {
       setIsLoadingHistory(true);
       setIsLoadingStats(true);
       setIsLoadingReported(true);
+      setDashboardError(null);
       try {
         const [allSchedules, allAttendance, reported, classesData, allReportedStudents] = await Promise.all([
           getSchedulesByTeacher(user.id),
@@ -169,6 +176,7 @@ const TeacherDashboard: React.FC = () => {
         setAllStudentAbsences(allReportedStudents);
       } catch (error) {
         console.error("Failed to fetch teacher dashboard data:", error);
+        setDashboardError(error instanceof Error ? error.message : "Gagal memuat data. Periksa koneksi Anda.");
       } finally {
         setIsLoadingSchedule(false);
         setIsLoadingHistory(false);
@@ -480,6 +488,12 @@ const TeacherDashboard: React.FC = () => {
   
   const BerandaContent = () => (
     <>
+      {dashboardError && (
+        <div className="bg-red-500/20 border border-red-500/30 text-red-300 text-sm p-4 rounded-lg mb-6">
+          <p className="font-bold">Gagal Memuat Data</p>
+          <p>{dashboardError}</p>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <button onClick={() => setShowScanner(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-indigo-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed group" disabled={isWithinRadius !== true}>
           <ScanIcon/>

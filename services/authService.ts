@@ -28,41 +28,6 @@ const getOrCreateDeviceId = (): string => {
 
 // ================== Auth Service ==================
 
-/**
- * Retrieves the admin registration key from the Firestore 'config' collection.
- * @returns {Promise<string | null>} The registration key, or null if not set.
- */
-export const getAdminRegistrationKey = async (): Promise<string | null> => {
-    try {
-        const configDocRef = doc(db, 'config', 'admin');
-        const docSnap = await getDoc(configDocRef);
-        if (docSnap.exists() && docSnap.data().registrationKey) {
-            return docSnap.data().registrationKey;
-        }
-        return null;
-    } catch (error) {
-        console.error("Error fetching admin registration key:", error);
-        throw new Error("Gagal mengambil kunci pendaftaran admin.");
-    }
-};
-
-/**
- * Generates and saves a new random admin registration key to Firestore.
- * @returns {Promise<string>} The newly generated key.
- */
-export const updateAdminRegistrationKey = async (): Promise<string> => {
-    try {
-        const newKey = `RAHASIA-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
-        const configDocRef = doc(db, 'config', 'admin');
-        await setDoc(configDocRef, { registrationKey: newKey }, { merge: true });
-        return newKey;
-    } catch (error) {
-        console.error("Error updating admin registration key:", error);
-        throw new Error("Gagal memperbarui kunci pendaftaran admin.");
-    }
-};
-
-
 // Login user with Firebase Auth AND verify device binding
 export const login = async (email: string, pass: string): Promise<FirebaseUser> => {
   try {
@@ -125,20 +90,23 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
 
       } catch (registrationError: any) {
         console.error("Auto-registration for main admin failed:", registrationError);
-        // If the error is 'email-already-in-use', it means the account exists,
-        // so the original password was simply incorrect.
-        if (registrationError.code === 'auth/email-already-in-use') {
-          throw new Error('Email atau password salah.');
+        // The 'register' function throws a custom Error. We check its message.
+        // If the error message indicates the email is already in use, it means the
+        // main admin account already exists, so the initial login failure was due
+        // to a wrong password.
+        if (registrationError instanceof Error && registrationError.message === 'Email ini sudah terdaftar. Silakan gunakan email lain.') {
+            throw new Error('Email atau password salah.');
         }
-        // For other registration errors, show a more specific message.
-        throw new Error(`Pendaftaran otomatis untuk admin utama gagal: ${registrationError.message}`);
+        // For any other registration failure (e.g., Firestore permissions),
+        // we provide a more detailed error.
+        throw new Error(`Pendaftaran otomatis untuk admin utama gagal. ${registrationError.message || 'Penyebab tidak diketahui.'}`);
       }
     }
     // --- END SPECIAL HANDLING ---
       
     console.error("Error signing in:", error);
     // Re-throw custom errors
-    if (error.message.startsWith('Akun ini sudah terikat') || error.message.startsWith('Profil pengguna tidak ditemukan') || error.message.startsWith('Perangkat ini sudah digunakan oleh pengguna lain')) {
+    if (error.message.startsWith('Akun ini sudah terikat') || error.message.startsWith('Profil pengguna tidak ditemukan')) {
         throw error;
     }
     switch (error.code) {
@@ -148,6 +116,8 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
             throw new Error('Format email tidak valid.');
         case 'auth/user-disabled':
             throw new Error('Akun ini telah dinonaktifkan.');
+        case 'permission-denied': // Firestore specific error when reading profile
+            throw new Error('Izin ditolak saat mengambil profil. Hubungi admin.');
         default:
             throw new Error('Terjadi kesalahan tak terduga saat login.');
     }
@@ -170,22 +140,15 @@ export const register = async (name: string, email: string, pass: string, role: 
 
         // --- Admin Registration Key Validation (now performed AFTER authentication) ---
         if (role === Role.Admin) {
-            const storedKey = await getAdminRegistrationKey();
-            if (email === MAIN_ADMIN_EMAIL) {
-                // If it's the main admin registering and no key exists, this is the initial setup.
-                // We allow it and create the first key. No validation needed.
-                if (!storedKey) {
-                    await updateAdminRegistrationKey();
-                }
-            } else {
-                // For any other admin, validate their provided key.
-                if (!storedKey) {
-                    throw new Error('Kunci pendaftaran Admin belum di-set oleh Admin Utama.');
-                }
-                if (adminKey !== storedKey) {
+            // For any admin other than the main one (who registers automatically),
+            // validate their provided key against the static key.
+            if (email !== MAIN_ADMIN_EMAIL) {
+                const STATIC_ADMIN_KEY = "adm13v1";
+                if (adminKey !== STATIC_ADMIN_KEY) {
                     throw new Error('Kode pendaftaran Admin tidak valid.');
                 }
             }
+            // The main admin does not need key validation and no key is created anymore.
         }
 
         const deviceId = getOrCreateDeviceId();
@@ -223,7 +186,7 @@ export const register = async (name: string, email: string, pass: string, role: 
         }
 
         // Re-throw specific, user-friendly errors
-        if (error.message.startsWith('Kode pendaftaran Admin') || error.message.startsWith('Kunci pendaftaran Admin')) {
+        if (error.message.startsWith('Kode pendaftaran Admin')) {
             throw error;
         }
         switch (error.code) {
