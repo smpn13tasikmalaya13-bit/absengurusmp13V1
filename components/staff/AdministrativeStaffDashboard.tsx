@@ -375,7 +375,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
                 </div>
             </Card>
 
-            <Card title="Opsi Lain">
+            <Card title="Lapor Ketidakhadiran">
                 <div className="text-center">
                     <p className="text-slate-400 mb-4 text-sm">Jika Anda tidak dapat hadir hari ini, silakan laporkan di sini.</p>
                     <Button
