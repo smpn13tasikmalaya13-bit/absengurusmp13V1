@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     getAllUsers,
     deleteUser,
-    resetDeviceBinding,
     register,
 } from '../../services/authService';
 import { Role, User } from '../../types';
@@ -24,7 +23,6 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
 
   // Modals state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
   
   // Data for modals
@@ -85,32 +83,6 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
       // FIX: Explicitly type error in catch block.
     } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Gagal menghapus pengguna.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // === RESET DEVICE MODAL LOGIC ===
-  const handleOpenResetModal = (user: User) => {
-    setUserToAction(user);
-    clearMessages();
-    setIsResetModalOpen(true);
-  };
-  const handleConfirmReset = async () => {
-    if (!userToAction) return;
-    clearMessages();
-    setIsSubmitting(true);
-    try {
-      await resetDeviceBinding(userToAction.id);
-      setSuccess(`Ikatan perangkat untuk ${userToAction.name} berhasil direset.`);
-      setTimeout(() => {
-        setIsResetModalOpen(false);
-        setUserToAction(null);
-        clearMessages();
-      }, 2000);
-      // FIX: Explicitly type error in catch block.
-    } catch (err: any) {
-      setError(err instanceof Error ? err.message : 'Gagal mereset perangkat.');
     } finally {
       setIsSubmitting(false);
     }
@@ -219,7 +191,6 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
                     <td className="flex justify-between items-center md:table-cell md:p-4">
                       <span className="text-sm font-semibold text-slate-400 md:hidden">Aksi</span>
                       <div className="flex items-center space-x-4">
-                        <button onClick={() => handleOpenResetModal(user)} className="text-indigo-400 hover:underline text-sm font-medium">Reset Perangkat</button>
                         <button onClick={() => handleOpenDeleteModal(user)} className="text-red-400 hover:underline text-sm font-medium">Hapus</button>
                       </div>
                     </td>
@@ -258,22 +229,6 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
               </div>
           </form>
       </Modal>
-
-      {userToAction && (
-          <Modal isOpen={isResetModalOpen} onClose={() => closeModal(setIsResetModalOpen)} title="Konfirmasi Reset Perangkat">
-              <div className="space-y-4">
-                  <p className="text-slate-300">
-                      Apakah Anda yakin ingin mereset ikatan perangkat untuk <strong>{userToAction.name}</strong>? Pengguna akan dapat login dari perangkat baru setelah ini.
-                  </p>
-                  {error && <p className="text-sm text-red-400">{error}</p>}
-                  {success && <p className="text-sm text-green-400">{success}</p>}
-                  <div className="flex justify-end space-x-3 pt-2">
-                      <Button type="button" onClick={() => closeModal(setIsResetModalOpen)} variant="secondary" className="w-auto" disabled={isSubmitting}>Batal</Button>
-                      <Button onClick={handleConfirmReset} isLoading={isSubmitting} variant="primary" className="w-auto">Reset</Button>
-                  </div>
-              </div>
-          </Modal>
-      )}
 
       {userToAction && (
         <Modal isOpen={isDeleteModalOpen} onClose={() => closeModal(setIsDeleteModalOpen)} title="Konfirmasi Hapus">

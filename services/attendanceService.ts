@@ -343,24 +343,12 @@ export const reportTeacherAbsence = async (
 
 // Fetch attendance records for a specific teacher
 export const getAttendanceForTeacher = async (teacherId: string, recordLimit?: number): Promise<AttendanceRecord[]> => {
-    const attendanceCol = collection(db, 'absenceRecords');
-    // Base constraints
-    const constraints = [
-        where('teacherId', '==', teacherId),
-        orderBy('timestamp', 'desc')
-    ];
+  const attendanceCol = collection(db, 'absenceRecords');
+  const q = query(attendanceCol, where('teacherId', '==', teacherId));
 
-    // Add limit if provided
-    if (recordLimit) {
-        constraints.push(limit(recordLimit));
-    }
-    
-    // Construct the query
-    const q = query(attendanceCol, ...constraints);
-
-    try {
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => {
+  try {
+    const querySnapshot = await getDocs(q);
+    let records = querySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -368,8 +356,18 @@ export const getAttendanceForTeacher = async (teacherId: string, recordLimit?: n
           timestamp: (data.timestamp as Timestamp).toDate(),
           checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
         } as AttendanceRecord;
-      });
-    } catch (error: any) {
+    });
+
+    // Sort records by timestamp descending (newest first) on the client-side
+    records.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+    // Apply limit on the client-side
+    if (recordLimit) {
+      return records.slice(0, recordLimit);
+    }
+
+    return records;
+  } catch (error: any) {
         console.error("Error fetching attendance records for teacher:", error);
         if (error.code === 'permission-denied') {
             throw new Error("Gagal mengambil data absensi: Izin ditolak. Periksa aturan keamanan Firestore Anda.");

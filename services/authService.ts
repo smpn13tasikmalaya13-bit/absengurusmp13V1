@@ -9,26 +9,11 @@ import {
 import { doc, setDoc, getDoc, collection, getDocs, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
 import { MAIN_ADMIN_EMAIL } from '../constants';
 
-// ================== Device ID Helpers ==================
-
-/**
- * Gets the device ID from localStorage or creates a new one.
- * This provides a persistent, unique identifier for the browser instance.
- * @returns {string} The unique device ID.
- */
-const getOrCreateDeviceId = (): string => {
-    let deviceId = localStorage.getItem('deviceId');
-    if (!deviceId) {
-        deviceId = crypto.randomUUID();
-        localStorage.setItem('deviceId', deviceId);
-    }
-    return deviceId;
-};
-
+// Device ID helpers have been removed to disable the device binding feature.
 
 // ================== Auth Service ==================
 
-// Login user with Firebase Auth AND verify device binding
+// Login user with Firebase Auth
 export const login = async (email: string, pass: string): Promise<FirebaseUser> => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
@@ -39,35 +24,11 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
         await signOut(auth);
         throw new Error('Profil pengguna tidak ditemukan. Hubungi admin untuk bantuan.');
     }
-
-    // Admins are exempt from device binding
-    if (userProfile.role === Role.Admin) {
-        return firebaseUser;
-    }
-
-    const deviceId = getOrCreateDeviceId();
-
-    if (userProfile.boundDeviceId) {
-      // This user's account is already bound to a device.
-      // Check if they are using their correct, bound device.
-      if (userProfile.boundDeviceId !== deviceId) {
-        await signOut(auth);
-        throw new Error('Akun ini sudah terikat pada perangkat lain. Silakan hubungi Admin untuk melakukan reset perangkat.');
-      }
-    } else {
-      // This is a first-time login for this user, or their binding was reset.
-      // The check for whether this device is already used by another user has been removed.
-      // That check required a collection-wide query which often fails due to security rules, causing login to fail.
-      // Binding the new device directly is a more robust client-side approach.
-      await updateDoc(doc(db, "users", firebaseUser.uid), { boundDeviceId: deviceId });
-    }
     
     return firebaseUser;
 
   } catch (error: any) {
     // --- SPECIAL HANDLING FOR FIRST ADMIN LOGIN ---
-    // If login fails for the default admin, try to register them automatically.
-    // This simplifies the setup process for a fresh installation.
     if (error.code === 'auth/invalid-credential' && email === MAIN_ADMIN_EMAIL) {
       try {
         console.log("Main admin login failed, attempting to auto-register default admin...");
@@ -85,7 +46,6 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
             throw new Error('Profil pengguna tidak ditemukan setelah pendaftaran otomatis.');
         }
         
-        // Admin is exempt from device binding.
         return firebaseUser;
 
       } catch (registrationError: any) {
@@ -106,7 +66,7 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
       
     console.error("Error signing in:", error);
     // Re-throw custom errors
-    if (error.message.startsWith('Akun ini sudah terikat') || error.message.startsWith('Profil pengguna tidak ditemukan')) {
+    if (error.message.startsWith('Profil pengguna tidak ditemukan')) {
         throw error;
     }
     switch (error.code) {
@@ -151,8 +111,6 @@ export const register = async (name: string, email: string, pass: string, role: 
             // The main admin does not need key validation and no key is created anymore.
         }
 
-        const deviceId = getOrCreateDeviceId();
-
         // Create the user profile object
         const newUser: User = {
             id: firebaseUser.uid,
@@ -160,11 +118,6 @@ export const register = async (name: string, email: string, pass: string, role: 
             email,
             role,
         };
-        
-        // Conditionally add boundDeviceId only for non-admins
-        if (role !== Role.Admin) {
-            newUser.boundDeviceId = deviceId;
-        }
         
         // Create the user's profile document in Firestore.
         await setDoc(doc(db, "users", firebaseUser.uid), newUser);
@@ -252,23 +205,5 @@ export const deleteUser = async (uid: string): Promise<void> => {
     } catch (error) {
         console.error("Error deleting user profile:", error);
         throw new Error("Failed to delete the user profile. Please try again.");
-    }
-};
-
-/**
- * Resets the device binding for a user by setting their boundDeviceId to null.
- * @param {string} uid The user's ID (UID).
- */
-export const resetDeviceBinding = async (uid: string): Promise<void> => {
-    if (!uid) {
-        throw new Error("User ID is required for device reset.");
-    }
-    try {
-        const userDocRef = doc(db, 'users', uid);
-        // Using `updateDoc` with `null` effectively removes the field or sets it to null
-        await updateDoc(userDocRef, { boundDeviceId: null });
-    } catch (error) {
-        console.error("Error resetting device binding:", error);
-        throw new Error("Failed to reset device binding. Please try again.");
     }
 };

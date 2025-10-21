@@ -430,7 +430,7 @@ const TeacherDashboard: React.FC = () => {
         }
 
         // Prepare data for Firestore update, excluding fields that shouldn't be there
-        const { id, boundDeviceId, email, role, ...updatableProfileData } = profileData;
+        const { id, email, role, ...updatableProfileData } = profileData;
         const dataToUpdate = { ...updatableProfileData, photoURL: photoURL || null };
 
         // Update Firestore

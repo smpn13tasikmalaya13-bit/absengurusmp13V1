@@ -186,7 +186,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
                 photoURL = await uploadProfilePhoto(profilePhotoFile, user.id);
             }
 
-            const { id, boundDeviceId, email, role, ...updatableProfileData } = profileData;
+            const { id, email, role, ...updatableProfileData } = profileData;
             const dataToUpdate = { ...updatableProfileData, photoURL: photoURL || null };
 
             await updateUserProfile(user.id, dataToUpdate);
@@ -208,22 +208,29 @@ const AdministrativeStaffDashboard: React.FC = () => {
     const getStatusBadge = (record: ProcessedHistoryRecord) => {
         let statusText = record.status;
         let className = '';
-
-        if (record.denda > 0 && (record.status === 'Datang' || record.status === 'Pulang')) {
-            statusText = record.status === 'Datang' ? 'Telat Datang' : 'Pulang (Telat)';
-            className = 'bg-red-500/30 text-red-200';
-        } else {
-            switch (record.status) {
-                case 'Datang':
-                    className = 'bg-emerald-500/30 text-emerald-200';
-                    break;
-                case 'Pulang':
-                    className = 'bg-blue-500/30 text-blue-200';
-                    break;
-                default: // Sakit, Izin, etc.
-                    className = 'bg-yellow-500/30 text-yellow-200';
-                    break;
-            }
+    
+        // The record.status is the final state for the day ('Pulang') or the current state ('Datang')
+        switch (record.status) {
+            case 'Datang':
+                // If they are only clocked in, show if they were late on arrival.
+                if (record.denda > 0) {
+                    statusText = 'Telat Datang';
+                    className = 'bg-red-500/30 text-red-200'; // Red for late
+                } else {
+                    statusText = 'Datang';
+                    className = 'bg-emerald-500/30 text-emerald-200'; // Green for on-time arrival
+                }
+                break;
+            case 'Pulang':
+                // If they have clocked out, the badge just says "Pulang".
+                // The lateness is indicated by the separate "Denda" text.
+                statusText = 'Pulang';
+                className = 'bg-blue-500/30 text-blue-200'; // Blue for completed
+                break;
+            default: // For 'Sakit', 'Izin', etc.
+                statusText = record.status;
+                className = 'bg-yellow-500/30 text-yellow-200'; // Yellow for other statuses
+                break;
         }
         
         return (
@@ -411,6 +418,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
                                     {record.denda > 0 && (
                                         <p className="text-sm font-semibold text-red-400 mt-1">
                                             Denda: Rp {record.denda.toLocaleString('id-ID')}
+                                            <span className="text-slate-400 font-normal"> (Telat Masuk)</span>
                                         </p>
                                     )}
                                 </div>
