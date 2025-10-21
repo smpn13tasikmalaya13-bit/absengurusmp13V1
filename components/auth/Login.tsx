@@ -45,12 +45,9 @@ const PwaInstallPrompt: React.FC = () => {
     const { outcome } = await (installPromptEvent as any).userChoice;
     console.log(`User response to the install prompt: ${outcome}`);
     
-    // We don't need to clear the event here anymore because the `appinstalled`
-    // event will handle it. However, if the user dismisses the prompt,
-    // the event might still be usable, but for simplicity, we'll clear it.
-    if (outcome !== 'accepted') {
-        setInstallPromptEvent(null);
-    }
+    // The button will now only disappear if the app is successfully installed,
+    // which is handled by the 'appinstalled' event listener. We no longer
+    // hide it if the user dismisses the prompt.
   };
   
   // Only render the component if the `beforeinstallprompt` event has been fired.
