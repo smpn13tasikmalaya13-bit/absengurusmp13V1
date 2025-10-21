@@ -279,15 +279,15 @@ const StaffAttendanceReportPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-white">Laporan Absensi Tenaga Administrasi</h1>
+      <h1 className="text-xl font-bold text-white">Laporan Absensi Tendik</h1>
       
       <Card>
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-                <label className="text-sm text-gray-400">Nama Staf</label>
+                <label className="text-sm text-gray-400">Nama Tendik</label>
                 <select value={selectedStaff} onChange={e => setSelectedStaff(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md">
-                    <option value="">Semua Staf</option>
+                    <option value="">Semua Tendik</option>
                     {staffMembers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
             </div>
