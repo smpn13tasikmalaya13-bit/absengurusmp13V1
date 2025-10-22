@@ -4,10 +4,11 @@ import {
   addLessonSchedule, 
   updateLessonSchedule, 
   deleteLessonSchedule,
-  getAllClasses 
+  getAllClasses,
+  getAllMasterSchedules
 } from '../../services/dataService';
 import { getAllUsers } from '../../services/authService';
-import { LessonSchedule, Class, User, Role } from '../../types';
+import { LessonSchedule, Class, User, Role, MasterSchedule } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -27,8 +28,10 @@ const initialFormState = {
 // FIX: Using React.FC to resolve JSX namespace error.
 const ManageLessonSchedule: React.FC = () => {
   const [schedules, setSchedules] = useState<LessonSchedule[]>([]);
+  const [masterSchedules, setMasterSchedules] = useState<MasterSchedule[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
+  const [uniqueSubjects, setUniqueSubjects] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Modal states
@@ -48,14 +51,20 @@ const ManageLessonSchedule: React.FC = () => {
   const fetchSchedules = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [scheduleData, classData, userData] = await Promise.all([
+      const [scheduleData, classData, userData, masterScheduleData] = await Promise.all([
         getAllLessonSchedules(),
         getAllClasses(),
-        getAllUsers()
+        getAllUsers(),
+        getAllMasterSchedules()
       ]);
       setSchedules(scheduleData);
       setClasses(classData);
       setTeachers(userData.filter(u => u.role === Role.Teacher || u.role === Role.Coach));
+      setMasterSchedules(masterScheduleData);
+      
+      const subjects = [...new Set(masterScheduleData.map(s => s.subject))].sort();
+      setUniqueSubjects(subjects);
+
       // FIX: Explicitly type error in catch block.
     } catch (err: any) {
       setError("Gagal memuat data. Silakan coba lagi.");
@@ -122,9 +131,33 @@ const ManageLessonSchedule: React.FC = () => {
       setError('Semua field harus diisi.');
       return;
     }
-
+    
     setError('');
     setIsSubmitting(true);
+
+    // --- VALIDATION AGAINST MASTER SCHEDULE (NEW LOGIC) ---
+    const masterRule = masterSchedules.find(ms =>
+        ms.namaGuru === formData.teacher &&
+        ms.subject === formData.subject
+    );
+
+    if (masterRule) {
+        // Count existing hours for this teacher and subject, excluding the one being edited.
+        const currentHours = schedules.filter(s =>
+            s.teacher === formData.teacher &&
+            s.subject === formData.subject &&
+            s.id !== selectedScheduleId // Don't count the current schedule if we are editing it
+        ).length;
+
+        // For adding a new one, we check if current is >= max.
+        // For editing, we check if current is >= max (it's fine if it's equal, as we are replacing one)
+        // But since we excluded the current one being edited, the logic is simply currentHours >= totalHours
+        if (currentHours >= masterRule.totalHours) {
+            setError(`Total jam untuk guru ${formData.teacher} pada mata pelajaran ${formData.subject} sudah mencapai batas maksimum (${masterRule.totalHours} jam) dari jadwal induk.`);
+            setIsSubmitting(false);
+            return;
+        }
+    }
     
     const schedulePayload: Omit<LessonSchedule, 'id'> = {
       day: formData.day,
@@ -209,7 +242,10 @@ const ManageLessonSchedule: React.FC = () => {
       </div>
        <div>
         <label htmlFor="subject" className="block text-sm font-medium text-gray-300">Mata Pelajaran</label>
-        <input id="subject" name="subject" type="text" value={formData.subject} onChange={handleFormChange} required placeholder="Contoh: Matematika" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+        <select id="subject" name="subject" value={formData.subject} onChange={handleFormChange} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            <option value="">Pilih Mata Pelajaran</option>
+            {uniqueSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>

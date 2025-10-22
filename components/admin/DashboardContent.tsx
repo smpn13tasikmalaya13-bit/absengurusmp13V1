@@ -5,9 +5,6 @@ import { getAttendanceReport, getFullReport } from '../../services/attendanceSer
 import { getAllUsers } from '../../services/authService';
 import AttendancePieChart from './AttendancePieChart';
 import { Spinner } from '../ui/Spinner';
-import { Button } from '../ui/Button';
-import { seedDatabase } from '../../services/seedDatabase';
-import QRCodeGenerator from './QRCodeGenerator';
 
 interface StatCardProps {
   title: string;
@@ -22,7 +19,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, colorClass = 'text-wh
   </Card>
 );
 
-const EmptyStateDashboard: React.FC<{ onSeedClick: () => void; isSeeding: boolean }> = ({ onSeedClick, isSeeding }) => (
+const EmptyStateDashboard: React.FC = () => (
   <Card title="Selamat Datang di HadirKu">
     <div className="text-center py-8">
       <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -30,18 +27,8 @@ const EmptyStateDashboard: React.FC<{ onSeedClick: () => void; isSeeding: boolea
       </svg>
       <h3 className="mt-2 text-lg font-medium text-white">Database Kosong</h3>
       <p className="mt-1 text-sm text-gray-400">
-        Sepertinya ini adalah pertama kalinya Anda menjalankan aplikasi. Untuk memulai, isi database dengan data awal.
+        Sepertinya ini adalah pertama kalinya Anda menjalankan aplikasi. Silakan mulai dengan menambahkan data melalui menu manajemen.
       </p>
-      <div className="mt-6">
-        <Button
-          onClick={onSeedClick}
-          isLoading={isSeeding}
-          variant="primary"
-          className="w-auto !bg-blue-600 hover:!bg-blue-700"
-        >
-          Isi Data Awal (Seed Database)
-        </Button>
-      </div>
     </div>
   </Card>
 );
@@ -50,7 +37,6 @@ const DashboardContent: React.FC = () => {
   const [stats, setStats] = useState({ total: 0, present: 0, absent: 0 });
   const [recentRecords, setRecentRecords] = useState<(AttendanceRecord & { role?: Role })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSeeding, setIsSeeding] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -87,22 +73,6 @@ const DashboardContent: React.FC = () => {
     fetchData();
   }, []);
   
-  const handleSeedDatabase = async () => {
-      if (window.confirm("Are you sure you want to seed the database? This will add mock data and should only be done on a fresh database.")) {
-          setIsSeeding(true);
-          try {
-              await seedDatabase();
-              // Reload to reflect new data
-              window.location.reload();
-          } catch (error) {
-              console.error(error);
-          } finally {
-              setIsSeeding(false);
-          }
-      }
-  };
-
-
   const formatDate = (date: Date) => {
     const datePart = date.toLocaleDateString('en-GB'); // dd/mm/yyyy
     const timePart = date.toLocaleTimeString('id-ID', { hour12: false }).replace(/\./g, ':');
@@ -142,7 +112,7 @@ const DashboardContent: React.FC = () => {
       </div>
 
       {isDataEmpty ? (
-        <EmptyStateDashboard onSeedClick={handleSeedDatabase} isSeeding={isSeeding} />
+        <EmptyStateDashboard />
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -156,7 +126,6 @@ const DashboardContent: React.FC = () => {
                 <Card title="Ringkasan Absensi Hari Ini">
                     <AttendancePieChart present={stats.present} absent={stats.absent} />
                 </Card>
-                <QRCodeGenerator />
             </div>
             <div className="lg:col-span-3">
                 <Card title="Aktivitas Absensi Terbaru" className="h-full">
@@ -193,20 +162,6 @@ const DashboardContent: React.FC = () => {
           </div>
         </>
       )}
-
-      <Card title="Developer Tools">
-          <div className="flex flex-col items-start space-y-4">
-              <p className="text-sm text-gray-400">Gunakan tombol ini untuk mengisi database Firebase yang kosong dengan data awal (kelas, eskul, jadwal).</p>
-              <Button
-                  onClick={handleSeedDatabase}
-                  isLoading={isSeeding}
-                  variant="secondary"
-                  className="w-auto !bg-amber-600 hover:!bg-amber-700 !text-white"
-                >
-                  Seed Initial Data
-              </Button>
-          </div>
-      </Card>
 
       <footer className="text-center text-gray-500 text-sm pt-4">
         © Rullp 2025 HadirKu. All rights reserved.

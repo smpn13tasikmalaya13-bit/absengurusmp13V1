@@ -74,3 +74,11 @@ export interface StudentAbsenceRecord {
   teacherId: string; // Teacher's UID
   absentPeriods?: number[]; // To record specific lesson periods
 }
+
+export interface MasterSchedule {
+  id: string;
+  kode: string;
+  namaGuru: string;
+  subject: string;
+  totalHours: number;
+}

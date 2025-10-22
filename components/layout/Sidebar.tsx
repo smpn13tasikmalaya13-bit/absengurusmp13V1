@@ -7,6 +7,8 @@ const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w
 const ScheduleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 const DataIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10m16-10v10M9 3h6l-3 4-3-4zM9 21h6l-3-4-3 4z" /></svg>;
 const QRIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h-1m-1-6v1M5 12H4m1-6H4m16 0h-1M5 18H4m1-6h1M9 4v1m0 14v1m6-16v1m0 14v1m-6-1h1m4 0h1M9 9h1m4 0h1m-4 4h1m4 0h1M9 19h1m4 0h1m-1-4h1m-5-4h1" /></svg>;
+const UploadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>;
+
 
 interface SidebarProps {
   currentView: string;
@@ -61,6 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
                 <NavItem icon={<UsersIcon />} label="Guru & Pembina" view="manage-teachers" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<UsersIcon />} label="Admin & Tendik" view="manage-admins" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ScheduleIcon />} label="Jadwal Pelajaran" view="manage-lesson-schedule" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<UploadIcon />} label="Unggah Jadwal Induk" view="upload-master-schedule" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ScheduleIcon />} label="Jadwal Eskul" view="manage-eskul-schedule" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<DataIcon />} label="Data Kelas" view="manage-classes" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<DataIcon />} label="Data Eskul" view="manage-eskuls" currentView={currentView} onNavigate={onNavigate} />

@@ -62,9 +62,15 @@ const TeacherAttendanceReportPage: React.FC = () => {
       endDate: end,
       teacherId: selectedTeacher || undefined,
     });
-    setReportData(data);
+    
+    // Filter the results to only include records from actual teachers/coaches,
+    // which is crucial when "Semua Guru" (All Teachers) is selected.
+    const teacherIds = new Set(teachers.map(t => t.id));
+    const teacherRecords = data.filter(record => teacherIds.has(record.teacherId));
+    
+    setReportData(teacherRecords);
     setIsLoading(false);
-  }, [startDate, endDate, selectedTeacher]);
+  }, [startDate, endDate, selectedTeacher, teachers]);
 
   useEffect(() => {
       if (startDate && endDate) {

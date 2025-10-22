@@ -1,5 +1,5 @@
-import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User } from '../types';
-import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
+import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User, MasterSchedule } from '../types';
+import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { db, storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
@@ -95,10 +95,60 @@ export const updateUserProfile = async (userId: string, data: Partial<User>): Pr
     }
 };
 
+/**
+ * Replaces the entire master schedule collection with new data from an upload.
+ * This is an atomic operation to ensure data consistency.
+ * @param schedules An array of master schedule objects to upload.
+ */
+export const uploadMasterSchedule = async (schedules: Omit<MasterSchedule, 'id'>[]): Promise<void> => {
+    const batch = writeBatch(db);
+    const masterSchedulesCol = collection(db, 'masterSchedules');
+
+    try {
+        // Step 1: Query for all existing documents in the collection.
+        const existingDocsSnapshot = await getDocs(query(masterSchedulesCol));
+        
+        // Step 2: Add delete operations for all existing documents to the batch.
+        existingDocsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        // Step 3: Add set operations for the new documents to the batch.
+        schedules.forEach(scheduleData => {
+            const docRef = doc(masterSchedulesCol); // Firestore generates a new unique ID
+            batch.set(docRef, scheduleData);
+        });
+
+        // Step 4: Commit the batch to atomically delete old data and add new data.
+        await batch.commit();
+    } catch (error) {
+        console.error("Error uploading master schedule:", error);
+        throw new Error("Gagal mengunggah jadwal induk. Operasi dibatalkan.");
+    }
+};
+
 
 // ========================================================================
 // FIRESTORE DATA FETCHING FUNCTIONS
 // ========================================================================
+
+/**
+ * Fetches the entire master schedule collection from Firestore.
+ * This data is used as the source of truth for schedule validation.
+ * @returns A promise that resolves to an array of master schedules.
+ */
+export const getAllMasterSchedules = async (): Promise<MasterSchedule[]> => {
+    try {
+        const masterSchedulesCol = collection(db, 'masterSchedules');
+        const q = query(masterSchedulesCol);
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MasterSchedule));
+    } catch (error) {
+        console.error("Error fetching master schedules:", error);
+        return [];
+    }
+};
+
 
 // Fetch all classes from Firestore
 export const getAllClasses = async (): Promise<Class[]> => {

@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import QRScanner from './QRScanner';
-import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, addLessonSchedule, checkScheduleConflict, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile } from '../../services/dataService';
+import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, addLessonSchedule, checkScheduleConflict, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile, getAllMasterSchedules, getAllLessonSchedules } from '../../services/dataService';
 import { getAttendanceForTeacher, reportTeacherAbsence, recordAttendance } from '../../services/attendanceService';
-import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, User } from '../../types';
+import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, User, MasterSchedule } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
@@ -36,6 +36,8 @@ const TeacherDashboard: React.FC = () => {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [todaysSchedule, setTodaysSchedule] = useState<LessonSchedule[]>([]);
   const [fullSchedule, setFullSchedule] = useState<LessonSchedule[]>([]);
+  const [masterSchedules, setMasterSchedules] = useState<MasterSchedule[]>([]);
+  const [allLessonSchedules, setAllLessonSchedules] = useState<LessonSchedule[]>([]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(true);
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -149,17 +151,29 @@ const TeacherDashboard: React.FC = () => {
       setIsLoadingReported(true);
       setDashboardError(null);
       try {
-        const [allSchedules, allAttendance, reported, classesData, allReportedStudents] = await Promise.all([
+        const [
+            allSchedulesForTeacher, 
+            allAttendance, 
+            reported, 
+            classesData, 
+            allReportedStudents,
+            masterSchedulesData,
+            allSchedulesData
+        ] = await Promise.all([
           getSchedulesByTeacher(user.id),
           getAttendanceForTeacher(user.id),
           getStudentAbsencesByTeacherForDate(user.id, new Date().toISOString().split('T')[0]),
           getAllClasses(),
-          getStudentAbsencesByTeacher(user.id)
+          getStudentAbsencesByTeacher(user.id),
+          getAllMasterSchedules(),
+          getAllLessonSchedules()
         ]);
 
-        setFullSchedule(allSchedules);
-        setTodaysSchedule(allSchedules.filter(s => s.day === todayDayName));
+        setFullSchedule(allSchedulesForTeacher);
+        setTodaysSchedule(allSchedulesForTeacher.filter(s => s.day === todayDayName));
         setAvailableClasses(classesData);
+        setMasterSchedules(masterSchedulesData);
+        setAllLessonSchedules(allSchedulesData);
         
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -196,6 +210,12 @@ const TeacherDashboard: React.FC = () => {
                 .map(r => r.scheduleId)
         );
     }, [attendanceHistory]);
+    
+    const uniqueSubjects = useMemo(() => {
+        if (!masterSchedules) return [];
+        return [...new Set(masterSchedules.map(s => s.subject))].sort();
+    }, [masterSchedules]);
+
 
   const locationStatus = locationError ? { text: locationError, color: 'text-red-400' }
     : isWithinRadius === null ? { text: 'Mengecek lokasi...', color: 'text-yellow-400' }
@@ -323,12 +343,27 @@ const TeacherDashboard: React.FC = () => {
     setModalError('');
 
     try {
+        // --- VALIDATION AGAINST MASTER SCHEDULE (NEW LOGIC) ---
+        const masterRule = masterSchedules.find(ms =>
+            ms.namaGuru === scheduleToAdd.teacher &&
+            ms.subject === scheduleToAdd.subject
+        );
+
+        if (masterRule) {
+            const currentHours = allLessonSchedules.filter(s =>
+                s.teacher === scheduleToAdd.teacher &&
+                s.subject === scheduleToAdd.subject
+            ).length;
+
+            if (currentHours >= masterRule.totalHours) {
+                throw new Error(`Total jam Anda untuk mata pelajaran ${scheduleToAdd.subject} sudah mencapai batas maksimum (${masterRule.totalHours} jam) dari jadwal induk.`);
+            }
+        }
+
         // Check for schedule conflicts before adding
         const conflict = await checkScheduleConflict(scheduleToAdd.day, scheduleToAdd.period, scheduleToAdd.class);
         if (conflict) {
-            setModalError(`Jadwal bentrok! Kelas ${conflict.class} jam ke-${conflict.period} pada hari ${conflict.day} sudah diisi oleh ${conflict.teacher} (${conflict.subject}).`);
-            setIsSubmitting(false);
-            return;
+            throw new Error(`Jadwal bentrok! Kelas ${conflict.class} jam ke-${conflict.period} pada hari ${conflict.day} sudah diisi oleh ${conflict.teacher} (${conflict.subject}).`);
         }
 
         const newScheduleWithId = await addLessonSchedule(scheduleToAdd);
@@ -344,6 +379,9 @@ const TeacherDashboard: React.FC = () => {
                 return a.time.localeCompare(b.time);
             });
         });
+        
+        // Also update the global list for future validation in the same session
+        setAllLessonSchedules(prev => [...prev, newScheduleWithId]);
 
         // Update today's schedule list for the dashboard view
         const todayDayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
@@ -805,7 +843,10 @@ const TeacherDashboard: React.FC = () => {
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Mata Pelajaran</label>
-                    <input type="text" name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Matematika" />
+                     <select name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Pilih Mata Pelajaran</option>
+                        {uniqueSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Kelas</label>
