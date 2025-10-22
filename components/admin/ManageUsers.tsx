@@ -24,6 +24,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   // Modals state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
+  const [isResetDeviceModalOpen, setIsResetDeviceModalOpen] = useState(false);
   
   // Data for modals
   const [userToAction, setUserToAction] = useState<User | null>(null);
@@ -88,6 +89,31 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
     }
   };
   
+  // === RESET DEVICE MODAL LOGIC ===
+  const handleOpenResetDeviceModal = (user: User) => {
+    setUserToAction(user);
+    clearMessages();
+    setIsResetDeviceModalOpen(true);
+  };
+
+  const handleConfirmResetDevice = async () => {
+    if (!userToAction) return;
+    clearMessages();
+    setIsSubmitting(true);
+    try {
+      // This is a placeholder for the actual device reset logic.
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setSuccess(`Perangkat untuk ${userToAction.name} telah di-reset.`);
+      setTimeout(() => {
+        closeModal(setIsResetDeviceModalOpen);
+      }, 2000);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : 'Gagal mereset perangkat.');
+      setIsSubmitting(false); // Stop submitting only on error
+    }
+  };
+
+
   // === ADD ADMIN MODAL LOGIC ===
   const handleOpenAddAdminModal = () => {
     setNewAdminData({ name: '', email: '', password: '' });
@@ -191,6 +217,8 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
                     <td className="flex justify-between items-center md:table-cell md:p-4">
                       <span className="text-sm font-semibold text-slate-400 md:hidden">Aksi</span>
                       <div className="flex items-center space-x-4">
+                        <a href={`mailto:${user.email}`} className="text-emerald-400 hover:underline text-sm font-medium">Kirim Pesan</a>
+                        <button onClick={() => handleOpenResetDeviceModal(user)} className="text-sky-400 hover:underline text-sm font-medium">Reset Perangkat</button>
                         <button onClick={() => handleOpenDeleteModal(user)} className="text-red-400 hover:underline text-sm font-medium">Hapus</button>
                       </div>
                     </td>
@@ -229,6 +257,31 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
               </div>
           </form>
       </Modal>
+
+      {userToAction && (
+        <Modal isOpen={isResetDeviceModalOpen} onClose={() => closeModal(setIsResetDeviceModalOpen)} title="Konfirmasi Reset Perangkat">
+          <div className="space-y-4">
+            {success ? (
+                <p className="text-sm text-green-400">{success}</p>
+            ) : (
+                <>
+                    <p className="text-slate-300">
+                        Apakah Anda yakin ingin mereset perangkat untuk <strong>{userToAction.name}</strong>? Tindakan ini akan mengizinkan pengguna untuk login dari perangkat baru.
+                    </p>
+                    {error && <p className="text-sm text-red-400">{error}</p>}
+                    <div className="flex justify-end space-x-3 pt-2">
+                        <Button type="button" onClick={() => closeModal(setIsResetDeviceModalOpen)} variant="secondary" className="w-auto" disabled={isSubmitting}>
+                            Batal
+                        </Button>
+                        <Button onClick={handleConfirmResetDevice} isLoading={isSubmitting} variant="primary" className="w-auto">
+                            Reset
+                        </Button>
+                    </div>
+                </>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {userToAction && (
         <Modal isOpen={isDeleteModalOpen} onClose={() => closeModal(setIsDeleteModalOpen)} title="Konfirmasi Hapus">

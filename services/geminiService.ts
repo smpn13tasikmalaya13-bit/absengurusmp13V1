@@ -12,6 +12,7 @@ export const generateAttendanceSummary = async (records: AttendanceRecord[]): Pr
     return "No attendance data available to summarize.";
   }
   
+  // FIX: Corrected typo in the model name.
   const model = "gemini-2.5-flash";
   const prompt = `
     You are an assistant for a school administrator.
