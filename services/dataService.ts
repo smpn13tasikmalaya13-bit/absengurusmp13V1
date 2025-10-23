@@ -1,5 +1,5 @@
-import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User, MasterSchedule } from '../types';
-import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User, MasterSchedule, Message } from '../types';
+import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch, serverTimestamp, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db, storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
@@ -488,5 +488,121 @@ export const checkScheduleConflict = async (day: string, period: number, classNa
         console.error("Error checking for schedule conflict:", error);
         // Let the UI handle this as a generic failure
         throw new Error("Gagal memeriksa jadwal bentrok. Periksa koneksi Anda.");
+    }
+};
+
+// ========================================================================
+// MESSAGING FUNCTIONS
+// ========================================================================
+
+/**
+ * Sends a message from one user to another.
+ */
+export const sendMessage = async (senderId: string, senderName: string, recipientId: string, content: string): Promise<void> => {
+  try {
+    const messagesCol = collection(db, 'messages');
+    await addDoc(messagesCol, {
+      senderId,
+      senderName,
+      recipientId,
+      content,
+      timestamp: serverTimestamp(),
+      isRead: false,
+    });
+  } catch (error) {
+    console.error("Error sending message:", error);
+    throw new Error("Gagal mengirim pesan.");
+  }
+};
+
+/**
+ * Sets up a real-time listener for all messages involving a specific user.
+ * @param userId The ID of the user.
+ * @param callback The function to call with the updated messages array.
+ * @returns An unsubscribe function to detach the listener.
+ */
+export const getMessagesForUser = (userId: string, callback: (messages: Message[]) => void): (() => void) => {
+  const messagesCol = collection(db, 'messages');
+  
+  // Query for messages sent TO the user
+  const qSentTo = query(messagesCol, where('recipientId', '==', userId));
+  
+  // Query for messages sent BY the user
+  const qSentBy = query(messagesCol, where('senderId', '==', userId));
+
+  let receivedMessages: Message[] = [];
+  let sentMessages: Message[] = [];
+
+  const combineAndCallback = () => {
+    const allMessages = [...receivedMessages, ...sentMessages];
+    // Sort by timestamp, newest first
+    allMessages.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    const uniqueMessages = Array.from(new Map(allMessages.map(item => [item['id'], item])).values());
+    callback(uniqueMessages);
+  };
+
+  const unsubscribeTo = onSnapshot(qSentTo, (snapshot) => {
+    receivedMessages = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            timestamp: (data.timestamp as Timestamp)?.toDate() || new Date(),
+        } as Message;
+    });
+    combineAndCallback();
+  }, (error) => {
+      console.error("Error listening to received messages:", error);
+  });
+
+  const unsubscribeBy = onSnapshot(qSentBy, (snapshot) => {
+    sentMessages = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            timestamp: (data.timestamp as Timestamp)?.toDate() || new Date(),
+        } as Message;
+    });
+    combineAndCallback();
+  }, (error) => {
+      console.error("Error listening to sent messages:", error);
+  });
+
+  // Return a function that unsubscribes from both listeners
+  return () => {
+    unsubscribeTo();
+    unsubscribeBy();
+  };
+};
+
+/**
+ * Marks a list of messages as read.
+ */
+export const markMessagesAsRead = async (messageIds: string[]): Promise<void> => {
+  if (messageIds.length === 0) return;
+  const batch = writeBatch(db);
+  messageIds.forEach(id => {
+    const docRef = doc(db, 'messages', id);
+    batch.update(docRef, { isRead: true });
+  });
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error("Error marking messages as read:", error);
+    // Don't throw, as this is a background task
+  }
+};
+
+/**
+ * Deletes a message from Firestore.
+ */
+export const deleteMessage = async (messageId: string): Promise<void> => {
+    try {
+        const docRef = doc(db, 'messages', messageId);
+        await deleteDoc(docRef);
+    } catch (error) {
+        console.error("Error deleting message:", error);
+        throw new Error("Gagal menghapus pesan.");
     }
 };

@@ -215,6 +215,11 @@ const TeacherDashboard: React.FC = () => {
         if (!masterSchedules) return [];
         return [...new Set(masterSchedules.map(s => s.subject))].sort();
     }, [masterSchedules]);
+    
+    const availableTeacherCodes = useMemo(() => {
+        if (!masterSchedules) return [];
+        return [...new Set(masterSchedules.map(s => s.kode))].sort();
+    }, [masterSchedules]);
 
 
   const locationStatus = locationError ? { text: locationError, color: 'text-red-400' }
@@ -297,10 +302,33 @@ const TeacherDashboard: React.FC = () => {
     }));
   };
   
-  const handleProfileFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setProfileData(prev => ({ ...prev, [name]: value }));
-  };
+
+    if (name === 'kode') {
+        const selectedSchedule = masterSchedules.find(s => s.kode === value);
+        if (selectedSchedule) {
+            // Autofill name and subject based on the selected code
+            setProfileData(prev => ({
+                ...prev,
+                kode: value,
+                name: selectedSchedule.namaGuru,
+                subject: selectedSchedule.subject,
+            }));
+        } else {
+            // If the user deselects the code ("-- Pilih Kode --"), revert to original data
+            setProfileData(prev => ({
+                ...prev,
+                kode: '',
+                name: user?.name || '', // Revert to original user name
+                subject: user?.subject || '', // Revert to original user subject
+            }));
+        }
+    } else {
+        // Handle other form fields normally
+        setProfileData(prev => ({ ...prev, [name]: value }));
+    }
+};
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -323,6 +351,11 @@ const TeacherDashboard: React.FC = () => {
   const handleAddScheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    if (!user.kode) {
+        setModalError("Anda harus mengatur 'Kode Guru' di profil Anda terlebih dahulu sebelum menambah jadwal.");
+        return;
+    }
     
     const scheduleToAdd: Omit<LessonSchedule, 'id'> = {
         day: newScheduleData.day,
@@ -343,15 +376,15 @@ const TeacherDashboard: React.FC = () => {
     setModalError('');
 
     try {
-        // --- VALIDATION AGAINST MASTER SCHEDULE (NEW LOGIC) ---
+        // --- VALIDATION AGAINST MASTER SCHEDULE (REVISED LOGIC) ---
         const masterRule = masterSchedules.find(ms =>
-            ms.namaGuru === scheduleToAdd.teacher &&
+            ms.kode === user.kode &&
             ms.subject === scheduleToAdd.subject
         );
 
         if (masterRule) {
             const currentHours = allLessonSchedules.filter(s =>
-                s.teacher === scheduleToAdd.teacher &&
+                s.teacherId === user.id &&
                 s.subject === scheduleToAdd.subject
             ).length;
 
@@ -454,6 +487,11 @@ const TeacherDashboard: React.FC = () => {
   const handleProfileUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    
+    if (!profileData.kode) {
+        setModalError("Kode Guru wajib diisi untuk validasi jadwal.");
+        return;
+    }
 
     setIsSubmitting(true);
     setModalError('');
@@ -710,6 +748,14 @@ const TeacherDashboard: React.FC = () => {
                         <label className="text-sm text-slate-400">Gol/Pangkat</label>
                         <p className="text-white font-semibold">{user.rank || '-'}</p>
                     </div>
+                    <div>
+                        <label className="text-sm text-slate-400">Kode Guru</label>
+                        {user.kode ? (
+                            <p className="text-white font-semibold">{user.kode}</p>
+                        ) : (
+                            <p className="text-yellow-400 font-semibold">Belum diatur. Silakan ubah profil.</p>
+                        )}
+                    </div>
                 </div>
 
                 <div className="pt-4">
@@ -786,10 +832,24 @@ const TeacherDashboard: React.FC = () => {
                     <p className="text-xs text-slate-400 mt-2">JPG, PNG. Max 2MB.</p>
                 </div>
             </div>
+             <div>
+                <label className="block text-sm font-medium text-gray-300">Kode Guru (Wajib untuk validasi jadwal)</label>
+                <select
+                    name="kode"
+                    value={profileData.kode || ''}
+                    onChange={handleProfileFormChange}
+                    className={`mt-1 block w-full px-3 py-2 bg-slate-700 border rounded-md text-white ${!profileData.kode ? 'border-yellow-500' : 'border-slate-600'}`}
+                    required
+                >
+                    <option value="">-- Pilih Kode Guru Anda --</option>
+                    {availableTeacherCodes.map(code => <option key={code} value={code}>{code}</option>)}
+                </select>
+                <p className="text-xs text-slate-400 mt-1">Kode ini mengikat profil Anda ke jadwal induk untuk validasi jam mengajar.</p>
+            </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Nama Lengkap & Gelar</label>
-                    <input name="name" value={profileData.name || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
+                    <input name="name" value={profileData.name || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white read-only:bg-slate-800 read-only:text-slate-400 read-only:cursor-not-allowed" readOnly={!!profileData.kode}/>
                  </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Jabatan</label>
@@ -804,7 +864,7 @@ const TeacherDashboard: React.FC = () => {
                 {(user?.role === Role.Teacher || user?.role === Role.Coach) && (
                     <div>
                         <label className="block text-sm font-medium text-gray-300">Mata Pelajaran</label>
-                        <input name="subject" value={profileData.subject || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="Contoh: Matematika"/>
+                        <input name="subject" value={profileData.subject || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white read-only:bg-slate-800 read-only:text-slate-400 read-only:cursor-not-allowed" placeholder="Contoh: Matematika" readOnly={!!profileData.kode}/>
                     </div>
                 )}
              </div>

@@ -135,23 +135,26 @@ const ManageLessonSchedule: React.FC = () => {
     setError('');
     setIsSubmitting(true);
 
-    // --- VALIDATION AGAINST MASTER SCHEDULE (NEW LOGIC) ---
+    // --- VALIDATION AGAINST MASTER SCHEDULE (REVISED LOGIC FOR ADMIN) ---
+    const selectedTeacher = teachers.find(t => t.id === formData.teacherId);
+    if (!selectedTeacher?.kode) {
+        setError(`Guru '${formData.teacher}' belum mengatur 'Kode Guru' di profilnya. Validasi tidak dapat dilakukan. Minta guru untuk melengkapi profilnya.`);
+        setIsSubmitting(false);
+        return;
+    }
+
     const masterRule = masterSchedules.find(ms =>
-        ms.namaGuru === formData.teacher &&
+        ms.kode === selectedTeacher.kode &&
         ms.subject === formData.subject
     );
 
     if (masterRule) {
-        // Count existing hours for this teacher and subject, excluding the one being edited.
         const currentHours = schedules.filter(s =>
-            s.teacher === formData.teacher &&
+            s.teacherId === formData.teacherId &&
             s.subject === formData.subject &&
-            s.id !== selectedScheduleId // Don't count the current schedule if we are editing it
+            s.id !== selectedScheduleId
         ).length;
 
-        // For adding a new one, we check if current is >= max.
-        // For editing, we check if current is >= max (it's fine if it's equal, as we are replacing one)
-        // But since we excluded the current one being edited, the logic is simply currentHours >= totalHours
         if (currentHours >= masterRule.totalHours) {
             setError(`Total jam untuk guru ${formData.teacher} pada mata pelajaran ${formData.subject} sudah mencapai batas maksimum (${masterRule.totalHours} jam) dari jadwal induk.`);
             setIsSubmitting(false);

@@ -10,6 +10,7 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  kode?: string; // Teacher's unique code from master schedule
   // New editable profile fields
   title?: string; // e.g., S.Pd, M.Kom
   position?: string; // e.g., Guru Mapel, Kepala TU
@@ -81,4 +82,14 @@ export interface MasterSchedule {
   namaGuru: string;
   subject: string;
   totalHours: number;
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  senderName: string; // The name of the sender at the time of sending
+  content: string;
+  timestamp: Date;
+  isRead: boolean;
 }
