@@ -136,7 +136,7 @@ export const recordStaffAttendanceWithQR = async (
   }
   
   const now = new Date();
-  const todayDateString = now.toISOString().split('T')[0];
+  const todayDateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const attendanceCol = collection(db, 'absenceRecords');
 
   // Query for ALL of today's attendance records for this staff member
@@ -329,7 +329,7 @@ export const reportTeacherAbsence = async (
       teacherId: user.id,
       userName: user.name,
       timestamp: Timestamp.fromDate(now),
-      date: now.toISOString().split('T')[0],
+      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
       status,
       reason: reason || '',
     };

@@ -48,6 +48,12 @@ const AdministrativeStaffDashboard: React.FC = () => {
     const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
+    // Dynamic titles based on current month
+    const nowForTitles = new Date();
+    const monthName = nowForTitles.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+    const dynamicFineSummaryTitle = `Ringkasan Denda Bulan ${monthName}`;
+    const dynamicHistoryTitle = `Riwayat Absensi Bulan ${monthName}`;
+
 
     useEffect(() => {
         const checkLocation = async () => {
@@ -68,14 +74,21 @@ const AdministrativeStaffDashboard: React.FC = () => {
             setIsLoadingHistory(true);
             const allRecords = await getAttendanceForTeacher(user.id);
 
-            // Filter for the last 30 days
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            const recentRecords = allRecords.filter(r => new Date(r.timestamp) >= thirtyDaysAgo);
+            // Filter for the current calendar month
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            endOfMonth.setHours(23, 59, 59, 999); // Ensure it covers the whole last day
+
+            const monthRecords = allRecords.filter(r => {
+                const recordDate = new Date(r.timestamp);
+                return recordDate >= startOfMonth && recordDate <= endOfMonth;
+            });
+
 
             // Process records to add fine information
             const lateFine = 2000;
-            const processed = recentRecords.map(record => {
+            const processed = monthRecords.map(record => {
                 let denda = 0;
                 const recordDate = new Date(record.timestamp);
                 const day = recordDate.getDay(); // 0 = Sunday, 6 = Saturday
@@ -272,13 +285,13 @@ const AdministrativeStaffDashboard: React.FC = () => {
         }
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const latestRecordToday = history.length > 0 && history[0].date === todayStr ? history[0] : null;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todaysRecords = history.filter(r => r.date === todayStr);
 
-    // Updated logic to check for various statuses
-    const hasReportedAbsence = latestRecordToday && ['Sakit', 'Izin', 'Tugas Luar'].includes(latestRecordToday.status);
-    const hasClockedIn = latestRecordToday?.status === 'Datang';
-    const hasClockedOut = latestRecordToday?.status === 'Pulang';
+    // Determine status based on ALL of today's records for robustness
+    const hasReportedAbsence = todaysRecords.some(r => ['Sakit', 'Izin', 'Tugas Luar'].includes(r.status));
+    const hasClockedIn = todaysRecords.some(r => r.status === 'Datang');
+    const hasClockedOut = todaysRecords.some(r => r.status === 'Pulang');
     
     // Determine button state and text
     let buttonText = '';
@@ -287,7 +300,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
 
     if (hasReportedAbsence) {
         buttonText = 'Ketidakhadiran Telah Dilaporkan';
-        timeStatusMessage = `Anda sudah tercatat '${latestRecordToday.status}' hari ini.`;
+        timeStatusMessage = `Anda sudah tercatat tidak hadir hari ini.`;
         isButtonDisabledByTime = true;
     } else if (hasClockedOut) {
         buttonText = isWeekend ? 'Selesai Absen Lembur' : 'Selesai Absen';
@@ -333,6 +346,8 @@ const AdministrativeStaffDashboard: React.FC = () => {
     }
     
     const isButtonDisabled = isWithinRadius !== true || isSubmitting || isButtonDisabledByTime;
+    const isReportButtonDisabled = hasClockedIn || hasClockedOut || hasReportedAbsence;
+
 
     if (showScanner) {
         return <QRScanner onScanSuccess={handleScanSuccess} onClose={() => setShowScanner(false)} />;
@@ -380,16 +395,16 @@ const AdministrativeStaffDashboard: React.FC = () => {
                     <p className="text-slate-400 mb-4 text-sm">Jika Anda tidak dapat hadir hari ini, silakan laporkan di sini.</p>
                     <Button
                         onClick={() => setIsReportAbsenceModalOpen(true)}
-                        variant="secondary"
+                        variant="primary"
                         className="w-full max-w-sm mx-auto"
-                        disabled={!!latestRecordToday}
+                        disabled={isReportButtonDisabled}
                     >
                         Laporkan
                     </Button>
                 </div>
             </Card>
             
-            <Card title="Ringkasan Denda (30 Hari Terakhir)">
+            <Card title={dynamicFineSummaryTitle}>
                 <div className="text-center space-y-2">
                     <p className="text-slate-400 text-base">Total Denda Keterlambatan Anda:</p>
                     <p className="text-3xl font-bold text-amber-400">
@@ -401,7 +416,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
     );
 
     const RiwayatContent = () => (
-        <Card title="Riwayat Absensi (30 Hari Terakhir)">
+        <Card title={dynamicHistoryTitle}>
             {isLoadingHistory ? <Spinner /> : (
                 history.length > 0 ? (
                     <ul className="space-y-3 max-h-[60vh] overflow-y-auto">
