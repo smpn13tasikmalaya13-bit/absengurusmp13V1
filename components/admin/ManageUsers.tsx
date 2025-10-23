@@ -4,6 +4,7 @@ import {
     deleteUser,
     register,
 } from '../../services/authService';
+import { sendMessage } from '../../services/dataService';
 import { Role, User } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
@@ -25,10 +26,12 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
   const [isResetDeviceModalOpen, setIsResetDeviceModalOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   
   // Data for modals
   const [userToAction, setUserToAction] = useState<User | null>(null);
   const [newAdminData, setNewAdminData] = useState({ name: '', email: '', password: '' });
+  const [messageContent, setMessageContent] = useState('');
 
   // General state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -110,6 +113,32 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
     } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Gagal mereset perangkat.');
       setIsSubmitting(false); // Stop submitting only on error
+    }
+  };
+
+  // === SEND MESSAGE MODAL LOGIC ===
+  const handleOpenMessageModal = (user: User) => {
+    setUserToAction(user);
+    setMessageContent('');
+    clearMessages();
+    setIsMessageModalOpen(true);
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userToAction || !loggedInUser || !messageContent.trim()) return;
+    clearMessages();
+    setIsSubmitting(true);
+    try {
+      await sendMessage(loggedInUser.id, loggedInUser.name, userToAction.id, messageContent.trim());
+      setSuccess(`Pesan untuk ${userToAction.name} berhasil terkirim.`);
+      setTimeout(() => {
+        closeModal(setIsMessageModalOpen);
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal mengirim pesan.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -217,7 +246,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
                     <td className="flex justify-between items-center md:table-cell md:p-4">
                       <span className="text-sm font-semibold text-slate-400 md:hidden">Aksi</span>
                       <div className="flex items-center space-x-4">
-                        <a href={`mailto:${user.email}`} className="text-emerald-400 hover:underline text-sm font-medium">Kirim Pesan</a>
+                        <button onClick={() => handleOpenMessageModal(user)} className="text-emerald-400 hover:underline text-sm font-medium">Kirim Pesan</button>
                         <button onClick={() => handleOpenResetDeviceModal(user)} className="text-sky-400 hover:underline text-sm font-medium">Reset Perangkat</button>
                         <button onClick={() => handleOpenDeleteModal(user)} className="text-red-400 hover:underline text-sm font-medium">Hapus</button>
                       </div>
@@ -257,6 +286,34 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
               </div>
           </form>
       </Modal>
+
+      {userToAction && (
+        <Modal isOpen={isMessageModalOpen} onClose={() => closeModal(setIsMessageModalOpen)} title={`Kirim Pesan ke ${userToAction.name}`}>
+          <form onSubmit={handleSendMessage} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Pesan</label>
+              <textarea
+                value={messageContent}
+                onChange={(e) => setMessageContent(e.target.value)}
+                required
+                rows={4}
+                className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"
+                placeholder="Tulis pesan Anda di sini..."
+              />
+            </div>
+            {error && <p className="text-sm text-red-400">{error}</p>}
+            {success && <p className="text-sm text-green-400">{success}</p>}
+            <div className="flex justify-end space-x-3 pt-2">
+              <Button type="button" onClick={() => closeModal(setIsMessageModalOpen)} variant="secondary" className="w-auto" disabled={isSubmitting}>
+                Batal
+              </Button>
+              <Button type="submit" isLoading={isSubmitting} className="w-auto">
+                Kirim
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {userToAction && (
         <Modal isOpen={isResetDeviceModalOpen} onClose={() => closeModal(setIsResetDeviceModalOpen)} title="Konfirmasi Reset Perangkat">

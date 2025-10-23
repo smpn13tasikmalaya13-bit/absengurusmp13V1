@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import QRScanner from './QRScanner';
-import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, addLessonSchedule, checkScheduleConflict, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile, getAllMasterSchedules, getAllLessonSchedules } from '../../services/dataService';
+import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, addLessonSchedule, checkScheduleConflict, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile, getAllMasterSchedules, getAllLessonSchedules, getMessagesForUser, sendMessage, markMessagesAsRead, deleteMessage } from '../../services/dataService';
 import { getAttendanceForTeacher, reportTeacherAbsence, recordAttendance } from '../../services/attendanceService';
-import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, User, MasterSchedule } from '../../types';
+import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, User, MasterSchedule, Message } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
@@ -14,6 +14,7 @@ const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-
 const HistoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const StudentHistoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>;
 const ProfileIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
+const MessageIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-emerald-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>;
 const ScanIcon = () => <svg className="h-12 w-12 text-indigo-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H4C3.44772 3 3 3.44772 3 4V7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M17 3H20C20.5523 3 21 3.44772 21 4V7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 21H4C3.44772 21 3 20.5523 3 20V17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M17 21H20C20.5523 21 21 20.5523 21 20V17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 8V16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 12H16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const ScheduleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
@@ -22,6 +23,8 @@ const StudentIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-1
 const EmptyHistoryIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="4 4"/></svg>;
 const EmptyScheduleIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 const EmptyReportIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
+const EmptyMessageIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
+
 
 const TeacherDashboard: React.FC = () => {
   const { user, logout, updateUserContext } = useAuth();
@@ -45,6 +48,12 @@ const TeacherDashboard: React.FC = () => {
   const [allStudentAbsences, setAllStudentAbsences] = useState<StudentAbsenceRecord[]>([]);
   const [isLoadingReported, setIsLoadingReported] = useState(true);
   
+  // Messaging states
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [replyContent, setReplyContent] = useState('');
+
   // Modal states
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isReportAbsenceModalOpen, setIsReportAbsenceModalOpen] = useState(false);
@@ -200,7 +209,26 @@ const TeacherDashboard: React.FC = () => {
     };
 
     fetchData();
+
+    // Setup message listener
+    const unsubscribe = getMessagesForUser(user.id, (newMessages) => {
+        setMessages(newMessages);
+        setUnreadCount(newMessages.filter(m => !m.isRead && m.recipientId === user.id).length);
+        setIsLoadingMessages(false);
+    });
+
+    return () => unsubscribe(); // Cleanup listener on unmount
   }, [user]);
+
+  // Effect to mark messages as read when the message view is opened
+  useEffect(() => {
+      if (activeView === 'pesan' && unreadCount > 0 && user) {
+          const unreadMessageIds = messages
+              .filter(m => !m.isRead && m.recipientId === user.id)
+              .map(m => m.id);
+          markMessagesAsRead(unreadMessageIds);
+      }
+  }, [activeView, messages, unreadCount, user]);
 
     const attendedTodaySet = useMemo(() => {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -527,6 +555,35 @@ const TeacherDashboard: React.FC = () => {
     }
   };
 
+  const handleReplySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !replyContent.trim()) return;
+
+    try {
+        // Assuming Admin is the only other party, so recipientId is hardcoded.
+        // In a multi-admin system, this would need to be dynamic.
+        // We find the admin from the messages to reply to them.
+        const adminMessage = messages.find(m => m.senderId !== user.id);
+        const recipientId = adminMessage ? adminMessage.senderId : 'ADMIN_FALLBACK_ID'; // Fallback needed for robustness
+
+        await sendMessage(user.id, user.name, recipientId, replyContent.trim());
+        setReplyContent('');
+    } catch (error) {
+        console.error("Failed to send reply:", error);
+        // Optionally show an error to the user
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+      if (window.confirm('Apakah Anda yakin ingin menghapus pesan ini?')) {
+          try {
+              await deleteMessage(messageId);
+          } catch (error) {
+              console.error("Failed to delete message:", error);
+          }
+      }
+  };
+
 
 
   const uniqueTodayClasses = useMemo(() => {
@@ -725,6 +782,49 @@ const TeacherDashboard: React.FC = () => {
     </div>
   );
   
+  const PesanContent = () => (
+      <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl">
+          <h3 className="font-bold text-lg text-white p-6 border-b border-slate-700">Pesan dari Admin</h3>
+          {isLoadingMessages ? <div className="p-6"><Spinner /></div> : (
+              <div className="flex flex-col h-[70vh]">
+                  {messages.length > 0 ? (
+                      <ul className="flex-1 overflow-y-auto p-6 space-y-4">
+                          {messages.map(msg => (
+                              <li key={msg.id} className={`flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
+                                  <div className={`p-3 rounded-lg max-w-xs md:max-w-md ${msg.senderId === user?.id ? 'bg-indigo-600' : 'bg-slate-700'}`}>
+                                      <p className="text-sm text-white">{msg.content}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs text-slate-500">{new Date(msg.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    {msg.senderId === user?.id && (
+                                        <button onClick={() => handleDeleteMessage(msg.id)} className="text-xs text-red-500 hover:underline">Hapus</button>
+                                    )}
+                                  </div>
+                              </li>
+                          ))}
+                      </ul>
+                  ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+                          <EmptyMessageIcon />
+                          <p className="mt-4 text-slate-400">Belum ada pesan.</p>
+                      </div>
+                  )}
+
+                  <form onSubmit={handleReplySubmit} className="p-4 border-t border-slate-700 bg-slate-800/50 flex items-center gap-2">
+                      <input
+                          type="text"
+                          value={replyContent}
+                          onChange={(e) => setReplyContent(e.target.value)}
+                          placeholder="Ketik balasan..."
+                          className="flex-1 w-full px-4 py-2 bg-slate-900 text-white border-2 border-slate-600 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                      />
+                      <Button type="submit" className="w-auto !py-2 !px-4 rounded-full">Kirim</Button>
+                  </form>
+              </div>
+          )}
+      </div>
+  );
+  
   const ProfilContent = () => (
      <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
         <h3 className="font-bold text-lg text-white mb-4">Profil Anda</h3>
@@ -771,15 +871,21 @@ const TeacherDashboard: React.FC = () => {
       case 'beranda': return <BerandaContent />;
       case 'riwayatAbsen': return <RiwayatAbsenContent />;
       case 'riwayatSiswa': return <RiwayatSiswaContent />;
+      case 'pesan': return <PesanContent />;
       case 'profil': return <ProfilContent />;
       default: return <BerandaContent />;
     }
   };
 
 
-  const NavItem = ({ view, label, icon }: { view: string; label: string; icon: React.ReactNode }) => (
+  const NavItem = ({ view, label, icon, hasNotification }: { view: string; label: string; icon: React.ReactNode, hasNotification?: boolean }) => (
     <button onClick={() => setActiveView(view)} className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-colors duration-200 ${activeView === view ? 'text-indigo-400' : 'text-slate-400 hover:text-white'}`}>
-      {icon}
+      <div className="relative">
+        {icon}
+        {hasNotification && (
+            <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-slate-800"></span>
+        )}
+      </div>
       <span className="text-xs mt-1">{label}</span>
     </button>
   );
@@ -815,6 +921,7 @@ const TeacherDashboard: React.FC = () => {
             <NavItem view="beranda" label="Beranda" icon={<HomeIcon />} />
             <NavItem view="riwayatAbsen" label="Absensi" icon={<HistoryIcon />} />
             <NavItem view="riwayatSiswa" label="Siswa" icon={<StudentHistoryIcon />} />
+            <NavItem view="pesan" label="Pesan" icon={<MessageIcon />} hasNotification={unreadCount > 0} />
             <NavItem view="profil" label="Profil" icon={<ProfileIcon />} />
         </footer>
       </div>
