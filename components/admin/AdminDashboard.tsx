@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../layout/Sidebar';
 import DashboardContent from './DashboardContent';
 import TeacherAttendanceReportPage from './TeacherAttendanceReportPage';
@@ -14,16 +15,146 @@ import UploadMasterSchedule from './UploadMasterSchedule';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import StaffQRCodeGenerator from './StaffQRCodeGenerator';
+import { Conversation, getAllConversations, sendMessage } from '../../services/dataService';
+import { Spinner } from '../ui/Spinner';
+
+// Admin Messages Page Component
+const AdminMessagesPage: React.FC = () => {
+    const { user } = useAuth();
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [replyContent, setReplyContent] = useState('');
+    const [isSending, setIsSending] = useState(false);
+
+    useEffect(() => {
+        if (!user) return;
+        const unsubscribe = getAllConversations(user.id, (loadedConversations) => {
+            setConversations(loadedConversations);
+            setIsLoading(false);
+            // If a conversation was selected, update its data
+            if (selectedConversation) {
+                const updatedConvo = loadedConversations.find(c => c.otherUserId === selectedConversation.otherUserId);
+                if (updatedConvo) {
+                    setSelectedConversation(updatedConvo);
+                } else {
+                    setSelectedConversation(null); // Convo might have been deleted
+                }
+            }
+        });
+        return () => unsubscribe();
+    }, [user, selectedConversation]);
+    
+    const handleSelectConversation = (conversation: Conversation) => {
+        setSelectedConversation(conversation);
+    };
+
+    const handleSendReply = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !selectedConversation || !replyContent.trim()) return;
+        setIsSending(true);
+        try {
+            await sendMessage(user.id, user.name, selectedConversation.otherUserId, replyContent.trim());
+            setReplyContent('');
+        } catch (error) {
+            console.error("Failed to send admin reply:", error);
+        } finally {
+            setIsSending(false);
+        }
+    };
+
+    if (isLoading) {
+        return <div className="flex justify-center items-center h-full"><Spinner /></div>;
+    }
+
+    return (
+        <div className="h-[calc(100vh-10rem)] flex bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
+            {/* Conversations List */}
+            <div className="w-1/3 border-r border-slate-700 overflow-y-auto">
+                <div className="p-4 border-b border-slate-700">
+                    <h2 className="text-lg font-bold text-white">Percakapan</h2>
+                </div>
+                <ul className="divide-y divide-slate-700">
+                    {conversations.map(convo => (
+                        <li key={convo.otherUserId}>
+                            <button onClick={() => handleSelectConversation(convo)} className={`w-full text-left p-4 hover:bg-slate-700/50 transition-colors ${selectedConversation?.otherUserId === convo.otherUserId ? 'bg-slate-700' : ''}`}>
+                                <div className="flex justify-between items-center">
+                                    <span className="font-semibold text-white">{convo.otherUserName}</span>
+                                    {convo.unreadCount > 0 && (
+                                        <span className="bg-indigo-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                            {convo.unreadCount}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-sm text-slate-400 truncate">
+                                    {convo.messages[convo.messages.length - 1]?.content || 'Tidak ada pesan.'}
+                                </p>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+
+            {/* Message View */}
+            <div className="w-2/3 flex flex-col">
+                {selectedConversation ? (
+                    <>
+                        <div className="p-4 border-b border-slate-700 flex items-center">
+                            <h2 className="text-lg font-bold text-white">{selectedConversation.otherUserName}</h2>
+                        </div>
+                        <ul className="flex-1 overflow-y-auto p-6 space-y-4">
+                           {selectedConversation.messages.map(msg => (
+                              <li key={msg.id} className={`flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
+                                  <div className={`p-3 rounded-lg max-w-xs md:max-w-md ${msg.senderId === user?.id ? 'bg-indigo-600' : 'bg-slate-700'}`}>
+                                      <p className="text-sm text-white">{msg.content}</p>
+                                  </div>
+                                  <span className="text-xs text-slate-500 mt-1">{new Date(msg.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                              </li>
+                          ))}
+                        </ul>
+                        <form onSubmit={handleSendReply} className="p-4 border-t border-slate-700 bg-slate-800/50 flex items-center gap-2">
+                            <input
+                                type="text"
+                                value={replyContent}
+                                onChange={(e) => setReplyContent(e.target.value)}
+                                placeholder="Ketik balasan..."
+                                className="flex-1 w-full px-4 py-2 bg-slate-900 text-white border-2 border-slate-600 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                            />
+                            <Button type="submit" className="w-auto flex-shrink-0 !py-2 !px-4 rounded-full" isLoading={isSending}>Kirim</Button>
+                        </form>
+                    </>
+                ) : (
+                    <div className="flex-1 flex items-center justify-center text-center">
+                        <p className="text-slate-400">Pilih percakapan untuk ditampilkan.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 
 const AdminDashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State for mobile sidebar
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = getAllConversations(user.id, (conversations) => {
+        const totalUnread = conversations.reduce((sum, convo) => sum + convo.unreadCount, 0);
+        setUnreadMessageCount(totalUnread);
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
         return <DashboardContent />;
+      case 'messages':
+        return <AdminMessagesPage />;
       case 'teacher-attendance-report':
         return <TeacherAttendanceReportPage />;
       case 'staff-attendance-report': // Case baru
@@ -55,14 +186,14 @@ const AdminDashboard: React.FC = () => {
     <div className="min-h-screen flex bg-slate-900 text-slate-300">
       {/* Sidebar for larger screens */}
       <div className="hidden md:block">
-          <Sidebar currentView={currentView} onNavigate={setCurrentView} />
+          <Sidebar currentView={currentView} onNavigate={setCurrentView} unreadMessageCount={unreadMessageCount} />
       </div>
 
       {/* Mobile Sidebar */}
       {isSidebarOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-70 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)}>
               <div className="w-64 h-full" onClick={(e) => e.stopPropagation()}>
-                 <Sidebar currentView={currentView} onNavigate={(view) => { setCurrentView(view); setIsSidebarOpen(false); }} />
+                 <Sidebar currentView={currentView} onNavigate={(view) => { setCurrentView(view); setIsSidebarOpen(false); }} unreadMessageCount={unreadMessageCount}/>
               </div>
           </div>
       )}

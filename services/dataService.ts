@@ -1,5 +1,7 @@
-import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User, MasterSchedule, Message } from '../types';
-import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch, serverTimestamp, onSnapshot, Timestamp } from 'firebase/firestore';
+
+import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User, MasterSchedule, Message, Role } from '../types';
+// FIX: Import 'getDoc' from 'firebase/firestore' to fetch single documents.
+import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch, serverTimestamp, onSnapshot, Timestamp, getDoc } from 'firebase/firestore';
 import { db, storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
@@ -496,6 +498,22 @@ export const checkScheduleConflict = async (day: string, period: number, classNa
 // ========================================================================
 
 /**
+ * Fetches all users with the ADMIN role.
+ * @returns A promise that resolves to an array of admin users.
+ */
+export const getAdminUsers = async (): Promise<User[]> => {
+    try {
+        const usersCol = collection(db, 'users');
+        const q = query(usersCol, where('role', '==', Role.Admin));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => doc.data() as User);
+    } catch (error) {
+        console.error("Error fetching admin users:", error);
+        return [];
+    }
+};
+
+/**
  * Sends a message from one user to another.
  */
 export const sendMessage = async (senderId: string, senderName: string, recipientId: string, content: string): Promise<void> => {
@@ -535,11 +553,21 @@ export const getMessagesForUser = (userId: string, callback: (messages: Message[
 
   const combineAndCallback = () => {
     const allMessages = [...receivedMessages, ...sentMessages];
-    // Sort by timestamp, newest first
-    allMessages.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    // Sort by timestamp, oldest first for chronological order
+    allMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     const uniqueMessages = Array.from(new Map(allMessages.map(item => [item['id'], item])).values());
     callback(uniqueMessages);
   };
+
+  const handleError = (error: Error, type: 'received' | 'sent') => {
+      console.error(`Error listening to ${type} messages:`, error);
+      // Optional: Add a callback to inform the UI about the error
+      if (error.message.includes('permission-denied')) {
+          // You could pass an error state back to the UI via the callback
+          console.error("Firestore permission denied. Check your security rules for the 'messages' collection.");
+      }
+  };
+
 
   const unsubscribeTo = onSnapshot(qSentTo, (snapshot) => {
     receivedMessages = snapshot.docs.map(doc => {
@@ -551,9 +579,7 @@ export const getMessagesForUser = (userId: string, callback: (messages: Message[
         } as Message;
     });
     combineAndCallback();
-  }, (error) => {
-      console.error("Error listening to received messages:", error);
-  });
+  }, (error) => handleError(error, 'received'));
 
   const unsubscribeBy = onSnapshot(qSentBy, (snapshot) => {
     sentMessages = snapshot.docs.map(doc => {
@@ -565,9 +591,7 @@ export const getMessagesForUser = (userId: string, callback: (messages: Message[
         } as Message;
     });
     combineAndCallback();
-  }, (error) => {
-      console.error("Error listening to sent messages:", error);
-  });
+  }, (error) => handleError(error, 'sent'));
 
   // Return a function that unsubscribes from both listeners
   return () => {
@@ -575,6 +599,87 @@ export const getMessagesForUser = (userId: string, callback: (messages: Message[
     unsubscribeBy();
   };
 };
+
+export interface Conversation {
+    otherUserId: string;
+    otherUserName: string;
+    messages: Message[];
+    unreadCount: number;
+}
+
+/**
+ * Fetches all messages and groups them into conversations for the admin view.
+ * @param adminId The ID of the currently logged-in admin.
+ * @param callback The function to call with the conversations map.
+ * @returns An unsubscribe function.
+ */
+export const getAllConversations = (adminId: string, callback: (conversations: Conversation[]) => void): (() => void) => {
+    const messagesCol = collection(db, 'messages');
+    const q = query(messagesCol, orderBy('timestamp', 'desc'));
+
+    return onSnapshot(q, (snapshot) => {
+        const conversationsMap = new Map<string, Conversation>();
+
+        snapshot.docs.forEach(doc => {
+            const message = { id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp)?.toDate() || new Date() } as Message;
+
+            const otherUserId = message.senderId === adminId ? message.recipientId : message.senderId;
+            const otherUserName = message.senderId === adminId ? 'Anda' : message.senderName; // This might need adjustment if admin sends to another admin
+
+            if (!conversationsMap.has(otherUserId)) {
+                conversationsMap.set(otherUserId, {
+                    otherUserId,
+                    otherUserName: 'Loading...', // Placeholder, will be updated later
+                    messages: [],
+                    unreadCount: 0,
+                });
+            }
+
+            const conversation = conversationsMap.get(otherUserId)!;
+            conversation.messages.push(message);
+
+            if (!message.isRead && message.recipientId === adminId) {
+                conversation.unreadCount += 1;
+            }
+        });
+        
+        // Post-process to get correct user names and sort messages
+        const conversations: Conversation[] = [];
+        const userPromises: Promise<void>[] = [];
+
+        conversationsMap.forEach(convo => {
+            // Sort messages chronologically
+            convo.messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+            
+            // Fetch user info to get the correct name
+            const userRef = doc(db, 'users', convo.otherUserId);
+            userPromises.push(
+                getDoc(userRef).then(userDoc => {
+                    if(userDoc.exists()) {
+                       convo.otherUserName = (userDoc.data() as User).name;
+                    } else {
+                       convo.otherUserName = 'Pengguna Dihapus';
+                    }
+                })
+            );
+            conversations.push(convo);
+        });
+
+        Promise.all(userPromises).then(() => {
+            // Sort conversations by the timestamp of the last message
+            conversations.sort((a, b) => {
+                const lastMsgA = a.messages[a.messages.length - 1]?.timestamp.getTime() || 0;
+                const lastMsgB = b.messages[b.messages.length - 1]?.timestamp.getTime() || 0;
+                return lastMsgB - lastMsgA;
+            });
+            callback(conversations);
+        });
+
+    }, (error) => {
+        console.error("Error fetching all conversations:", error);
+    });
+};
+
 
 /**
  * Marks a list of messages as read.

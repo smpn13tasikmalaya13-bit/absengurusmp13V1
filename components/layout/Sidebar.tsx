@@ -8,11 +8,13 @@ const ScheduleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const DataIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10m16-10v10M9 3h6l-3 4-3-4zM9 21h6l-3-4-3 4z" /></svg>;
 const QRIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h-1m-1-6v1M5 12H4m1-6H4m16 0h-1M5 18H4m1-6h1M9 4v1m0 14v1m6-16v1m0 14v1m-6-1h1m4 0h1M9 9h1m4 0h1m-4 4h1m4 0h1M9 19h1m4 0h1m-1-4h1m-5-4h1" /></svg>;
 const UploadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>;
+const MessageIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 
 
 interface SidebarProps {
   currentView: string;
   onNavigate: (view: string) => void;
+  unreadMessageCount?: number;
 }
 
 const NavItem: React.FC<{
@@ -21,24 +23,32 @@ const NavItem: React.FC<{
   view: string;
   currentView: string;
   onNavigate: (view: string) => void;
-}> = ({ icon, label, view, currentView, onNavigate }) => {
+  badgeCount?: number;
+}> = ({ icon, label, view, currentView, onNavigate, badgeCount }) => {
   const isActive = currentView === view;
   return (
     <button
       onClick={() => onNavigate(view)}
-      className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+      className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
         isActive
           ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
           : 'text-slate-300 hover:bg-slate-700 hover:text-white'
       }`}
     >
-      {icon}
-      <span className="ml-3">{label}</span>
+      <div className="flex items-center">
+        {icon}
+        <span className="ml-3">{label}</span>
+      </div>
+      {badgeCount && badgeCount > 0 && (
+          <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+              {badgeCount}
+          </span>
+      )}
     </button>
   );
 };
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, unreadMessageCount }) => {
   return (
     <aside className="w-64 bg-slate-800 p-4 space-y-2 flex flex-col h-full border-r border-slate-700">
       <div className="flex items-center mb-6 px-2">
@@ -47,6 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
       </div>
       <nav className="flex-1 space-y-2">
         <NavItem icon={<DashboardIcon />} label="Dashboard" view="dashboard" currentView={currentView} onNavigate={onNavigate} />
+        <NavItem icon={<MessageIcon />} label="Pesan" view="messages" currentView={currentView} onNavigate={onNavigate} badgeCount={unreadMessageCount} />
         
         <div className="pt-4">
             <h3 className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Laporan</h3>

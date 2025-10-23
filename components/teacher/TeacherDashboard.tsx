@@ -818,7 +818,7 @@ const TeacherDashboard: React.FC = () => {
                           placeholder="Ketik balasan..."
                           className="flex-1 w-full px-4 py-2 bg-slate-900 text-white border-2 border-slate-600 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
                       />
-                      <Button type="submit" className="w-auto !py-2 !px-4 rounded-full">Kirim</Button>
+                      <Button type="submit" className="w-auto flex-shrink-0 !py-2 !px-4 rounded-full">Kirim</Button>
                   </form>
               </div>
           )}

@@ -17,7 +17,78 @@ interface ManageUsersProps {
   mode: 'teachers' | 'admins';
 }
 
-// FIX: Using React.FC to resolve JSX namespace error.
+interface SendMessageModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    userToAction: User | null;
+    loggedInUser: User | null;
+}
+
+const SendMessageModal: React.FC<SendMessageModalProps> = ({ isOpen, onClose, userToAction, loggedInUser }) => {
+    const [messageContent, setMessageContent] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setMessageContent('');
+            setError('');
+            setSuccess('');
+            setIsSubmitting(false);
+        }
+    }, [isOpen]);
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!userToAction || !loggedInUser || !messageContent.trim()) return;
+        setError('');
+        setSuccess('');
+        setIsSubmitting(true);
+        try {
+            await sendMessage(loggedInUser.id, loggedInUser.name, userToAction.id, messageContent.trim());
+            setSuccess(`Pesan untuk ${userToAction.name} berhasil terkirim.`);
+            setTimeout(() => {
+                onClose();
+            }, 2000);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Gagal mengirim pesan.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (!userToAction) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`Kirim Pesan ke ${userToAction.name}`}>
+            <form onSubmit={handleSendMessage} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-300">Pesan</label>
+                    <textarea
+                        value={messageContent}
+                        onChange={(e) => setMessageContent(e.target.value)}
+                        required
+                        rows={4}
+                        className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"
+                        placeholder="Tulis pesan Anda di sini..."
+                    />
+                </div>
+                {error && <p className="text-sm text-red-400">{error}</p>}
+                {success && <p className="text-sm text-green-400">{success}</p>}
+                <div className="flex justify-end space-x-3 pt-2">
+                    <Button type="button" onClick={onClose} variant="secondary" className="w-auto" disabled={isSubmitting}>
+                        Batal
+                    </Button>
+                    <Button type="submit" isLoading={isSubmitting} className="w-auto">
+                        Kirim
+                    </Button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
 const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,7 +102,6 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   // Data for modals
   const [userToAction, setUserToAction] = useState<User | null>(null);
   const [newAdminData, setNewAdminData] = useState({ name: '', email: '', password: '' });
-  const [messageContent, setMessageContent] = useState('');
 
   // General state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -119,27 +189,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   // === SEND MESSAGE MODAL LOGIC ===
   const handleOpenMessageModal = (user: User) => {
     setUserToAction(user);
-    setMessageContent('');
-    clearMessages();
     setIsMessageModalOpen(true);
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userToAction || !loggedInUser || !messageContent.trim()) return;
-    clearMessages();
-    setIsSubmitting(true);
-    try {
-      await sendMessage(loggedInUser.id, loggedInUser.name, userToAction.id, messageContent.trim());
-      setSuccess(`Pesan untuk ${userToAction.name} berhasil terkirim.`);
-      setTimeout(() => {
-        closeModal(setIsMessageModalOpen);
-      }, 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal mengirim pesan.');
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
 
@@ -287,34 +337,13 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
           </form>
       </Modal>
 
-      {userToAction && (
-        <Modal isOpen={isMessageModalOpen} onClose={() => closeModal(setIsMessageModalOpen)} title={`Kirim Pesan ke ${userToAction.name}`}>
-          <form onSubmit={handleSendMessage} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Pesan</label>
-              <textarea
-                value={messageContent}
-                onChange={(e) => setMessageContent(e.target.value)}
-                required
-                rows={4}
-                className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"
-                placeholder="Tulis pesan Anda di sini..."
-              />
-            </div>
-            {error && <p className="text-sm text-red-400">{error}</p>}
-            {success && <p className="text-sm text-green-400">{success}</p>}
-            <div className="flex justify-end space-x-3 pt-2">
-              <Button type="button" onClick={() => closeModal(setIsMessageModalOpen)} variant="secondary" className="w-auto" disabled={isSubmitting}>
-                Batal
-              </Button>
-              <Button type="submit" isLoading={isSubmitting} className="w-auto">
-                Kirim
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
+      <SendMessageModal 
+        isOpen={isMessageModalOpen}
+        onClose={() => closeModal(setIsMessageModalOpen)}
+        userToAction={userToAction}
+        loggedInUser={loggedInUser}
+      />
+      
       {userToAction && (
         <Modal isOpen={isResetDeviceModalOpen} onClose={() => closeModal(setIsResetDeviceModalOpen)} title="Konfirmasi Reset Perangkat">
           <div className="space-y-4">

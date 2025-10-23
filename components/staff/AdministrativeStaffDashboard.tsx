@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import { recordStaffAttendanceWithQR, getAttendanceForTeacher, reportTeacherAbsence } from '../../services/attendanceService';
-import { updateUserProfile, uploadProfilePhoto } from '../../services/dataService';
+import { updateUserProfile, uploadProfilePhoto, getMessagesForUser, markMessagesAsRead, deleteMessage, sendMessage, getAdminUsers } from '../../services/dataService';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
-import { AttendanceRecord, Role, User } from '../../types';
+import { AttendanceRecord, Role, User, Message } from '../../types';
 import { Card } from '../ui/Card';
 import QRScanner from './QRScanner';
 import { Modal } from '../ui/Modal';
@@ -19,6 +19,8 @@ interface ProcessedHistoryRecord extends AttendanceRecord {
 const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>;
 const HistoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ProfileIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
+const MessageIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
+const EmptyMessageIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 
 
 const AdministrativeStaffDashboard: React.FC = () => {
@@ -32,6 +34,12 @@ const AdministrativeStaffDashboard: React.FC = () => {
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [showScanner, setShowScanner] = useState(false);
     const [totalFine, setTotalFine] = useState(0); // State for total fine
+
+    // Messaging states
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [replyContent, setReplyContent] = useState('');
 
     // Modal states
     const [isReportAbsenceModalOpen, setIsReportAbsenceModalOpen] = useState(false);
@@ -54,7 +62,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
     const dynamicFineSummaryTitle = `Ringkasan Denda Bulan ${monthName}`;
     const dynamicHistoryTitle = `Riwayat Absensi Bulan ${monthName}`;
 
-
     useEffect(() => {
         const checkLocation = async () => {
             try {
@@ -67,7 +74,30 @@ const AdministrativeStaffDashboard: React.FC = () => {
             }
         };
         checkLocation();
-    }, []);
+        
+        if (!user) return;
+        
+        // Setup message listener
+        const unsubscribe = getMessagesForUser(user.id, (newMessages) => {
+            setMessages(newMessages);
+            setUnreadCount(newMessages.filter(m => !m.isRead && m.recipientId === user.id).length);
+            setIsLoadingMessages(false);
+        });
+
+        return () => unsubscribe(); // Cleanup listener on unmount
+    }, [user]);
+
+    // Effect to mark messages as read when the message view is opened
+    useEffect(() => {
+        if (activeView === 'pesan' && unreadCount > 0 && user) {
+            const unreadMessageIds = messages
+                .filter(m => !m.isRead && m.recipientId === user.id)
+                .map(m => m.id);
+            if(unreadMessageIds.length > 0) {
+                markMessagesAsRead(unreadMessageIds);
+            }
+        }
+    }, [activeView, messages, unreadCount, user]);
 
     const fetchHistory = async () => {
         if (user) {
@@ -214,6 +244,33 @@ const AdministrativeStaffDashboard: React.FC = () => {
             setModalError(err instanceof Error ? err.message : 'Gagal memperbarui profil.');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+    
+    const handleReplySubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !replyContent.trim()) return;
+
+        try {
+            const admins = await getAdminUsers();
+            if (admins.length === 0) {
+                throw new Error("Tidak ada admin yang ditemukan untuk dikirimi pesan.");
+            }
+            const recipientId = admins[0].id; // Send to the first admin found
+            await sendMessage(user.id, user.name, recipientId, replyContent.trim());
+            setReplyContent('');
+        } catch (error) {
+            console.error("Failed to send reply:", error);
+        }
+    };
+
+    const handleDeleteMessage = async (messageId: string) => {
+        if (window.confirm('Apakah Anda yakin ingin menghapus pesan ini?')) {
+            try {
+                await deleteMessage(messageId);
+            } catch (error) {
+                console.error("Failed to delete message:", error);
+            }
         }
     };
 
@@ -448,6 +505,49 @@ const AdministrativeStaffDashboard: React.FC = () => {
         </Card>
     );
 
+    const PesanContent = () => (
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl">
+            <h3 className="font-bold text-lg text-white p-6 border-b border-slate-700">Pesan dari Admin</h3>
+            {isLoadingMessages ? <div className="p-6"><Spinner /></div> : (
+                <div className="flex flex-col h-[70vh]">
+                    {messages.length > 0 ? (
+                        <ul className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {messages.map(msg => (
+                                <li key={msg.id} className={`flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
+                                    <div className={`p-3 rounded-lg max-w-xs md:max-w-md ${msg.senderId === user?.id ? 'bg-indigo-600' : 'bg-slate-700'}`}>
+                                        <p className="text-sm text-white">{msg.content}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-xs text-slate-500">{new Date(msg.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                        {msg.senderId === user?.id && (
+                                            <button onClick={() => handleDeleteMessage(msg.id)} className="text-xs text-red-500 hover:underline">Hapus</button>
+                                        )}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+                            <EmptyMessageIcon />
+                            <p className="mt-4 text-slate-400">Belum ada pesan.</p>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleReplySubmit} className="p-4 border-t border-slate-700 bg-slate-800/50 flex items-center gap-2">
+                        <input
+                            type="text"
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            placeholder="Ketik balasan..."
+                            className="flex-1 w-full px-4 py-2 bg-slate-900 text-white border-2 border-slate-600 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                        />
+                        <Button type="submit" className="w-auto flex-shrink-0 !py-2 !px-4 rounded-full">Kirim</Button>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
+
     const ProfilContent = () => (
        <Card title="Profil Anda">
            {user && (
@@ -484,14 +584,20 @@ const AdministrativeStaffDashboard: React.FC = () => {
         switch (activeView) {
             case 'beranda': return <BerandaContent />;
             case 'riwayat': return <RiwayatContent />;
+            case 'pesan': return <PesanContent />;
             case 'profil': return <ProfilContent />;
             default: return <BerandaContent />;
         }
     };
     
-    const NavItem = ({ view, label, icon }: { view: string; label: string; icon: React.ReactNode }) => (
+    const NavItem = ({ view, label, icon, hasNotification }: { view: string; label: string; icon: React.ReactNode; hasNotification?: boolean }) => (
         <button onClick={() => setActiveView(view)} className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-colors duration-200 ${activeView === view ? 'text-indigo-400' : 'text-slate-400 hover:text-white'}`}>
-          {icon}
+          <div className="relative">
+            {icon}
+            {hasNotification && (
+                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-slate-800"></span>
+            )}
+          </div>
           <span className="text-xs mt-1">{label}</span>
         </button>
     );
@@ -533,6 +639,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
                 <footer className="fixed bottom-0 left-0 right-0 bg-slate-800/80 backdrop-blur-lg border-t border-slate-700 z-20 flex justify-around">
                     <NavItem view="beranda" label="Beranda" icon={<HomeIcon />} />
                     <NavItem view="riwayat" label="Riwayat" icon={<HistoryIcon />} />
+                    <NavItem view="pesan" label="Pesan" icon={<MessageIcon />} hasNotification={unreadCount > 0} />
                     <NavItem view="profil" label="Profil" icon={<ProfileIcon />} />
                 </footer>
             </div>
