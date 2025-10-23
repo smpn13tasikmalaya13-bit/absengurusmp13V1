@@ -22,6 +22,75 @@ const ProfileIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6
 const MessageIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 const EmptyMessageIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 
+const PesanContent: React.FC<{
+    user: User | null;
+    messages: Message[];
+    isLoading: boolean;
+    onSendMessage: (content: string) => Promise<void>;
+    onDeleteMessage: (messageId: string) => Promise<void>;
+}> = ({ user, messages, isLoading, onSendMessage, onDeleteMessage }) => {
+    const [replyContent, setReplyContent] = useState('');
+    const messagesEndRef = React.useRef<HTMLUListElement>(null);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollTo({ top: messagesEndRef.current.scrollHeight, behavior: 'smooth' });
+    }, [messages]);
+
+    const handleReplySubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!replyContent.trim()) return;
+        try {
+            await onSendMessage(replyContent.trim());
+            setReplyContent('');
+        } catch (error) {
+            console.error("Failed to send reply:", error);
+        }
+    };
+
+    return (
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl">
+            <h3 className="font-bold text-lg text-white p-6 border-b border-slate-700">Pesan dari Admin</h3>
+            {isLoading ? <div className="p-6"><Spinner /></div> : (
+                <div className="flex flex-col h-[70vh]">
+                    {messages.length > 0 ? (
+                        <ul ref={messagesEndRef} className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {messages.map(msg => (
+                                <li key={msg.id} className={`flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
+                                    <div className={`p-3 rounded-lg max-w-xs md:max-w-md ${msg.senderId === user?.id ? 'bg-indigo-600' : 'bg-slate-700'}`}>
+                                        <p className="text-sm text-white">{msg.content}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-xs text-slate-500">{new Date(msg.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                        {msg.senderId === user?.id && (
+                                            <button onClick={() => onDeleteMessage(msg.id)} className="text-xs text-red-500 hover:underline">Hapus</button>
+                                        )}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+                            <EmptyMessageIcon />
+                            <p className="mt-4 text-slate-400">Belum ada pesan.</p>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleReplySubmit} className="p-4 border-t border-slate-700 bg-slate-800/50 flex items-center gap-2">
+                        <input
+                            type="text"
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            placeholder="Ketik balasan..."
+                            className="flex-1 w-full px-4 py-2 bg-slate-900 text-white border-2 border-slate-600 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                        />
+                        <Button type="submit" className="flex-shrink-0">Kirim</Button>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 const AdministrativeStaffDashboard: React.FC = () => {
     const { user, logout, updateUserContext } = useAuth();
@@ -39,8 +108,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoadingMessages, setIsLoadingMessages] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
-    const [replyContent, setReplyContent] = useState('');
-
+    
     // Modal states
     const [isReportAbsenceModalOpen, setIsReportAbsenceModalOpen] = useState(false);
     const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
@@ -247,20 +315,18 @@ const AdministrativeStaffDashboard: React.FC = () => {
         }
     };
     
-    const handleReplySubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user || !replyContent.trim()) return;
-
+    const handleSendMessage = async (content: string) => {
+        if (!user) return;
         try {
             const admins = await getAdminUsers();
             if (admins.length === 0) {
                 throw new Error("Tidak ada admin yang ditemukan untuk dikirimi pesan.");
             }
             const recipientId = admins[0].id; // Send to the first admin found
-            await sendMessage(user.id, user.name, recipientId, replyContent.trim());
-            setReplyContent('');
+            await sendMessage(user.id, user.name, recipientId, content);
         } catch (error) {
             console.error("Failed to send reply:", error);
+            throw error; // Re-throw to be caught by the component
         }
     };
 
@@ -505,49 +571,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
         </Card>
     );
 
-    const PesanContent = () => (
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl">
-            <h3 className="font-bold text-lg text-white p-6 border-b border-slate-700">Pesan dari Admin</h3>
-            {isLoadingMessages ? <div className="p-6"><Spinner /></div> : (
-                <div className="flex flex-col h-[70vh]">
-                    {messages.length > 0 ? (
-                        <ul className="flex-1 overflow-y-auto p-6 space-y-4">
-                            {messages.map(msg => (
-                                <li key={msg.id} className={`flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
-                                    <div className={`p-3 rounded-lg max-w-xs md:max-w-md ${msg.senderId === user?.id ? 'bg-indigo-600' : 'bg-slate-700'}`}>
-                                        <p className="text-sm text-white">{msg.content}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-slate-500">{new Date(msg.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
-                                        {msg.senderId === user?.id && (
-                                            <button onClick={() => handleDeleteMessage(msg.id)} className="text-xs text-red-500 hover:underline">Hapus</button>
-                                        )}
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
-                            <EmptyMessageIcon />
-                            <p className="mt-4 text-slate-400">Belum ada pesan.</p>
-                        </div>
-                    )}
-
-                    <form onSubmit={handleReplySubmit} className="p-4 border-t border-slate-700 bg-slate-800/50 flex items-center gap-2">
-                        <input
-                            type="text"
-                            value={replyContent}
-                            onChange={(e) => setReplyContent(e.target.value)}
-                            placeholder="Ketik balasan..."
-                            className="flex-1 w-full px-4 py-2 bg-slate-900 text-white border-2 border-slate-600 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                        />
-                        <Button type="submit" className="w-auto flex-shrink-0 !py-2 !px-4 rounded-full">Kirim</Button>
-                    </form>
-                </div>
-            )}
-        </div>
-    );
-
     const ProfilContent = () => (
        <Card title="Profil Anda">
            {user && (
@@ -584,7 +607,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
         switch (activeView) {
             case 'beranda': return <BerandaContent />;
             case 'riwayat': return <RiwayatContent />;
-            case 'pesan': return <PesanContent />;
+            case 'pesan': return <PesanContent user={user} messages={messages} isLoading={isLoadingMessages} onSendMessage={handleSendMessage} onDeleteMessage={handleDeleteMessage} />;
             case 'profil': return <ProfilContent />;
             default: return <BerandaContent />;
         }

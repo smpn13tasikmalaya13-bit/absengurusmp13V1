@@ -61,7 +61,7 @@ const PwaInstallPrompt: React.FC = () => {
       <p className="text-sm text-slate-400 mt-2 leading-tight">Akses lebih cepat dan fitur offline dengan menambahkan aplikasi ini ke layar utama (home screen) Anda.</p>
       <Button
         onClick={handleInstallClick}
-        className="mt-4 w-full !bg-green-600 hover:!bg-green-500 focus:!ring-green-500"
+        className="mt-4 w-full !py-3 !bg-green-600 hover:!bg-green-500 focus:!ring-green-500"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
         Instal Aplikasi
@@ -142,7 +142,7 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
           <p className="text-sm text-red-400 text-center bg-red-500/10 py-2 px-4 rounded-md border border-red-500/30">{error}</p>
         )}
 
-        <Button type="submit" isLoading={isLoading}>
+        <Button type="submit" isLoading={isLoading} className="w-full !py-3">
           Login
         </Button>
       </form>
@@ -226,7 +226,7 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
         {error && <p className="text-sm text-red-400 text-center bg-red-500/10 py-2 px-4 rounded-md border border-red-500/30">{error}</p>}
 
         <div className="pt-2">
-            <Button type="submit" isLoading={isLoading}>
+            <Button type="submit" isLoading={isLoading} className="w-full !py-3">
             Daftar
             </Button>
         </div>

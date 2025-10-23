@@ -26,6 +26,7 @@ const AdminMessagesPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [replyContent, setReplyContent] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const messagesEndRef = React.useRef<HTMLUListElement>(null);
 
     useEffect(() => {
         if (!user) return;
@@ -44,6 +45,10 @@ const AdminMessagesPage: React.FC = () => {
         });
         return () => unsubscribe();
     }, [user, selectedConversation]);
+
+     useEffect(() => {
+        messagesEndRef.current?.scrollTo({ top: messagesEndRef.current.scrollHeight, behavior: 'smooth' });
+    }, [selectedConversation?.messages]);
     
     const handleSelectConversation = (conversation: Conversation) => {
         setSelectedConversation(conversation);
@@ -102,7 +107,7 @@ const AdminMessagesPage: React.FC = () => {
                         <div className="p-4 border-b border-slate-700 flex items-center">
                             <h2 className="text-lg font-bold text-white">{selectedConversation.otherUserName}</h2>
                         </div>
-                        <ul className="flex-1 overflow-y-auto p-6 space-y-4">
+                        <ul ref={messagesEndRef} className="flex-1 overflow-y-auto p-6 space-y-4">
                            {selectedConversation.messages.map(msg => (
                               <li key={msg.id} className={`flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
                                   <div className={`p-3 rounded-lg max-w-xs md:max-w-md ${msg.senderId === user?.id ? 'bg-indigo-600' : 'bg-slate-700'}`}>
@@ -120,7 +125,7 @@ const AdminMessagesPage: React.FC = () => {
                                 placeholder="Ketik balasan..."
                                 className="flex-1 w-full px-4 py-2 bg-slate-900 text-white border-2 border-slate-600 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
                             />
-                            <Button type="submit" className="w-auto flex-shrink-0 !py-2 !px-4 rounded-full" isLoading={isSending}>Kirim</Button>
+                            <Button type="submit" className="flex-shrink-0" isLoading={isSending}>Kirim</Button>
                         </form>
                     </>
                 ) : (

@@ -12,7 +12,7 @@ export const Button: React.FC<ButtonProps> = ({
   isLoading = false,
   ...props
 }) => {
-  const baseClasses = 'w-full flex justify-center items-center py-3 px-5 border border-transparent rounded-lg shadow-sm text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 ease-in-out transform';
+  const baseClasses = 'flex justify-center items-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 ease-in-out transform';
   
   const variantClasses = {
     primary: 'text-white bg-indigo-600 hover:bg-indigo-500 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5',

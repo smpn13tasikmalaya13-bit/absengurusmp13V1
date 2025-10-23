@@ -129,7 +129,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
             {statusMessage}
             </div>
 
-            <Button onClick={() => { stopCamera(); onClose(); }} variant="secondary">
+            <Button onClick={() => { stopCamera(); onClose(); }} variant="secondary" className="w-full !py-3">
             Tutup
             </Button>
         </div>
