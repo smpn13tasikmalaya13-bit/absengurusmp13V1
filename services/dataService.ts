@@ -124,7 +124,7 @@ export const uploadMasterSchedule = async (schedules: Omit<MasterSchedule, 'id'>
     } catch (error: any) {
         console.error("Error uploading master schedule:", error);
         if (error.code === 'permission-denied') {
-            throw new Error("Izin ditolak. Pastikan Security Rules Firestore mengizinkan Admin untuk menulis dan membaca koleksi 'masterSchedules'.");
+            throw new Error("Izin ditolak. SOLUSI: Buka Firebase Console > Firestore Database > Rules, dan pastikan Admin diizinkan untuk 'write' (create, update, delete) pada koleksi 'masterSchedules'.");
         }
         throw new Error("Gagal mengunggah jadwal induk. Operasi dibatalkan.");
     }
@@ -149,7 +149,7 @@ export const getAllMasterSchedules = async (): Promise<MasterSchedule[]> => {
     } catch (error: any) {
         console.error("Error fetching master schedules:", error);
         if (error.code === 'permission-denied') {
-            throw new Error("Gagal mengambil jadwal induk: Izin ditolak. Periksa aturan keamanan (security rules) Firestore Anda.");
+            throw new Error("Gagal mengambil jadwal induk: Izin ditolak. SOLUSI: Buka Firebase Console > Firestore Database > Rules, dan pastikan pengguna yang login (guru/admin) diizinkan untuk 'read' koleksi 'masterSchedules'. Contoh: 'allow read: if request.auth != null;'.");
         }
         throw new Error("Gagal mengambil data jadwal induk dari server.");
     }
