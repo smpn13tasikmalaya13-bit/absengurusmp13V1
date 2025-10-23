@@ -121,8 +121,11 @@ export const uploadMasterSchedule = async (schedules: Omit<MasterSchedule, 'id'>
 
         // Step 4: Commit the batch to atomically delete old data and add new data.
         await batch.commit();
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error uploading master schedule:", error);
+        if (error.code === 'permission-denied') {
+            throw new Error("Izin ditolak. Pastikan Security Rules Firestore mengizinkan Admin untuk menulis dan membaca koleksi 'masterSchedules'.");
+        }
         throw new Error("Gagal mengunggah jadwal induk. Operasi dibatalkan.");
     }
 };
@@ -143,9 +146,12 @@ export const getAllMasterSchedules = async (): Promise<MasterSchedule[]> => {
         const q = query(masterSchedulesCol);
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MasterSchedule));
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching master schedules:", error);
-        return [];
+        if (error.code === 'permission-denied') {
+            throw new Error("Gagal mengambil jadwal induk: Izin ditolak. Periksa aturan keamanan (security rules) Firestore Anda.");
+        }
+        throw new Error("Gagal mengambil data jadwal induk dari server.");
     }
 };
 
