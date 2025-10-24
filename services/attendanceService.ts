@@ -65,8 +65,9 @@ export const recordAttendance = async (
   // Any valid QR scan (that's not an empty string) from a teacher within the location radius is now considered a valid trigger.
 
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  // Use a simple YYYY-MM-DD string for date checks, which is more efficient in Firestore
+  const todayDateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
 
   // Use the top-level 'absenceRecords' collection
   const attendanceCol = collection(db, 'absenceRecords');
@@ -77,8 +78,8 @@ export const recordAttendance = async (
       attendanceCol,
       where('teacherId', '==', user.id),
       where('scheduleId', '==', scheduleInfo.id),
-      where('timestamp', '>=', startOfDay),
-      where('timestamp', '<', endOfDay)
+      // Use the string date for a more efficient query that doesn't require a composite index
+      where('date', '==', todayDateString)
     );
     const checkSnapshot = await getDocs(qCheck);
     if (!checkSnapshot.empty) {
@@ -89,8 +90,7 @@ export const recordAttendance = async (
      const q = query(
       attendanceCol,
       where('teacherId', '==', user.id),
-      where('timestamp', '>=', startOfDay),
-      where('timestamp', '<', endOfDay),
+      where('date', '==', todayDateString),
        // We can only check for general check-in if there is no scheduleId
       where('scheduleId', '==', null) 
     );
@@ -108,7 +108,7 @@ export const recordAttendance = async (
       teacherId: user.id,
       userName: user.name,
       timestamp: Timestamp.fromDate(now),
-      date: now.toISOString().split('T')[0],
+      date: todayDateString,
       status,
       reason: '', // Reason is empty for QR code check-in
       scheduleId: scheduleInfo?.id || null,
@@ -307,8 +307,8 @@ export const reportTeacherAbsence = async (
   reason?: string
 ): Promise<{ success: boolean; message: string }> => {
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const todayDateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
 
   const attendanceCol = collection(db, 'absenceRecords');
 
@@ -316,8 +316,7 @@ export const reportTeacherAbsence = async (
   const q = query(
     attendanceCol,
     where('teacherId', '==', user.id),
-    where('timestamp', '>=', startOfDay),
-    where('timestamp', '<', endOfDay)
+    where('date', '==', todayDateString)
   );
   const querySnapshot = await getDocs(q);
   if (!querySnapshot.empty) {
@@ -329,7 +328,7 @@ export const reportTeacherAbsence = async (
       teacherId: user.id,
       userName: user.name,
       timestamp: Timestamp.fromDate(now),
-      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
+      date: todayDateString,
       status,
       reason: reason || '',
     };
