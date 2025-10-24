@@ -106,7 +106,8 @@ const TeacherAttendanceReportPage: React.FC = () => {
         // 3. Loop through each day in the date range
         const loopDate = new Date(start);
         while (loopDate <= end) {
-            const dateString = loopDate.toISOString().split('T')[0];
+            // FIX: Use local date components to build the date string to prevent timezone bugs.
+            const dateString = `${loopDate.getFullYear()}-${String(loopDate.getMonth() + 1).padStart(2, '0')}-${String(loopDate.getDate()).padStart(2, '0')}`;
             const dayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][loopDate.getDay()];
 
             // Get all schedules for the current day of the week
@@ -155,7 +156,7 @@ const TeacherAttendanceReportPage: React.FC = () => {
                     entry.status = dailyAbsence.status as 'Sakit' | 'Izin' | 'Tugas Luar';
                     entry.keterangan = dailyAbsence.reason || '-';
                 } else if (scanRecord) {
-                    entry.waktuScan = scanRecord.timestamp.toLocaleTimeString('id-ID');
+                    entry.waktuScan = scanRecord.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                     
                     // Calculate lateness
                     const [startTimeStr] = schedule.waktu.split(' - ');
@@ -341,6 +342,7 @@ const TeacherAttendanceReportPage: React.FC = () => {
                     <option value="">{activeTab === 'kelas' ? 'Semua Kelas' : 'Semua Eskul'}</option>
                     {activeTab === 'kelas' 
                         ? classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                        // FIX: Added eskuls mapping for the dropdown.
                         : eskuls.map(e => <option key={e.id} value={e.id}>{e.name}</option>)
                     }
                 </select>
