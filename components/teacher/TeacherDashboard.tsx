@@ -489,6 +489,18 @@ const TeacherDashboard: React.FC = () => {
         return;
     }
 
+    // --- PROFILE LOCKING CONFIRMATION ---
+    // If user has no code yet, but is trying to set one
+    if (!user.kode && profileData.kode) {
+        const isConfirmed = window.confirm(
+            "Apakah Anda yakin ingin memilih kode ini? Setelah disimpan, kode tidak dapat diubah lagi dan akun Anda akan terikat ke perangkat ini."
+        );
+        if (!isConfirmed) {
+            return; // Abort if user cancels
+        }
+    }
+    // --- END PROFILE LOCKING ---
+
     setIsSubmitting(true);
     setModalError('');
     setModalSuccess('');
@@ -876,13 +888,14 @@ const TeacherDashboard: React.FC = () => {
                     name="kode"
                     value={profileData.kode || ''}
                     onChange={handleProfileFormChange}
-                    className={`mt-1 block w-full px-3 py-2 bg-slate-700 border rounded-md text-white ${!profileData.kode ? 'border-yellow-500' : 'border-slate-600'}`}
+                    className={`mt-1 block w-full px-3 py-2 bg-slate-700 border rounded-md text-white ${!profileData.kode ? 'border-yellow-500' : 'border-slate-600'} disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed`}
                     required
+                    disabled={!!user?.kode}
                 >
                     <option value="">-- Pilih Kode Guru Anda --</option>
                     {availableTeacherCodes.map(code => <option key={code} value={code}>{code}</option>)}
                 </select>
-                <p className="text-xs text-slate-400 mt-1">Kode ini mengikat profil Anda ke jadwal induk untuk validasi jam mengajar.</p>
+                <p className="text-xs text-slate-400 mt-1">Kode ini mengikat profil Anda ke jadwal induk. Setelah disimpan, kode tidak dapat diubah.</p>
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>

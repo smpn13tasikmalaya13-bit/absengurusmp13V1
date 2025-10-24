@@ -43,7 +43,7 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
         const currentDeviceId = getDeviceId();
         if (userProfile.deviceId !== currentDeviceId) {
             await signOut(auth); // Log out immediately
-            throw new Error('Akun ini sudah terikat pada perangkat lain. Silakan hubungi admin untuk mereset perangkat Anda.');
+            throw new Error('Login gagal, perangkat sudah terikat dengan device lain. Silahkan minta reset ke admin.');
         }
     }
     // --- END DEVICE BINDING ---
@@ -89,7 +89,7 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
       
     console.error("Error signing in:", error);
     // Re-throw custom errors
-    if (error.message.startsWith('Profil pengguna tidak ditemukan') || error.message.startsWith('Akun ini sudah terikat')) {
+    if (error.message.startsWith('Profil pengguna tidak ditemukan') || error.message.startsWith('Login gagal')) {
         throw error;
     }
     switch (error.code) {
@@ -232,7 +232,7 @@ export const deleteUser = async (uid: string): Promise<void> => {
 };
 
 /**
- * Resets the device binding for a user by removing their deviceId from Firestore.
+ * Resets the device binding for a user by removing their deviceId and kode from Firestore.
  * @param uid The ID of the user whose device binding is to be reset.
  */
 export const resetUserDevice = async (uid: string): Promise<void> => {
@@ -241,9 +241,10 @@ export const resetUserDevice = async (uid: string): Promise<void> => {
     }
     try {
         const userDocRef = doc(db, 'users', uid);
-        // Set the deviceId to null to remove the binding
+        // Set the deviceId and kode to null to remove the bindings
         await updateDoc(userDocRef, {
-            deviceId: null
+            deviceId: null,
+            kode: null
         });
     } catch (error) {
         console.error("Error resetting user device:", error);

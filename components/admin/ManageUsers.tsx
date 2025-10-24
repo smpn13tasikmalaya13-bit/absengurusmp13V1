@@ -397,7 +397,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
             ) : (
                 <>
                     <p className="text-slate-300">
-                        Apakah Anda yakin ingin mereset perangkat untuk <strong>{userToAction.name}</strong>? Tindakan ini akan mengizinkan pengguna untuk login dari perangkat baru.
+                        Apakah Anda yakin ingin mereset perangkat untuk <strong>{userToAction.name}</strong>? Tindakan ini akan menghapus ikatan perangkat dan 'Kode Guru', memungkinkan pengguna untuk melakukan aktivasi ulang dari perangkat baru.
                     </p>
                     {error && <p className="text-sm text-red-400">{error}</p>}
                     <div className="flex justify-end space-x-3 pt-2">
