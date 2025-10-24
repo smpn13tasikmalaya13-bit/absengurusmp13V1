@@ -11,6 +11,7 @@ export interface User {
   email: string;
   role: Role;
   kode?: string; // Teacher's unique code from master schedule
+  deviceId?: string; // Unique ID of the device bound to this account
   // New editable profile fields
   title?: string; // e.g., S.Pd, M.Kom
   position?: string; // e.g., Guru Mapel, Kepala TU

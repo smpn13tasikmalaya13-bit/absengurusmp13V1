@@ -4,6 +4,7 @@ import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locatio
 import QRScanner from './QRScanner';
 import { reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile, getAllMasterSchedules, getMessagesForUser, sendMessage, markMessagesAsRead, deleteMessage, getAdminUsers, getMasterSchedulesByTeacherCode } from '../../services/dataService';
 import { getAttendanceForTeacher, reportTeacherAbsence, recordAttendance } from '../../services/attendanceService';
+import { getDeviceId } from '../../services/authService';
 import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, User, MasterSchedule, Message } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -500,9 +501,18 @@ const TeacherDashboard: React.FC = () => {
             photoURL = await uploadProfilePhoto(profilePhotoFile, user.id);
         }
 
+        // --- DEVICE BINDING LOGIC ---
+        // If the user profile doesn't have a deviceId yet, bind the current one.
+        // This happens when they first set their Kode Guru.
+        const dataToUpdate: Partial<User> = {};
+        if (!user.deviceId) {
+            dataToUpdate.deviceId = getDeviceId();
+        }
+        // --- END DEVICE BINDING ---
+
         // Prepare data for Firestore update, excluding fields that shouldn't be there
         const { id, email, role, ...updatableProfileData } = profileData;
-        const dataToUpdate = { ...updatableProfileData, photoURL: photoURL || null };
+        Object.assign(dataToUpdate, { ...updatableProfileData, photoURL: photoURL || null });
 
         // Update Firestore
         await updateUserProfile(user.id, dataToUpdate);

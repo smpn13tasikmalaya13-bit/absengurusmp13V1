@@ -3,9 +3,10 @@ import {
     getAllUsers,
     deleteUser,
     register,
+    resetUserDevice,
 } from '../../services/authService';
-import { sendMessage } from '../../services/dataService';
-import { Role, User } from '../../types';
+import { getAllMasterSchedules, sendMessage } from '../../services/dataService';
+import { Role, User, MasterSchedule } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -118,15 +119,52 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
   
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
-    const allUsers = await getAllUsers();
-    const filteredUsers = allUsers.filter(user => {
-      if (isTeachers) {
-        return user.role === Role.Teacher || user.role === Role.Coach;
-      }
-      return user.role === Role.Admin || user.role === Role.AdministrativeStaff;
-    });
-    setUsers(filteredUsers);
-    setIsLoading(false);
+    try {
+        const allRegisteredUsers = await getAllUsers();
+
+        if (isTeachers) {
+            const masterSchedules = await getAllMasterSchedules();
+            const masterTeachers = new Map<string, { namaGuru: string }>();
+            masterSchedules.forEach(schedule => {
+                if (!masterTeachers.has(schedule.kode)) {
+                    masterTeachers.set(schedule.kode, { namaGuru: schedule.namaGuru });
+                }
+            });
+
+            const registeredUsersByCode = new Map<string, User>();
+            allRegisteredUsers.forEach(u => {
+                if (u.kode && (u.role === Role.Teacher || u.role === Role.Coach)) {
+                    registeredUsersByCode.set(u.kode, u);
+                }
+            });
+
+            const combinedUsers: User[] = Array.from(masterTeachers.entries()).map(([kode, { namaGuru }]) => {
+                const registeredUser = registeredUsersByCode.get(kode);
+                if (registeredUser) {
+                    return { ...registeredUser, name: namaGuru }; // Sync name
+                } else {
+                    return {
+                        id: `master_${kode}`,
+                        kode: kode,
+                        name: namaGuru,
+                        email: 'Belum terdaftar',
+                        role: Role.Teacher, // Default role
+                    };
+                }
+            });
+            setUsers(combinedUsers);
+        } else {
+            const filteredAdminsAndStaff = allRegisteredUsers.filter(user =>
+                user.role === Role.Admin || user.role === Role.AdministrativeStaff
+            );
+            setUsers(filteredAdminsAndStaff);
+        }
+    } catch (err) {
+        console.error("Failed to fetch user data:", err);
+        setError("Gagal memuat data pengguna.");
+    } finally {
+        setIsLoading(false);
+    }
   }, [isTeachers]);
   
   // Effect to fetch the list of users to display in the table.
@@ -154,7 +192,6 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
       setIsDeleteModalOpen(false);
       setUserToAction(null);
       await fetchUsers();
-      // FIX: Explicitly type error in catch block.
     } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Gagal menghapus pengguna.');
     } finally {
@@ -174,15 +211,16 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
     clearMessages();
     setIsSubmitting(true);
     try {
-      // This is a placeholder for the actual device reset logic.
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await resetUserDevice(userToAction.id);
       setSuccess(`Perangkat untuk ${userToAction.name} telah di-reset.`);
       setTimeout(() => {
         closeModal(setIsResetDeviceModalOpen);
+        setSuccess('');
       }, 2000);
     } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Gagal mereset perangkat.');
-      setIsSubmitting(false); // Stop submitting only on error
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -212,7 +250,6 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
         setIsAddAdminModalOpen(false);
         clearMessages();
       }, 2000);
-      // FIX: Explicitly type error in catch block.
     } catch (err: any) {
       setError(err instanceof Error ? err.message : 'Gagal menambah admin.');
     } finally {
@@ -251,6 +288,8 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
             )}
         </div>
 
+        {error && <p className="text-center text-sm text-red-400 bg-red-500/10 py-2 px-3 rounded-md border border-red-500/30">{error}</p>}
+        
         {mode === 'admins' && isMainAdmin && (
             <div className="bg-slate-800/50 backdrop-blur-sm border border-yellow-500/50 p-6 rounded-xl space-y-3">
                 <div>
@@ -289,16 +328,22 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
                     </td>
                     <td className="flex justify-between items-center md:table-cell md:p-4">
                       <span className="text-sm font-semibold text-slate-400 md:hidden">Peran</span>
-                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getRoleBadgeClass(user.role)}`}>
-                        {user.role}
-                      </span>
+                      {user.email === 'Belum terdaftar' ? (
+                          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-500/30 text-yellow-300">
+                              Guru (Belum Aktif)
+                          </span>
+                      ) : (
+                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getRoleBadgeClass(user.role)}`}>
+                              {user.role}
+                          </span>
+                      )}
                     </td>
                     <td className="flex justify-between items-center md:table-cell md:p-4">
                       <span className="text-sm font-semibold text-slate-400 md:hidden">Aksi</span>
                       <div className="flex items-center space-x-4">
-                        <button onClick={() => handleOpenMessageModal(user)} className="text-emerald-400 hover:underline text-sm font-medium">Kirim Pesan</button>
-                        <button onClick={() => handleOpenResetDeviceModal(user)} className="text-sky-400 hover:underline text-sm font-medium">Reset Perangkat</button>
-                        <button onClick={() => handleOpenDeleteModal(user)} className="text-red-400 hover:underline text-sm font-medium">Hapus</button>
+                        <button onClick={() => handleOpenMessageModal(user)} className="text-emerald-400 hover:underline text-sm font-medium disabled:text-slate-500 disabled:no-underline disabled:cursor-not-allowed" disabled={user.email === 'Belum terdaftar'}>Kirim Pesan</button>
+                        <button onClick={() => handleOpenResetDeviceModal(user)} className="text-sky-400 hover:underline text-sm font-medium disabled:text-slate-500 disabled:no-underline disabled:cursor-not-allowed" disabled={user.email === 'Belum terdaftar'}>Reset Perangkat</button>
+                        <button onClick={() => handleOpenDeleteModal(user)} className="text-red-400 hover:underline text-sm font-medium disabled:text-slate-500 disabled:no-underline disabled:cursor-not-allowed" disabled={user.email === 'Belum terdaftar'}>Hapus</button>
                       </div>
                     </td>
                   </tr>

@@ -9,7 +9,20 @@ import {
 import { doc, setDoc, getDoc, collection, getDocs, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
 import { MAIN_ADMIN_EMAIL } from '../constants';
 
-// Device ID helpers have been removed to disable the device binding feature.
+/**
+ * Generates and retrieves a unique device ID from localStorage.
+ * If an ID doesn't exist, it creates one and stores it.
+ * @returns The unique device ID for this device.
+ */
+export const getDeviceId = (): string => {
+    const DEVICE_ID_KEY = 'hadirku-device-id';
+    let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+    if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem(DEVICE_ID_KEY, deviceId);
+    }
+    return deviceId;
+};
 
 // ================== Auth Service ==================
 
@@ -25,6 +38,16 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
         throw new Error('Profil pengguna tidak ditemukan. Hubungi admin untuk bantuan.');
     }
     
+    // --- DEVICE BINDING VALIDATION ---
+    if (userProfile.deviceId) {
+        const currentDeviceId = getDeviceId();
+        if (userProfile.deviceId !== currentDeviceId) {
+            await signOut(auth); // Log out immediately
+            throw new Error('Akun ini sudah terikat pada perangkat lain. Silakan hubungi admin untuk mereset perangkat Anda.');
+        }
+    }
+    // --- END DEVICE BINDING ---
+
     return firebaseUser;
 
   } catch (error: any) {
@@ -66,7 +89,7 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
       
     console.error("Error signing in:", error);
     // Re-throw custom errors
-    if (error.message.startsWith('Profil pengguna tidak ditemukan')) {
+    if (error.message.startsWith('Profil pengguna tidak ditemukan') || error.message.startsWith('Akun ini sudah terikat')) {
         throw error;
     }
     switch (error.code) {
@@ -205,5 +228,25 @@ export const deleteUser = async (uid: string): Promise<void> => {
     } catch (error) {
         console.error("Error deleting user profile:", error);
         throw new Error("Failed to delete the user profile. Please try again.");
+    }
+};
+
+/**
+ * Resets the device binding for a user by removing their deviceId from Firestore.
+ * @param uid The ID of the user whose device binding is to be reset.
+ */
+export const resetUserDevice = async (uid: string): Promise<void> => {
+    if (!uid) {
+        throw new Error("User ID is required to reset the device.");
+    }
+    try {
+        const userDocRef = doc(db, 'users', uid);
+        // Set the deviceId to null to remove the binding
+        await updateDoc(userDocRef, {
+            deviceId: null
+        });
+    } catch (error) {
+        console.error("Error resetting user device:", error);
+        throw new Error("Failed to reset the user's device. Please try again.");
     }
 };
