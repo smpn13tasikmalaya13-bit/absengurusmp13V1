@@ -127,7 +127,6 @@ const TeacherDashboard: React.FC = () => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isReportAbsenceModalOpen, setIsReportAbsenceModalOpen] = useState(false);
   const [isReportStudentModalOpen, setIsReportStudentModalOpen] = useState(false);
-  const [isSelectScheduleModalOpen, setIsSelectScheduleModalOpen] = useState(false);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
 
 
@@ -150,7 +149,6 @@ const TeacherDashboard: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const [modalSuccess, setModalSuccess] = useState('');
-  const [scannedQrData, setScannedQrData] = useState<string | null>(null);
 
   // State for adding schedule (now unused)
   const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
@@ -430,45 +428,62 @@ const TeacherDashboard: React.FC = () => {
         : [...prev, period].sort((a, b) => a - b)
     );
   };
-
-  const handleScanSuccess = (qrData: string) => {
-    setShowScanner(false);
-    setScannedQrData(qrData);
-    setIsSelectScheduleModalOpen(true);
-    setModalError('');
-    setModalSuccess('');
-  };
-
-  const handleSelectScheduleForAttendance = async (schedule: MasterSchedule) => {
-    if (!user || !scannedQrData) return;
-    setIsSubmitting(true);
-    setModalError('');
-    setModalSuccess('');
-
-    const scheduleInfo = {
-      id: schedule.id,
-      subject: schedule.subject,
-      class: schedule.class,
-      period: schedule.period
-    };
-
-    const result = await recordAttendance(user, scannedQrData, scheduleInfo);
-
-    if (result.success) {
-      setModalSuccess(result.message);
-      await refreshData();
-      setTimeout(() => {
-        setIsSelectScheduleModalOpen(false);
-        setScannedQrData(null);
-        setModalSuccess('');
-      }, 2000);
-    } else {
-      setModalError(result.message);
-    }
-
-    setIsSubmitting(false);
-  };
   
+  const handleScanSuccess = async (qrData: string) => {
+    setShowScanner(false);
+    if (!user) {
+        alert('Sesi tidak valid. Silakan login ulang.');
+        return;
+    }
+    setIsSubmitting(true);
+    
+    try {
+        const now = new Date();
+        const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+
+        const matchingSchedule = todaysSchedule.find(schedule => {
+            if (!schedule.waktu || !schedule.waktu.includes(' - ')) return false;
+            
+            const [startTime, endTime] = schedule.waktu.split(' - ');
+            const [startHour, startMinute] = startTime.split(':').map(Number);
+            const [endHour, endMinute] = endTime.split(':').map(Number);
+            
+            const scheduleStartMinutes = startHour * 60 + startMinute;
+            const scheduleEndMinutes = endHour * 60 + endMinute;
+
+            return currentTimeInMinutes >= scheduleStartMinutes && currentTimeInMinutes <= scheduleEndMinutes;
+        });
+
+        if (!matchingSchedule) {
+            throw new Error('Tidak ada jadwal mengajar yang cocok pada saat ini.');
+        }
+
+        if (attendedTodaySet.has(matchingSchedule.id)) {
+            throw new Error(`Anda sudah absen untuk pelajaran ${matchingSchedule.subject} hari ini.`);
+        }
+
+        const scheduleInfo = {
+            id: matchingSchedule.id,
+            subject: matchingSchedule.subject,
+            class: matchingSchedule.class,
+            period: matchingSchedule.period
+        };
+
+        const result = await recordAttendance(user, qrData, scheduleInfo);
+
+        if (result.success) {
+            alert(result.message);
+            await refreshData();
+        } else {
+            throw new Error(result.message);
+        }
+    } catch (err) {
+        alert(err instanceof Error ? err.message : 'Terjadi kesalahan saat merekam absensi.');
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
   const handleEditProfile = () => {
     if (user) {
         setProfileData(user); // Pre-fill with existing user data
@@ -1028,38 +1043,6 @@ const TeacherDashboard: React.FC = () => {
             </div>
         </form>
       </Modal>
-      
-      <Modal isOpen={isSelectScheduleModalOpen} onClose={() => setIsSelectScheduleModalOpen(false)} title="Pilih Jadwal untuk Absen">
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-          <p className="text-sm text-slate-400">Pilih pelajaran yang sedang Anda absen saat ini.</p>
-          {todaysSchedule.length > 0 ? (
-            todaysSchedule.map(schedule => {
-              const isAttended = attendedTodaySet.has(schedule.id);
-              return (
-                <button
-                  key={schedule.id}
-                  onClick={() => handleSelectScheduleForAttendance(schedule)}
-                  disabled={isAttended || isSubmitting}
-                  className="w-full text-left p-4 rounded-lg flex justify-between items-center transition-colors bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div>
-                    <p className="font-semibold text-white">{schedule.subject}</p>
-                    <p className="text-sm text-slate-300">{schedule.class} - Jam ke-{schedule.period}</p>
-                  </div>
-                  {isAttended && <span className="text-sm font-semibold text-emerald-400">Sudah Absen</span>}
-                </button>
-              );
-            })
-          ) : (
-            <p className="text-center text-slate-400 py-4">Tidak ada jadwal untuk dipilih.</p>
-          )}
-
-          {modalError && <p className="text-sm text-red-400 pt-2">{modalError}</p>}
-          {modalSuccess && <p className="text-sm text-green-400 pt-2">{modalSuccess}</p>}
-          {isSubmitting && <Spinner />}
-        </div>
-      </Modal>
-
     </>
   );
 };

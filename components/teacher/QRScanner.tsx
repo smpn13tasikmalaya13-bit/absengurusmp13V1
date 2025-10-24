@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import { Spinner } from '../ui/Spinner';
 
 declare const jsQR: any;
@@ -13,18 +11,15 @@ interface QRScannerProps {
 }
 
 const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
-  const { user } = useAuth();
   const [statusMessage, setStatusMessage] = useState<string>('Requesting camera access...');
   const [messageType, setMessageType] = useState<'info' | 'success' | 'error'>('info');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  // FIX: Initialize useRef with a value to satisfy TypeScript and allow for a nullable type.
   const animationFrameId = useRef<number | null>(null);
 
   const stopCamera = useCallback(() => {
-    // FIX: Check for null to avoid bugs where an animation frame ID could be 0.
     if (animationFrameId.current !== null) {
       cancelAnimationFrame(animationFrameId.current);
     }
@@ -36,37 +31,6 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
       videoRef.current.srcObject = null;
     }
   }, []);
-  
-  const verifyLocationAndProceed = useCallback(async (qrData: string) => {
-    if (!user) {
-      setStatusMessage('User not logged in.');
-      setMessageType('error');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      setStatusMessage('Checking your location...');
-      const position = await getCurrentPosition();
-      
-      if (!isWithinSchoolRadius(position.coords)) {
-        setStatusMessage('Error: You must be within the school area to check in.');
-        setMessageType('error');
-        setIsLoading(false); // Let them try again or close
-        return;
-      }
-
-      setStatusMessage('Location verified. Scan successful!');
-      setMessageType('success');
-      onScanSuccess(qrData);
-
-    } catch (error) {
-      setStatusMessage('Could not get location. Please enable GPS and try again.');
-      setMessageType('error');
-      setIsLoading(false);
-    }
-  }, [user, onScanSuccess]);
-
 
   const scanTick = useCallback(() => {
     if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
@@ -85,13 +49,17 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
 
         if (code) {
           stopCamera();
-          verifyLocationAndProceed(code.data);
+          // The location is already verified by the parent component.
+          // Directly call onScanSuccess for a faster user experience.
+          setStatusMessage('QR Code terdeteksi! Memproses absensi...');
+          setMessageType('success');
+          onScanSuccess(code.data);
           return; // Stop the loop
         }
       }
     }
     animationFrameId.current = requestAnimationFrame(scanTick);
-  }, [stopCamera, verifyLocationAndProceed]);
+  }, [stopCamera, onScanSuccess]);
   
 
   useEffect(() => {
@@ -104,12 +72,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
           videoRef.current.setAttribute("playsinline", "true"); // Required for iOS
           await videoRef.current.play();
           animationFrameId.current = requestAnimationFrame(scanTick);
-          setStatusMessage('Point your camera at the QR code.');
+          setStatusMessage('Arahkan kamera ke QR code.');
           setMessageType('info');
         }
       } catch (err) {
         console.error("Camera access error:", err);
-        setStatusMessage('Camera access denied. Please allow camera access in your browser settings.');
+        setStatusMessage('Akses kamera ditolak. Izinkan akses kamera di pengaturan browser Anda.');
         setMessageType('error');
       } finally {
         setIsLoading(false);
@@ -132,7 +100,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
   };
 
   return (
-    <Card title="Scan QR Code for Attendance">
+    <Card title="Scan QR Code untuk Absensi">
       <div className="space-y-4">
         <div className="w-full bg-black rounded-md overflow-hidden aspect-square relative">
             <video
@@ -153,7 +121,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
         </div>
 
         <Button onClick={() => { stopCamera(); onClose(); }} variant="secondary" className="w-full !py-3">
-          Close
+          Tutup
         </Button>
       </div>
     </Card>
