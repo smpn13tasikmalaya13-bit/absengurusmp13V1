@@ -15,7 +15,7 @@ import UploadMasterSchedule from './UploadMasterSchedule';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import StaffQRCodeGenerator from './StaffQRCodeGenerator';
-import { Conversation, getAllConversations, sendMessage, deleteMessage, deleteConversation } from '../../services/dataService';
+import { Conversation, getAllConversations, sendMessage, deleteMessage, deleteConversation, markMessagesAsRead } from '../../services/dataService';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
 
@@ -53,6 +53,19 @@ const AdminMessagesPage: React.FC = () => {
      useEffect(() => {
         messagesEndRef.current?.scrollTo({ top: messagesEndRef.current.scrollHeight, behavior: 'smooth' });
     }, [selectedConversation?.messages]);
+
+    // Effect to mark messages as read when a conversation is opened
+    useEffect(() => {
+        if (selectedConversation && user) {
+            const unreadMessageIds = selectedConversation.messages
+                .filter(msg => !msg.isRead && msg.recipientId === user.id)
+                .map(msg => msg.id);
+            
+            if (unreadMessageIds.length > 0) {
+                markMessagesAsRead(unreadMessageIds);
+            }
+        }
+    }, [selectedConversation, user]);
     
     const handleSelectConversation = (conversation: Conversation) => {
         setSelectedConversation(conversation);
