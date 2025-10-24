@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Card } from '../ui/Card';
@@ -76,7 +77,7 @@ const UploadMasterSchedule: React.FC = () => {
             return;
         }
 
-        if (!window.confirm(`Anda akan mengganti seluruh jadwal induk dengan ${parsedData.length} data baru dari file ${fileName}. Apakah Anda yakin?`)) {
+        if (!window.confirm(`Anda akan mengganti seluruh jadwal induk dengan ${parsedData.length} data baru dari file ${fileName}. Daftar kelas juga akan disinkronkan. Apakah Anda yakin?`)) {
             return;
         }
 
@@ -86,7 +87,7 @@ const UploadMasterSchedule: React.FC = () => {
 
         try {
             await uploadMasterSchedule(parsedData);
-            setSuccess('Jadwal induk berhasil diperbarui.');
+            setSuccess('Jadwal induk dan data kelas berhasil diperbarui.');
             setParsedData([]);
             setFileName('');
         } catch (err) {
@@ -150,6 +151,9 @@ const UploadMasterSchedule: React.FC = () => {
                         </ul>
                          <p className="mt-3 text-slate-400">
                            <strong className="text-slate-300">Catatan Penting:</strong> Kolom `Waktu` diisi dengan rentang jam pelajaran (contoh: <code className="bg-slate-700 p-1 rounded text-xs">07:30 - 08:10</code>). Sistem menghitung <strong>1 Jam Pelajaran = 40 menit</strong>, bukan jam regional.
+                        </p>
+                        <p className="mt-3 text-slate-400">
+                           <strong className="text-yellow-400">Sinkronisasi Otomatis:</strong> Saat Anda mengunggah file ini, daftar kelas di menu 'Manajemen Kelas' akan diperbarui secara otomatis sesuai dengan data di kolom 'Kelas'.
                         </p>
                     </div>
 

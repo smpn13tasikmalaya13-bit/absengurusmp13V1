@@ -1,7 +1,6 @@
-
-import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User, MasterSchedule, Message, Role } from '../types';
-// FIX: Import 'getDoc' from 'firebase/firestore' to fetch single documents.
-import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch, serverTimestamp, onSnapshot, Timestamp, getDoc } from 'firebase/firestore';
+import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User, MasterSchedule, Message, Role, Announcement } from '../types';
+// FIX: Import `DocumentSnapshot` from firestore to resolve missing type error.
+import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch, serverTimestamp, onSnapshot, Timestamp, getDoc, DocumentSnapshot } from 'firebase/firestore';
 import { db, storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
@@ -40,7 +39,6 @@ export const MOCK_ESKULS: Omit<Eskul, 'id'>[] = [
   { name: 'Tahfidz' },
 ];
 
-// FIX: Added missing teacherId to mock data to match LessonSchedule type.
 export const MOCK_LESSON_SCHEDULE: Omit<LessonSchedule, 'id'>[] = [
   { day: 'Senin', time: '08:00 - 08:40', teacher: 'Suherlan', teacherId: 'mock-teacher-id-1', subject: 'PP', class: 'IX A', period: 1 },
   { day: 'Senin', time: '08:40 - 09:20', teacher: 'Suherlan', teacherId: 'mock-teacher-id-1', subject: 'PP', class: 'IX A', period: 2 },
@@ -63,12 +61,6 @@ export const MOCK_EXTRA_SCHEDULE: Omit<EskulSchedule, 'id'>[] = [
 // FIRESTORE DATA MUTATION FUNCTIONS
 // ========================================================================
 
-/**
- * Uploads a profile photo to Firebase Storage.
- * @param file The image file to upload.
- * @param userId The ID of the user.
- * @returns The public download URL of the uploaded image.
- */
 export const uploadProfilePhoto = async (file: File, userId: string): Promise<string> => {
     try {
         const filePath = `profile-pictures/${userId}/${file.name}`;
@@ -82,11 +74,6 @@ export const uploadProfilePhoto = async (file: File, userId: string): Promise<st
     }
 };
 
-/**
- * Updates a user's profile data in Firestore.
- * @param userId The ID of the user to update.
- * @param data The partial user data to update.
- */
 export const updateUserProfile = async (userId: string, data: Partial<User>): Promise<void> => {
     try {
         const userDocRef = doc(db, 'users', userId);
@@ -97,51 +84,62 @@ export const updateUserProfile = async (userId: string, data: Partial<User>): Pr
     }
 };
 
-/**
- * Replaces the entire master schedule collection with new data from an upload.
- * This is an atomic operation to ensure data consistency.
- * @param schedules An array of master schedule objects to upload.
- */
 export const uploadMasterSchedule = async (schedules: Omit<MasterSchedule, 'id'>[]): Promise<void> => {
     const batch = writeBatch(db);
     const masterSchedulesCol = collection(db, 'masterSchedules');
+    const classesCol = collection(db, 'classes');
 
     try {
-        // Step 1: Query for all existing documents in the collection.
-        const existingDocsSnapshot = await getDocs(query(masterSchedulesCol));
-        
-        // Step 2: Add delete operations for all existing documents to the batch.
-        existingDocsSnapshot.forEach(doc => {
+        const existingSchedulesSnapshot = await getDocs(query(masterSchedulesCol));
+        existingSchedulesSnapshot.forEach(doc => {
             batch.delete(doc.ref);
         });
 
-        // Step 3: Add set operations for the new documents to the batch.
         schedules.forEach(scheduleData => {
-            const docRef = doc(masterSchedulesCol); // Firestore generates a new unique ID
+            const docRef = doc(masterSchedulesCol);
             batch.set(docRef, scheduleData);
         });
 
-        // Step 4: Commit the batch to atomically delete old data and add new data.
+        const newClassNames = new Set(schedules.map(s => s.class));
+        const existingClassesSnapshot = await getDocs(query(classesCol));
+        const existingClasses = existingClassesSnapshot.docs.map(d => ({ id: d.id, ...d.data() as Omit<Class, 'id'> }));
+        const existingClassNames = new Set(existingClasses.map(c => c.name));
+
+        newClassNames.forEach(className => {
+            if (!existingClassNames.has(className)) {
+                const classDocRef = doc(classesCol);
+                
+                let grade = 0;
+                if (className.startsWith('VII')) grade = 7;
+                else if (className.startsWith('VIII')) grade = 8;
+                else if (className.startsWith('IX')) grade = 9;
+
+                batch.set(classDocRef, { name: className, grade });
+            }
+        });
+        
+        existingClasses.forEach(cls => {
+            if (!newClassNames.has(cls.name)) {
+                const oldClassDocRef = doc(db, 'classes', cls.id);
+                batch.delete(oldClassDocRef);
+            }
+        });
+
         await batch.commit();
+
     } catch (error: any) {
-        console.error("Error uploading master schedule:", error);
+        console.error("Error uploading master schedule and syncing classes:", error);
         if (error.code === 'permission-denied') {
-            throw new Error("Izin ditolak. SOLUSI: Buka Firebase Console > Firestore Database > Rules, dan pastikan Admin diizinkan untuk 'write' (create, update, delete) pada koleksi 'masterSchedules'.");
+            throw new Error("Izin ditolak. Pastikan Admin diizinkan untuk 'write' pada koleksi 'masterSchedules' dan 'classes' di Aturan Keamanan Firestore.");
         }
-        throw new Error("Gagal mengunggah jadwal induk. Operasi dibatalkan.");
+        throw new Error("Gagal mengunggah jadwal dan menyinkronkan kelas. Operasi dibatalkan.");
     }
 };
-
 
 // ========================================================================
 // FIRESTORE DATA FETCHING FUNCTIONS
 // ========================================================================
 
-/**
- * Fetches the entire master schedule collection from Firestore.
- * This data is used as the source of truth for schedule validation.
- * @returns A promise that resolves to an array of master schedules.
- */
 export const getAllMasterSchedules = async (): Promise<MasterSchedule[]> => {
     try {
         const masterSchedulesCol = collection(db, 'masterSchedules');
@@ -157,12 +155,6 @@ export const getAllMasterSchedules = async (): Promise<MasterSchedule[]> => {
     }
 };
 
-
-/**
- * Fetches all master schedule entries for a specific teacher using their unique code.
- * @param kode The teacher's unique code.
- * @returns A promise that resolves to an array of master schedule entries.
- */
 export const getMasterSchedulesByTeacherCode = async (kode: string): Promise<MasterSchedule[]> => {
     try {
         const schedulesCol = collection(db, 'masterSchedules');
@@ -170,7 +162,6 @@ export const getMasterSchedulesByTeacherCode = async (kode: string): Promise<Mas
         const snapshot = await getDocs(q);
         const schedules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MasterSchedule));
         
-        // Sort client-side for consistency
         const dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         schedules.sort((a, b) => {
             const dayComparison = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
@@ -185,8 +176,6 @@ export const getMasterSchedulesByTeacherCode = async (kode: string): Promise<Mas
     }
 };
 
-
-// Fetch all classes from Firestore
 export const getAllClasses = async (): Promise<Class[]> => {
     try {
         const classesCol = collection(db, 'classes');
@@ -199,7 +188,6 @@ export const getAllClasses = async (): Promise<Class[]> => {
     }
 };
 
-// Add a new class to Firestore
 export const addClass = async (name: string, grade: number): Promise<void> => {
     if (!name || !grade) {
         throw new Error("Class name and grade are required.");
@@ -213,7 +201,6 @@ export const addClass = async (name: string, grade: number): Promise<void> => {
     }
 };
 
-// Delete a class from Firestore
 export const deleteClass = async (id: string): Promise<void> => {
     if (!id) {
         throw new Error("Class ID is required to delete.");
@@ -227,7 +214,6 @@ export const deleteClass = async (id: string): Promise<void> => {
     }
 };
 
-// Fetch all eskuls from Firestore
 export const getAllEskuls = async (): Promise<Eskul[]> => {
     try {
         const eskulsCol = collection(db, 'eskuls');
@@ -240,7 +226,6 @@ export const getAllEskuls = async (): Promise<Eskul[]> => {
     }
 };
 
-// Add a new eskul to Firestore
 export const addEskul = async (name: string): Promise<void> => {
     if (!name) {
         throw new Error("Eskul name is required.");
@@ -254,7 +239,6 @@ export const addEskul = async (name: string): Promise<void> => {
     }
 };
 
-// Delete an eskul from Firestore
 export const deleteEskul = async (id: string): Promise<void> => {
     if (!id) {
         throw new Error("Eskul ID is required to delete.");
@@ -268,7 +252,6 @@ export const deleteEskul = async (id: string): Promise<void> => {
     }
 };
 
-// Fetch all lesson schedules from Firestore
 export const getAllLessonSchedules = async (): Promise<LessonSchedule[]> => {
     try {
         const schedulesCol = collection(db, 'lessonSchedules');
@@ -284,7 +267,6 @@ export const getAllLessonSchedules = async (): Promise<LessonSchedule[]> => {
     }
 };
 
-// Add a new lesson schedule to Firestore
 export const addLessonSchedule = async (schedule: Omit<LessonSchedule, 'id'>): Promise<LessonSchedule> => {
     try {
         const schedulesCol = collection(db, 'lessonSchedules');
@@ -296,7 +278,6 @@ export const addLessonSchedule = async (schedule: Omit<LessonSchedule, 'id'>): P
     }
 };
 
-// Update a lesson schedule in Firestore
 export const updateLessonSchedule = async (id: string, schedule: Partial<LessonSchedule>): Promise<void> => {
     if (!id) {
         throw new Error("Schedule ID is required to update.");
@@ -310,7 +291,6 @@ export const updateLessonSchedule = async (id: string, schedule: Partial<LessonS
     }
 };
 
-// Delete a lesson schedule from Firestore
 export const deleteLessonSchedule = async (id: string): Promise<void> => {
     if (!id) {
         throw new Error("Schedule ID is required to delete.");
@@ -324,7 +304,6 @@ export const deleteLessonSchedule = async (id: string): Promise<void> => {
     }
 };
 
-// Fetch all eskul schedules from Firestore
 export const getAllEskulSchedules = async (): Promise<EskulSchedule[]> => {
     try {
         const schedulesCol = collection(db, 'eskulSchedules');
@@ -337,7 +316,6 @@ export const getAllEskulSchedules = async (): Promise<EskulSchedule[]> => {
     }
 };
 
-// Add a new eskul schedule to Firestore
 export const addEskulSchedule = async (schedule: Omit<EskulSchedule, 'id'>): Promise<void> => {
     try {
         const schedulesCol = collection(db, 'eskulSchedules');
@@ -348,7 +326,6 @@ export const addEskulSchedule = async (schedule: Omit<EskulSchedule, 'id'>): Pro
     }
 };
 
-// Update an eskul schedule in Firestore
 export const updateEskulSchedule = async (id: string, schedule: Partial<EskulSchedule>): Promise<void> => {
     if (!id) {
         throw new Error("Schedule ID is required to update.");
@@ -362,7 +339,6 @@ export const updateEskulSchedule = async (id: string, schedule: Partial<EskulSch
     }
 };
 
-// Delete an eskul schedule from Firestore
 export const deleteEskulSchedule = async (id: string): Promise<void> => {
     if (!id) {
         throw new Error("Schedule ID is required to delete.");
@@ -376,7 +352,6 @@ export const deleteEskulSchedule = async (id: string): Promise<void> => {
     }
 };
 
-// Fetch lesson schedules for a specific teacher
 export const getSchedulesByTeacher = async (teacherId: string): Promise<LessonSchedule[]> => {
     try {
         const schedulesCol = collection(db, 'lessonSchedules');
@@ -397,7 +372,6 @@ export const getSchedulesByTeacher = async (teacherId: string): Promise<LessonSc
     }
 };
 
-// Report a student's absence
 export const reportStudentAbsence = async (record: Omit<StudentAbsenceRecord, 'id'>): Promise<void> => {
     try {
         const studentAbsencesCol = collection(db, 'studentAbsenceRecords');
@@ -408,7 +382,6 @@ export const reportStudentAbsence = async (record: Omit<StudentAbsenceRecord, 'i
     }
 };
 
-// Fetch student absences reported by a specific teacher for a given date
 export const getStudentAbsencesByTeacherForDate = async (teacherId: string, date: string): Promise<StudentAbsenceRecord[]> => {
     try {
         const studentAbsencesCol = collection(db, 'studentAbsenceRecords');
@@ -425,19 +398,16 @@ export const getStudentAbsencesByTeacherForDate = async (teacherId: string, date
     }
 };
 
-// Fetch all student absences reported by a specific teacher
 export const getStudentAbsencesByTeacher = async (teacherId: string): Promise<StudentAbsenceRecord[]> => {
     try {
         const studentAbsencesCol = collection(db, 'studentAbsenceRecords');
         const q = query(
             studentAbsencesCol,
             where('teacherId', '==', teacherId)
-            // orderBy('date', 'desc') // This requires a composite index. Removing for now.
         );
         const snapshot = await getDocs(q);
         const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentAbsenceRecord));
         
-        // Sort client-side to avoid needing a composite index
         records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
         return records;
@@ -472,8 +442,6 @@ export const getFilteredStudentAbsenceReport = async ({
         constraints.push(where('class', '==', className));
     }
     
-    // Firestore might require a composite index for this query.
-    // The error message in the console will guide the user to create one if needed.
     const q = query(studentAbsencesCol, ...constraints, orderBy('date', 'desc'));
 
     try {
@@ -491,13 +459,6 @@ export const getFilteredStudentAbsenceReport = async ({
     }
 };
 
-/**
- * Checks if a schedule slot is already taken.
- * @param day The day of the week (e.g., 'Senin').
- * @param period The lesson period number.
- * @param className The name of the class (e.g., 'VII A').
- * @returns The conflicting schedule if one exists, otherwise null.
- */
 export const checkScheduleConflict = async (day: string, period: number, className: string): Promise<LessonSchedule | null> => {
     try {
         const schedulesCol = collection(db, 'lessonSchedules');
@@ -509,14 +470,12 @@ export const checkScheduleConflict = async (day: string, period: number, classNa
         );
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
-            // Conflict found, return the first conflicting document's data
             const doc = querySnapshot.docs[0];
             return { id: doc.id, ...doc.data() } as LessonSchedule;
         }
-        return null; // No conflict
+        return null;
     } catch (error: any) {
         console.error("Error checking for schedule conflict:", error);
-        // Let the UI handle this as a generic failure
         throw new Error("Gagal memeriksa jadwal bentrok. Periksa koneksi Anda.");
     }
 };
@@ -525,15 +484,12 @@ export const checkScheduleConflict = async (day: string, period: number, classNa
 // MESSAGING FUNCTIONS
 // ========================================================================
 
-/**
- * Fetches all users with the ADMIN role.
- * @returns A promise that resolves to an array of admin users.
- */
 export const getAdminUsers = async (): Promise<User[]> => {
     try {
         const usersCol = collection(db, 'users');
         const q = query(usersCol, where('role', '==', Role.Admin));
         const snapshot = await getDocs(q);
+        if (snapshot.empty) return [];
         return snapshot.docs.map(doc => doc.data() as User);
     } catch (error) {
         console.error("Error fetching admin users:", error);
@@ -541,9 +497,6 @@ export const getAdminUsers = async (): Promise<User[]> => {
     }
 };
 
-/**
- * Sends a message from one user to another.
- */
 export const sendMessage = async (senderId: string, senderName: string, recipientId: string, content: string): Promise<void> => {
   try {
     const messagesCol = collection(db, 'messages');
@@ -561,19 +514,10 @@ export const sendMessage = async (senderId: string, senderName: string, recipien
   }
 };
 
-/**
- * Sets up a real-time listener for all messages involving a specific user.
- * @param userId The ID of the user.
- * @param callback The function to call with the updated messages array.
- * @returns An unsubscribe function to detach the listener.
- */
 export const getMessagesForUser = (userId: string, callback: (messages: Message[]) => void): (() => void) => {
   const messagesCol = collection(db, 'messages');
   
-  // Query for messages sent TO the user
   const qSentTo = query(messagesCol, where('recipientId', '==', userId));
-  
-  // Query for messages sent BY the user
   const qSentBy = query(messagesCol, where('senderId', '==', userId));
 
   let receivedMessages: Message[] = [];
@@ -581,7 +525,6 @@ export const getMessagesForUser = (userId: string, callback: (messages: Message[
 
   const combineAndCallback = () => {
     const allMessages = [...receivedMessages, ...sentMessages];
-    // Sort by timestamp, oldest first for chronological order
     allMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     const uniqueMessages = Array.from(new Map(allMessages.map(item => [item['id'], item])).values());
     callback(uniqueMessages);
@@ -589,9 +532,7 @@ export const getMessagesForUser = (userId: string, callback: (messages: Message[
 
   const handleError = (error: Error, type: 'received' | 'sent') => {
       console.error(`Error listening to ${type} messages:`, error);
-      // Optional: Add a callback to inform the UI about the error
       if (error.message.includes('permission-denied')) {
-          // You could pass an error state back to the UI via the callback
           console.error("Firestore permission denied. Check your security rules for the 'messages' collection.");
       }
   };
@@ -621,7 +562,6 @@ export const getMessagesForUser = (userId: string, callback: (messages: Message[
     combineAndCallback();
   }, (error) => handleError(error, 'sent'));
 
-  // Return a function that unsubscribes from both listeners
   return () => {
     unsubscribeTo();
     unsubscribeBy();
@@ -635,32 +575,31 @@ export interface Conversation {
     unreadCount: number;
 }
 
-/**
- * Fetches all messages and groups them into conversations for the admin view.
- * @param adminId The ID of the currently logged-in admin.
- * @param callback The function to call with the conversations map.
- * @returns An unsubscribe function.
- */
 export const getAllConversations = (adminId: string, callback: (conversations: Conversation[]) => void): (() => void) => {
     const messagesCol = collection(db, 'messages');
     const q = query(messagesCol, orderBy('timestamp', 'desc'));
 
-    return onSnapshot(q, (snapshot) => {
+    return onSnapshot(q, async (snapshot) => {
         const conversationsMap = new Map<string, Conversation>();
+        const userFetchPromises = new Map<string, Promise<DocumentSnapshot<User>>>();
 
-        snapshot.docs.forEach(doc => {
+        for (const doc of snapshot.docs) {
             const message = { id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp)?.toDate() || new Date() } as Message;
-
             const otherUserId = message.senderId === adminId ? message.recipientId : message.senderId;
-            const otherUserName = message.senderId === adminId ? 'Anda' : message.senderName; // This might need adjustment if admin sends to another admin
 
             if (!conversationsMap.has(otherUserId)) {
                 conversationsMap.set(otherUserId, {
                     otherUserId,
-                    otherUserName: 'Loading...', // Placeholder, will be updated later
+                    otherUserName: 'Loading...',
                     messages: [],
                     unreadCount: 0,
                 });
+
+                // Fetch user info only once
+                if (!userFetchPromises.has(otherUserId)) {
+                    const userRef = doc(db, 'users', otherUserId);
+                    userFetchPromises.set(otherUserId, getDoc(userRef) as Promise<DocumentSnapshot<User>>);
+                }
             }
 
             const conversation = conversationsMap.get(otherUserId)!;
@@ -669,49 +608,32 @@ export const getAllConversations = (adminId: string, callback: (conversations: C
             if (!message.isRead && message.recipientId === adminId) {
                 conversation.unreadCount += 1;
             }
-        });
-        
-        // Post-process to get correct user names and sort messages
-        const conversations: Conversation[] = [];
-        const userPromises: Promise<void>[] = [];
+        }
 
+        const userDocs = await Promise.all(userFetchPromises.values());
+        const userMap = new Map(userDocs.map(d => [d.id, d.data()]));
+
+        const conversations: Conversation[] = [];
         conversationsMap.forEach(convo => {
-            // Sort messages chronologically
             convo.messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-            
-            // Fetch user info to get the correct name
-            const userRef = doc(db, 'users', convo.otherUserId);
-            userPromises.push(
-                getDoc(userRef).then(userDoc => {
-                    if(userDoc.exists()) {
-                       convo.otherUserName = (userDoc.data() as User).name;
-                    } else {
-                       convo.otherUserName = 'Pengguna Dihapus';
-                    }
-                })
-            );
+            const userData = userMap.get(convo.otherUserId);
+            convo.otherUserName = userData ? userData.name : 'Pengguna Dihapus';
             conversations.push(convo);
         });
 
-        Promise.all(userPromises).then(() => {
-            // Sort conversations by the timestamp of the last message
-            conversations.sort((a, b) => {
-                const lastMsgA = a.messages[a.messages.length - 1]?.timestamp.getTime() || 0;
-                const lastMsgB = b.messages[b.messages.length - 1]?.timestamp.getTime() || 0;
-                return lastMsgB - lastMsgA;
-            });
-            callback(conversations);
+        conversations.sort((a, b) => {
+            const lastMsgA = a.messages[a.messages.length - 1]?.timestamp.getTime() || 0;
+            const lastMsgB = b.messages[b.messages.length - 1]?.timestamp.getTime() || 0;
+            return lastMsgB - lastMsgA;
         });
+
+        callback(conversations);
 
     }, (error) => {
         console.error("Error fetching all conversations:", error);
     });
 };
 
-
-/**
- * Marks a list of messages as read.
- */
 export const markMessagesAsRead = async (messageIds: string[]): Promise<void> => {
   if (messageIds.length === 0) return;
   const batch = writeBatch(db);
@@ -723,13 +645,9 @@ export const markMessagesAsRead = async (messageIds: string[]): Promise<void> =>
     await batch.commit();
   } catch (error) {
     console.error("Error marking messages as read:", error);
-    // Don't throw, as this is a background task
   }
 };
 
-/**
- * Deletes a message from Firestore.
- */
 export const deleteMessage = async (messageId: string): Promise<void> => {
     try {
         const docRef = doc(db, 'messages', messageId);
@@ -740,22 +658,14 @@ export const deleteMessage = async (messageId: string): Promise<void> => {
     }
 };
 
-/**
- * Deletes all messages between two users.
- */
 export const deleteConversation = async (userId1: string, userId2: string): Promise<void> => {
     const batch = writeBatch(db);
     const messagesCol = collection(db, 'messages');
 
-    // Query for messages from user1 to user2
     const q1 = query(messagesCol, where('senderId', '==', userId1), where('recipientId', '==', userId2));
-    
-    // Query for messages from user2 to user1
     const q2 = query(messagesCol, where('senderId', '==', userId2), where('recipientId', '==', userId1));
     
     try {
-        // Firestore may require composite indexes for these queries.
-        // The security rules already allow admins to delete, so this should work.
         const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
 
         snapshot1.forEach(doc => batch.delete(doc.ref));
@@ -766,4 +676,59 @@ export const deleteConversation = async (userId1: string, userId2: string): Prom
         console.error("Error deleting conversation:", error);
         throw new Error("Gagal menghapus percakapan. Mungkin memerlukan indeks komposit di Firestore.");
     }
+};
+
+
+// ========================================================================
+// ANNOUNCEMENTS FUNCTIONS
+// ========================================================================
+
+/**
+ * Adds a new announcement to the collection.
+ * @param content The announcement text.
+ * @param adminName The name of the admin sending the announcement.
+ */
+export const addAnnouncement = async (content: string, adminName: string): Promise<void> => {
+    if (!content.trim()) {
+        throw new Error("Isi pengumuman tidak boleh kosong.");
+    }
+    try {
+        const announcementsCol = collection(db, 'announcements');
+        await addDoc(announcementsCol, {
+            content,
+            sentBy: adminName,
+            timestamp: serverTimestamp(),
+        });
+    } catch (error) {
+        console.error("Error adding announcement:", error);
+        throw new Error("Gagal mengirim pengumuman.");
+    }
+};
+
+/**
+ * Sets up a real-time listener for announcements.
+ * @param callback The function to call with the updated announcements array.
+ * @returns An unsubscribe function to detach the listener.
+ */
+export const getAnnouncements = (callback: (announcements: Announcement[]) => void): (() => void) => {
+    const announcementsCol = collection(db, 'announcements');
+    const q = query(announcementsCol, orderBy('timestamp', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const announcements = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                timestamp: (data.timestamp as Timestamp)?.toDate() || new Date(),
+            } as Announcement;
+        });
+        callback(announcements);
+    }, (error) => {
+        console.error("Error listening to announcements:", error);
+        // You can also inform the UI about the error via the callback if needed
+        callback([]); // Return empty array on error
+    });
+
+    return unsubscribe;
 };

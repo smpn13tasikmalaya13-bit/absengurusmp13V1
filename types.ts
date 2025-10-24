@@ -30,7 +30,7 @@ export interface AttendanceRecord {
   status: string; // e.g., 'Present', 'Late', 'Sakit', 'Datang', 'Pulang'
   reason?: string;
   // Fields to link attendance to a specific lesson
-  scheduleId?: string;
+  scheduleId: string; 
   subject?: string;
   class?: string;
   period?: number;
@@ -97,4 +97,19 @@ export interface Message {
   content: string;
   timestamp: Date;
   isRead: boolean;
+}
+
+// New type for Announcements
+export interface Announcement {
+  id: string;
+  content: string;
+  timestamp: Date;
+  sentBy: string; // Admin's name
+}
+
+// New type for Toast notifications
+export interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
 }

@@ -1,18 +1,14 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { AttendanceRecord } from "../types";
 
-// FIX: Initialize GoogleGenAI with the API key from environment variables as per guidelines.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 
 export const generateAttendanceSummary = async (records: AttendanceRecord[]): Promise<string> => {
-  // FIX: Removed manual API key check. As per guidelines, assume the API key is configured correctly in the environment.
   if (records.length === 0) {
     return "No attendance data available to summarize.";
   }
   
-  // FIX: Corrected typo in the model name.
   const model = "gemini-2.5-flash";
   const prompt = `
     You are an assistant for a school administrator.
@@ -35,4 +31,43 @@ export const generateAttendanceSummary = async (records: AttendanceRecord[]): Pr
     console.error("Error calling Gemini API:", error);
     return "Failed to generate summary due to an API error.";
   }
+};
+
+/**
+ * Generates a message draft for a teacher who was marked 'Alpa' (absent without notice).
+ * @param context - The context of the absence.
+ * @returns A promise that resolves to a string containing the drafted message.
+ */
+export const generateMessageDraft = async (context: {
+    teacherName: string;
+    subject: string;
+    class: string;
+    date: string;
+    period: number;
+}): Promise<string> => {
+    const { teacherName, subject, class: className, date, period } = context;
+    const model = "gemini-2.5-flash";
+    const prompt = `
+      Anda adalah seorang asisten kepala sekolah. Buatkan draf pesan singkat yang sopan namun tegas dalam Bahasa Indonesia untuk dikirimkan kepada seorang guru yang tercatat "Alpa" (tidak hadir tanpa keterangan).
+
+      Konteks:
+      - Nama Guru: ${teacherName}
+      - Mata Pelajaran: ${subject}
+      - Kelas: ${className}
+      - Tanggal: ${date}
+      - Jam Ke: ${period}
+
+      Tujuan pesan adalah untuk mengingatkan dan meminta konfirmasi atau alasan ketidakhadiran guru tersebut. Mulailah pesan dengan sapaan formal seperti "Yth. Bapak/Ibu [Nama Guru],".
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: prompt,
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error calling Gemini API for message draft:", error);
+        return "Gagal membuat draf pesan. Silakan tulis manual.";
+    }
 };

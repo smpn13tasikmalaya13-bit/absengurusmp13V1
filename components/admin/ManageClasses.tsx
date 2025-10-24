@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAllClasses, addClass, deleteClass } from '../../services/dataService';
+import { getAllClasses } from '../../services/dataService';
 import { Button } from '../ui/Button';
 import { Class } from '../../types';
 import { Spinner } from '../ui/Spinner';
@@ -10,22 +11,9 @@ const ManageClasses: React.FC = () => {
   const [classes, setClasses] = useState<Class[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // State for Add Modal
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newClassName, setNewClassName] = useState('');
-  const [newClassGrade, setNewClassGrade] = useState<number | ''>('');
-
-  // State for Delete Modal
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [classToDelete, setClassToDelete] = useState<Class | null>(null);
-
   // State for QR Code Modal
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
-
-  // General state
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
 
   const fetchClasses = useCallback(async () => {
     const data = await getAllClasses();
@@ -37,66 +25,6 @@ const ManageClasses: React.FC = () => {
     setIsLoading(true);
     fetchClasses();
   }, [fetchClasses]);
-
-  // === ADD MODAL LOGIC ===
-  const handleOpenAddModal = () => {
-    setNewClassName('');
-    setNewClassGrade('');
-    setError('');
-    setIsAddModalOpen(true);
-  };
-
-  const handleCloseAddModal = () => {
-    if (isSubmitting) return;
-    setIsAddModalOpen(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newClassName.trim() || newClassGrade === '') {
-      setError('Nama Kelas dan Tingkat harus diisi.');
-      return;
-    }
-    setError('');
-    setIsSubmitting(true);
-    try {
-      await addClass(newClassName.trim(), Number(newClassGrade));
-      handleCloseAddModal();
-      await fetchClasses(); // Refetch classes to show the new one
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal menyimpan kelas.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  
-  // === DELETE MODAL LOGIC ===
-  const handleOpenDeleteModal = (cls: Class) => {
-    setClassToDelete(cls);
-    setError('');
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleCloseDeleteModal = () => {
-    if (isSubmitting) return;
-    setIsDeleteModalOpen(false);
-    setClassToDelete(null);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!classToDelete) return;
-    setError('');
-    setIsSubmitting(true);
-    try {
-      await deleteClass(classToDelete.id);
-      handleCloseDeleteModal();
-      await fetchClasses(); // Refetch classes
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal menghapus kelas.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
   
   // === QR CODE MODAL LOGIC ===
   const handleOpenQrModal = (cls: Class) => {
@@ -108,14 +36,36 @@ const ManageClasses: React.FC = () => {
     setIsQrModalOpen(false);
     setSelectedClass(null);
   };
+  
+  const handlePrint = () => {
+    const svgElement = document.getElementById('qr-code-svg');
+    if (svgElement && selectedClass) {
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const printWindow = window.open('', '', 'height=400,width=400');
+        printWindow?.document.write('<html><head><title>Cetak QR Code</title>');
+        printWindow?.document.write('<style>body { text-align: center; font-family: sans-serif; } .qr-container { display: inline-block; padding: 20px; border: 2px solid #000; } h2 { margin-bottom: 20px; }</style>');
+        printWindow?.document.write('</head><body>');
+        printWindow?.document.write('<div class="qr-container">');
+        printWindow?.document.write(`<h2>QR Code Absensi Kelas</h2><h1>${selectedClass.name}</h1>`);
+        printWindow?.document.write(svgData);
+        printWindow?.document.write('</div>');
+        printWindow?.document.write('</body></html>');
+        printWindow?.document.close();
+        printWindow?.focus();
+        printWindow?.print();
+    }
+  };
+
 
   return (
     <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold text-white">Manajemen Kelas</h1>
-          <Button onClick={handleOpenAddModal} className="w-auto !bg-blue-600 hover:!bg-blue-700 px-6">Tambah</Button>
+          <h1 className="text-xl font-bold text-white">Manajemen Data Kelas & QR Code</h1>
         </div>
+        <p className="text-sm text-slate-400 -mt-4">
+            Daftar kelas di bawah ini dikelola secara otomatis berdasarkan file yang Anda unggah di menu 'Unggah Jadwal Induk'. Halaman ini berfungsi untuk mencetak QR code absensi untuk setiap kelas.
+        </p>
         <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg overflow-x-auto">
           {isLoading ? (
             <div className="p-8"><Spinner /></div>
@@ -142,15 +92,14 @@ const ManageClasses: React.FC = () => {
                     <td className="flex justify-between items-center md:table-cell md:p-4">
                         <span className="text-sm font-semibold text-slate-400 md:hidden">Aksi</span>
                         <div className="flex items-center space-x-4">
-                            <button onClick={() => handleOpenQrModal(cls)} className="text-blue-400 hover:underline font-medium text-sm">QR Code</button>
-                            <button onClick={() => handleOpenDeleteModal(cls)} className="text-red-400 hover:underline font-medium text-sm">Hapus</button>
+                            <button onClick={() => handleOpenQrModal(cls)} className="text-blue-400 hover:underline font-medium text-sm">Lihat & Cetak QR Code</button>
                         </div>
                     </td>
                   </tr>
                 )) : (
                   <tr>
                     <td colSpan={3} className="p-4 text-center text-gray-400">
-                      Tidak ada data kelas. Coba jalankan 'Seed Initial Data' dari Dashboard.
+                      Tidak ada data kelas. Silakan unggah jadwal melalui menu 'Unggah Jadwal Induk' untuk mengisi daftar ini secara otomatis.
                     </td>
                   </tr>
                 )}
@@ -160,81 +109,19 @@ const ManageClasses: React.FC = () => {
         </div>
       </div>
 
-      {/* ADD MODAL */}
-      <Modal isOpen={isAddModalOpen} onClose={handleCloseAddModal} title="Tambah Kelas Baru">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="className" className="block text-sm font-medium text-gray-300">Nama Kelas</label>
-            <input
-              id="className"
-              type="text"
-              value={newClassName}
-              onChange={(e) => setNewClassName(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="Contoh: VII A"
-              disabled={isSubmitting}
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="classGrade" className="block text-sm font-medium text-gray-300">Tingkat</label>
-            <input
-              id="classGrade"
-              type="number"
-              value={newClassGrade}
-              onChange={(e) => setNewClassGrade(e.target.value === '' ? '' : Number(e.target.value))}
-              className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="Contoh: 7, 8, atau 9"
-              min="1"
-              max="12"
-              disabled={isSubmitting}
-              required
-            />
-          </div>
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          <div className="flex justify-end space-x-3 pt-2">
-            <Button type="button" onClick={handleCloseAddModal} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>
-              Batal
-            </Button>
-            <Button type="submit" isLoading={isSubmitting} className="w-auto">
-              Simpan
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
       {/* QR CODE MODAL */}
       {selectedClass && (
         <Modal isOpen={isQrModalOpen} onClose={handleCloseQrModal} title={`QR Code untuk Kelas ${selectedClass.name}`}>
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="p-4 bg-white rounded-lg">
-              <QRCodeSVG value={selectedClass.id} size={256} />
+              <QRCodeSVG id="qr-code-svg" value={selectedClass.id} size={256} />
             </div>
             <p className="text-sm text-gray-400 text-center">
-              QR Code ini berisi ID unik untuk kelas ${selectedClass.name}. Gunakan untuk absensi atau keperluan lain.
+              Tempel QR Code ini di dalam kelas <strong>{selectedClass.name}</strong>. Guru akan memindai kode ini untuk absensi setiap jam pelajaran.
             </p>
-             <div className="w-full pt-2">
-                <Button onClick={handleCloseQrModal} className="w-full !bg-slate-600 hover:!bg-slate-500 !text-white">Tutup</Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* DELETE CONFIRMATION MODAL */}
-      {classToDelete && (
-        <Modal isOpen={isDeleteModalOpen} onClose={handleCloseDeleteModal} title="Konfirmasi Hapus">
-          <div className="space-y-4">
-            <p className="text-gray-300">
-              Apakah Anda yakin ingin menghapus kelas <strong>{classToDelete.name}</strong>? Tindakan ini tidak dapat diurungkan.
-            </p>
-            {error && <p className="text-sm text-red-400">{error}</p>}
-            <div className="flex justify-end space-x-3 pt-2">
-              <Button type="button" onClick={handleCloseDeleteModal} variant="secondary" className="w-auto !bg-slate-600 hover:!bg-slate-500 !text-white" disabled={isSubmitting}>
-                Batal
-              </Button>
-              <Button onClick={handleConfirmDelete} isLoading={isSubmitting} variant="danger" className="w-auto">
-                Hapus
-              </Button>
+             <div className="w-full pt-2 grid grid-cols-2 gap-4">
+                <Button onClick={handleCloseQrModal} variant="secondary">Tutup</Button>
+                <Button onClick={handlePrint} variant="primary">Cetak</Button>
             </div>
           </div>
         </Modal>
