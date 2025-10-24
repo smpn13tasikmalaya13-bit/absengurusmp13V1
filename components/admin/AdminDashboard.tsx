@@ -15,8 +15,9 @@ import UploadMasterSchedule from './UploadMasterSchedule';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import StaffQRCodeGenerator from './StaffQRCodeGenerator';
-import { Conversation, getAllConversations, sendMessage } from '../../services/dataService';
+import { Conversation, getAllConversations, sendMessage, deleteMessage, deleteConversation } from '../../services/dataService';
 import { Spinner } from '../ui/Spinner';
+import { Modal } from '../ui/Modal';
 
 // Admin Messages Page Component
 const AdminMessagesPage: React.FC = () => {
@@ -26,6 +27,9 @@ const AdminMessagesPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [replyContent, setReplyContent] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [isDeleteConvoModalOpen, setIsDeleteConvoModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
     const messagesEndRef = React.useRef<HTMLUListElement>(null);
 
     useEffect(() => {
@@ -68,73 +72,134 @@ const AdminMessagesPage: React.FC = () => {
         }
     };
 
+    const handleDeleteMessage = async (messageId: string) => {
+        if (window.confirm('Apakah Anda yakin ingin menghapus pesan ini? Tindakan ini tidak dapat diurungkan.')) {
+            try {
+                await deleteMessage(messageId);
+                // The real-time listener will automatically update the view.
+            } catch (error) {
+                console.error("Failed to delete message:", error);
+                alert("Gagal menghapus pesan.");
+            }
+        }
+    };
+
+    const handleOpenDeleteConvoModal = () => {
+        if (!selectedConversation) return;
+        setDeleteError('');
+        setIsDeleteConvoModalOpen(true);
+    };
+
+    const handleConfirmDeleteConversation = async () => {
+        if (!user || !selectedConversation) return;
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteConversation(user.id, selectedConversation.otherUserId);
+            setIsDeleteConvoModalOpen(false);
+            setSelectedConversation(null); // Go back to the conversation list view
+        } catch (err) {
+            setDeleteError(err instanceof Error ? err.message : 'Gagal menghapus percakapan.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+
     if (isLoading) {
         return <div className="flex justify-center items-center h-full"><Spinner /></div>;
     }
 
     return (
-        <div className="h-[calc(100vh-10rem)] flex bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
-            {/* Conversations List */}
-            <div className="w-1/3 border-r border-slate-700 overflow-y-auto">
-                <div className="p-4 border-b border-slate-700">
-                    <h2 className="text-lg font-bold text-white">Percakapan</h2>
-                </div>
-                <ul className="divide-y divide-slate-700">
-                    {conversations.map(convo => (
-                        <li key={convo.otherUserId}>
-                            <button onClick={() => handleSelectConversation(convo)} className={`w-full text-left p-4 hover:bg-slate-700/50 transition-colors ${selectedConversation?.otherUserId === convo.otherUserId ? 'bg-slate-700' : ''}`}>
-                                <div className="flex justify-between items-center">
-                                    <span className="font-semibold text-white">{convo.otherUserName}</span>
-                                    {convo.unreadCount > 0 && (
-                                        <span className="bg-indigo-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                                            {convo.unreadCount}
-                                        </span>
-                                    )}
-                                </div>
-                                <p className="text-sm text-slate-400 truncate">
-                                    {convo.messages[convo.messages.length - 1]?.content || 'Tidak ada pesan.'}
-                                </p>
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            </div>
-
-            {/* Message View */}
-            <div className="w-2/3 flex flex-col">
-                {selectedConversation ? (
-                    <>
-                        <div className="p-4 border-b border-slate-700 flex items-center">
-                            <h2 className="text-lg font-bold text-white">{selectedConversation.otherUserName}</h2>
-                        </div>
-                        <ul ref={messagesEndRef} className="flex-1 overflow-y-auto p-6 space-y-4">
-                           {selectedConversation.messages.map(msg => (
-                              <li key={msg.id} className={`flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
-                                  <div className={`p-3 rounded-lg max-w-xs md:max-w-md ${msg.senderId === user?.id ? 'bg-indigo-600' : 'bg-slate-700'}`}>
-                                      <p className="text-sm text-white">{msg.content}</p>
-                                  </div>
-                                  <span className="text-xs text-slate-500 mt-1">{new Date(msg.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
-                              </li>
-                          ))}
-                        </ul>
-                        <form onSubmit={handleSendReply} className="p-4 border-t border-slate-700 bg-slate-800/50 flex items-center gap-2">
-                            <input
-                                type="text"
-                                value={replyContent}
-                                onChange={(e) => setReplyContent(e.target.value)}
-                                placeholder="Ketik balasan..."
-                                className="flex-1 w-full px-4 py-2 bg-slate-900 text-white border-2 border-slate-600 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                            />
-                            <Button type="submit" className="flex-shrink-0" isLoading={isSending}>Kirim</Button>
-                        </form>
-                    </>
-                ) : (
-                    <div className="flex-1 flex items-center justify-center text-center">
-                        <p className="text-slate-400">Pilih percakapan untuk ditampilkan.</p>
+        <>
+            <div className="h-[calc(100vh-10rem)] flex bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
+                {/* Conversations List */}
+                <div className="w-1/3 border-r border-slate-700 overflow-y-auto">
+                    <div className="p-4 border-b border-slate-700">
+                        <h2 className="text-lg font-bold text-white">Percakapan</h2>
                     </div>
-                )}
+                    <ul className="divide-y divide-slate-700">
+                        {conversations.map(convo => (
+                            <li key={convo.otherUserId}>
+                                <button onClick={() => handleSelectConversation(convo)} className={`w-full text-left p-4 hover:bg-slate-700/50 transition-colors ${selectedConversation?.otherUserId === convo.otherUserId ? 'bg-slate-700' : ''}`}>
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-semibold text-white">{convo.otherUserName}</span>
+                                        {convo.unreadCount > 0 && (
+                                            <span className="bg-indigo-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                                {convo.unreadCount}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-sm text-slate-400 truncate">
+                                        {convo.messages[convo.messages.length - 1]?.content || 'Tidak ada pesan.'}
+                                    </p>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                {/* Message View */}
+                <div className="w-2/3 flex flex-col">
+                    {selectedConversation ? (
+                        <>
+                            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+                                <h2 className="text-lg font-bold text-white">{selectedConversation.otherUserName}</h2>
+                                <Button onClick={handleOpenDeleteConvoModal} variant="danger" className="w-auto px-3 py-1 text-xs">
+                                    Hapus Percakapan
+                                </Button>
+                            </div>
+                            <ul ref={messagesEndRef} className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {selectedConversation.messages.map(msg => (
+                                <li key={msg.id} className={`flex flex-col ${msg.senderId === user?.id ? 'items-end' : 'items-start'}`}>
+                                    <div className={`p-3 rounded-lg max-w-xs md:max-w-md ${msg.senderId === user?.id ? 'bg-indigo-600' : 'bg-slate-700'}`}>
+                                        <p className="text-sm text-white">{msg.content}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-xs text-slate-500">{new Date(msg.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                        <button onClick={() => handleDeleteMessage(msg.id)} className="text-xs text-red-500 hover:underline">Hapus</button>
+                                    </div>
+                                </li>
+                            ))}
+                            </ul>
+                            <form onSubmit={handleSendReply} className="p-4 border-t border-slate-700 bg-slate-800/50 flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={replyContent}
+                                    onChange={(e) => setReplyContent(e.target.value)}
+                                    placeholder="Ketik balasan..."
+                                    className="flex-1 w-full px-4 py-2 bg-slate-900 text-white border-2 border-slate-600 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                                />
+                                <Button type="submit" className="flex-shrink-0" isLoading={isSending}>Kirim</Button>
+                            </form>
+                        </>
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center text-center">
+                            <p className="text-slate-400">Pilih percakapan untuk ditampilkan.</p>
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+            
+            {selectedConversation && (
+                <Modal isOpen={isDeleteConvoModalOpen} onClose={() => setIsDeleteConvoModalOpen(false)} title="Hapus Seluruh Percakapan">
+                    <div className="space-y-4">
+                        <p className="text-slate-300">
+                            Apakah Anda yakin ingin menghapus seluruh riwayat percakapan dengan <strong>{selectedConversation.otherUserName}</strong>? Tindakan ini tidak dapat diurungkan.
+                        </p>
+                        {deleteError && <p className="text-sm text-red-400 mt-2">{deleteError}</p>}
+                        <div className="flex justify-end space-x-3 pt-4">
+                            <Button type="button" onClick={() => setIsDeleteConvoModalOpen(false)} variant="secondary" disabled={isDeleting}>
+                                Batal
+                            </Button>
+                            <Button onClick={handleConfirmDeleteConversation} isLoading={isDeleting} variant="danger">
+                                Hapus
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+        </>
     );
 };
 

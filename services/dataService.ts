@@ -711,3 +711,31 @@ export const deleteMessage = async (messageId: string): Promise<void> => {
         throw new Error("Gagal menghapus pesan.");
     }
 };
+
+/**
+ * Deletes all messages between two users.
+ */
+export const deleteConversation = async (userId1: string, userId2: string): Promise<void> => {
+    const batch = writeBatch(db);
+    const messagesCol = collection(db, 'messages');
+
+    // Query for messages from user1 to user2
+    const q1 = query(messagesCol, where('senderId', '==', userId1), where('recipientId', '==', userId2));
+    
+    // Query for messages from user2 to user1
+    const q2 = query(messagesCol, where('senderId', '==', userId2), where('recipientId', '==', userId1));
+    
+    try {
+        // Firestore may require composite indexes for these queries.
+        // The security rules already allow admins to delete, so this should work.
+        const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+        snapshot1.forEach(doc => batch.delete(doc.ref));
+        snapshot2.forEach(doc => batch.delete(doc.ref));
+
+        await batch.commit();
+    } catch (error) {
+        console.error("Error deleting conversation:", error);
+        throw new Error("Gagal menghapus percakapan. Mungkin memerlukan indeks komposit di Firestore.");
+    }
+};

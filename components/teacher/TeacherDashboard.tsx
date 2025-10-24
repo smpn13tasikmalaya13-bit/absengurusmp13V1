@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import QRScanner from './QRScanner';
-import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, addLessonSchedule, checkScheduleConflict, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile, getAllMasterSchedules, getAllLessonSchedules, getMessagesForUser, sendMessage, markMessagesAsRead, deleteMessage } from '../../services/dataService';
+import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, addLessonSchedule, checkScheduleConflict, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile, getAllMasterSchedules, getAllLessonSchedules, getMessagesForUser, sendMessage, markMessagesAsRead, deleteMessage, getAdminUsers } from '../../services/dataService';
 import { getAttendanceForTeacher, reportTeacherAbsence, recordAttendance } from '../../services/attendanceService';
 import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, User, MasterSchedule, Message } from '../../types';
 import { Modal } from '../ui/Modal';
@@ -172,11 +172,11 @@ const TeacherDashboard: React.FC = () => {
     setDashboardError(null); 
 
     try {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         
         // Refresh stats and history
         const allAttendance = await getAttendanceForTeacher(user.id);
-        const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const startOfWeek = new Date(startOfToday);
         startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() === 0 ? 6 : startOfWeek.getDay() - 1));
@@ -221,6 +221,9 @@ const TeacherDashboard: React.FC = () => {
 
     if (!user) return;
     const todayDayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
 
     const fetchData = async () => {
       setIsLoadingSchedule(true);
@@ -240,7 +243,7 @@ const TeacherDashboard: React.FC = () => {
         ] = await Promise.all([
           getSchedulesByTeacher(user.id),
           getAttendanceForTeacher(user.id),
-          getStudentAbsencesByTeacherForDate(user.id, new Date().toISOString().split('T')[0]),
+          getStudentAbsencesByTeacherForDate(user.id, todayStr),
           getAllClasses(),
           getStudentAbsencesByTeacher(user.id),
           getAllMasterSchedules(),
@@ -253,7 +256,6 @@ const TeacherDashboard: React.FC = () => {
         setMasterSchedules(masterSchedulesData);
         setAllLessonSchedules(allSchedulesData);
         
-        const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const startOfWeek = new Date(startOfToday);
         startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() === 0 ? 6 : startOfWeek.getDay() - 1));
@@ -300,7 +302,8 @@ const TeacherDashboard: React.FC = () => {
   }, [activeView, messages, unreadCount, user]);
 
     const attendedTodaySet = useMemo(() => {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         return new Set(
             attendanceHistory
                 .filter(r => r.date === todayStr && r.scheduleId)
@@ -362,10 +365,14 @@ const TeacherDashboard: React.FC = () => {
     setIsSubmitting(true);
     setModalError('');
     setModalSuccess('');
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
     const record: Omit<StudentAbsenceRecord, 'id'> = {
         studentName: studentName.trim(),
         class: studentClass,
-        date: new Date().toISOString().split('T')[0],
+        date: todayStr,
         reason: studentReason,
         reportedBy: user.name,
         teacherId: user.id,
@@ -626,15 +633,19 @@ const TeacherDashboard: React.FC = () => {
 
   const handleSendMessage = async (content: string) => {
     if (!user) return;
-    // Assuming Admin is the only other party.
-    const adminMessage = messages.find(m => m.senderId !== user.id);
-    const recipientId = adminMessage ? adminMessage.senderId : 'ADMIN_FALLBACK_ID';
-    if (recipientId === 'ADMIN_FALLBACK_ID') {
-        console.error("Could not find an admin to reply to.");
-        // Optionally show an error to the user
-        return;
+    try {
+        // This robustly finds an admin, allowing new conversations.
+        const admins = await getAdminUsers();
+        if (admins.length === 0) {
+            throw new Error("Tidak ada admin yang ditemukan untuk dikirimi pesan.");
+        }
+        const recipientId = admins[0].id; // Send to the first admin found
+        await sendMessage(user.id, user.name, recipientId, content);
+    } catch (error) {
+        console.error("Failed to send reply:", error);
+        // Optionally show an error to the user in the UI
+        alert(error instanceof Error ? error.message : "Gagal mengirim pesan.");
     }
-    await sendMessage(user.id, user.name, recipientId, content);
   };
 
   const handleDeleteMessage = async (messageId: string) => {
