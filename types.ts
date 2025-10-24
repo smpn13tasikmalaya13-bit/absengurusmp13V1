@@ -81,7 +81,11 @@ export interface MasterSchedule {
   kode: string;
   namaGuru: string;
   subject: string;
-  totalHours: number;
+  class: string;
+  day: string;
+  period: number; // Jam Ke
+  jumlahJam: number; // Jumlah Jam
+  waktu: string; // Waktu pelajaran, e.g., "07:30 - 08:10"
 }
 
 export interface Message {

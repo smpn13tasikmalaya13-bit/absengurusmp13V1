@@ -143,20 +143,25 @@ const ManageLessonSchedule: React.FC = () => {
         return;
     }
 
-    const masterRule = masterSchedules.find(ms =>
+    // FIX: Corrected validation logic to sum all hours for a subject and teacher from the master schedule.
+    // Also fixed incorrect property 'totalHours' to 'jumlahJam'.
+    // Find all master schedule entries for this teacher and subject to calculate total allocation
+    const teacherMasterRules = masterSchedules.filter(ms =>
         ms.kode === selectedTeacher.kode &&
         ms.subject === formData.subject
     );
 
-    if (masterRule) {
+    if (teacherMasterRules.length > 0) {
+        const totalAllocatedHours = teacherMasterRules.reduce((total, rule) => total + rule.jumlahJam, 0);
+
         const currentHours = schedules.filter(s =>
             s.teacherId === formData.teacherId &&
             s.subject === formData.subject &&
             s.id !== selectedScheduleId
         ).length;
 
-        if (currentHours >= masterRule.totalHours) {
-            setError(`Total jam untuk guru ${formData.teacher} pada mata pelajaran ${formData.subject} sudah mencapai batas maksimum (${masterRule.totalHours} jam) dari jadwal induk.`);
+        if (currentHours >= totalAllocatedHours) {
+            setError(`Total jam untuk guru ${formData.teacher} pada mata pelajaran ${formData.subject} sudah mencapai batas maksimum (${totalAllocatedHours} jam) dari jadwal induk.`);
             setIsSubmitting(false);
             return;
         }

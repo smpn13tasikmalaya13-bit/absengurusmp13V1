@@ -158,6 +158,34 @@ export const getAllMasterSchedules = async (): Promise<MasterSchedule[]> => {
 };
 
 
+/**
+ * Fetches all master schedule entries for a specific teacher using their unique code.
+ * @param kode The teacher's unique code.
+ * @returns A promise that resolves to an array of master schedule entries.
+ */
+export const getMasterSchedulesByTeacherCode = async (kode: string): Promise<MasterSchedule[]> => {
+    try {
+        const schedulesCol = collection(db, 'masterSchedules');
+        const q = query(schedulesCol, where('kode', '==', kode));
+        const snapshot = await getDocs(q);
+        const schedules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MasterSchedule));
+        
+        // Sort client-side for consistency
+        const dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        schedules.sort((a, b) => {
+            const dayComparison = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
+            if (dayComparison !== 0) return dayComparison;
+            return a.period - b.period;
+        });
+
+        return schedules;
+    } catch (error) {
+        console.error("Error fetching master schedules for teacher:", error);
+        throw new Error("Gagal mengambil jadwal dari server.");
+    }
+};
+
+
 // Fetch all classes from Firestore
 export const getAllClasses = async (): Promise<Class[]> => {
     try {

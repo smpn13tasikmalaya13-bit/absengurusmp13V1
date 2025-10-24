@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import QRScanner from './QRScanner';
-import { getSchedulesByTeacher, reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, addLessonSchedule, checkScheduleConflict, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile, getAllMasterSchedules, getAllLessonSchedules, getMessagesForUser, sendMessage, markMessagesAsRead, deleteMessage, getAdminUsers } from '../../services/dataService';
+import { reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile, getAllMasterSchedules, getMessagesForUser, sendMessage, markMessagesAsRead, deleteMessage, getAdminUsers, getMasterSchedulesByTeacherCode } from '../../services/dataService';
 import { getAttendanceForTeacher, reportTeacherAbsence, recordAttendance } from '../../services/attendanceService';
 import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, User, MasterSchedule, Message } from '../../types';
 import { Modal } from '../ui/Modal';
@@ -107,10 +107,9 @@ const TeacherDashboard: React.FC = () => {
   // Dynamic data states
   const [stats, setStats] = useState({ today: 0, week: 0, total: 0 });
   const [isLoadingStats, setIsLoadingStats] = useState(true);
-  const [todaysSchedule, setTodaysSchedule] = useState<LessonSchedule[]>([]);
-  const [fullSchedule, setFullSchedule] = useState<LessonSchedule[]>([]);
+  const [todaysSchedule, setTodaysSchedule] = useState<MasterSchedule[]>([]);
+  const [fullSchedule, setFullSchedule] = useState<MasterSchedule[]>([]);
   const [masterSchedules, setMasterSchedules] = useState<MasterSchedule[]>([]);
-  const [allLessonSchedules, setAllLessonSchedules] = useState<LessonSchedule[]>([]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(true);
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -152,15 +151,7 @@ const TeacherDashboard: React.FC = () => {
   const [modalSuccess, setModalSuccess] = useState('');
   const [scannedQrData, setScannedQrData] = useState<string | null>(null);
 
-  // State for adding schedule
-  const [newScheduleData, setNewScheduleData] = useState({
-      day: 'Senin',
-      startTime: '',
-      endTime: '',
-      subject: '',
-      class: '',
-      period: 1,
-  });
+  // State for adding schedule (now unused)
   const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
 
 
@@ -220,7 +211,6 @@ const TeacherDashboard: React.FC = () => {
     checkLocation();
 
     if (!user) return;
-    const todayDayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
@@ -233,28 +223,31 @@ const TeacherDashboard: React.FC = () => {
       setDashboardError(null);
       try {
         const [
-            allSchedulesForTeacher, 
             allAttendance, 
             reported, 
             classesData, 
             allReportedStudents,
             masterSchedulesData,
-            allSchedulesData
         ] = await Promise.all([
-          getSchedulesByTeacher(user.id),
           getAttendanceForTeacher(user.id),
           getStudentAbsencesByTeacherForDate(user.id, todayStr),
           getAllClasses(),
           getStudentAbsencesByTeacher(user.id),
           getAllMasterSchedules(),
-          getAllLessonSchedules()
         ]);
 
-        setFullSchedule(allSchedulesForTeacher);
-        setTodaysSchedule(allSchedulesForTeacher.filter(s => s.day === todayDayName));
+        if (user.kode) {
+            const teacherSchedules = await getMasterSchedulesByTeacherCode(user.kode);
+            setFullSchedule(teacherSchedules);
+            const todayDayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
+            setTodaysSchedule(teacherSchedules.filter(s => s.day === todayDayName));
+        } else {
+            setFullSchedule([]);
+            setTodaysSchedule([]);
+        }
+
         setAvailableClasses(classesData);
         setMasterSchedules(masterSchedulesData);
-        setAllLessonSchedules(allSchedulesData);
         
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const startOfWeek = new Date(startOfToday);
@@ -310,11 +303,6 @@ const TeacherDashboard: React.FC = () => {
                 .map(r => r.scheduleId)
         );
     }, [attendanceHistory]);
-    
-    const uniqueSubjects = useMemo(() => {
-        if (!masterSchedules) return [];
-        return [...new Set(masterSchedules.map(s => s.subject))].sort();
-    }, [masterSchedules]);
     
     const availableTeacherCodes = useMemo(() => {
         if (!masterSchedules) return [];
@@ -396,15 +384,6 @@ const TeacherDashboard: React.FC = () => {
     }
     setIsSubmitting(false);
   };
-
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setNewScheduleData(prev => ({
-        ...prev,
-        // Ensure period is always stored as a number. An empty input becomes 0 for validation.
-        [name]: name === 'period' ? (parseInt(value, 10) || 0) : value,
-    }));
-  };
   
   const handleProfileFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -451,94 +430,6 @@ const TeacherDashboard: React.FC = () => {
     );
   };
 
-
-  const handleAddScheduleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    if (!user.kode) {
-        setModalError("Anda harus mengatur 'Kode Guru' di profil Anda terlebih dahulu sebelum menambah jadwal.");
-        return;
-    }
-    
-    const scheduleToAdd: Omit<LessonSchedule, 'id'> = {
-        day: newScheduleData.day,
-        time: `${newScheduleData.startTime} - ${newScheduleData.endTime}`,
-        subject: newScheduleData.subject,
-        class: newScheduleData.class,
-        period: newScheduleData.period,
-        teacher: user.name,
-        teacherId: user.id,
-    };
-
-    if (!newScheduleData.startTime || !newScheduleData.endTime || !scheduleToAdd.subject || !scheduleToAdd.class || scheduleToAdd.period <= 0) {
-        setModalError("Semua kolom harus diisi dengan benar. Pastikan 'Jam Ke-' lebih dari 0.");
-        return;
-    }
-
-    setIsSubmitting(true);
-    setModalError('');
-
-    try {
-        // --- VALIDATION AGAINST MASTER SCHEDULE (REVISED LOGIC) ---
-        const masterRule = masterSchedules.find(ms =>
-            ms.kode === user.kode &&
-            ms.subject === scheduleToAdd.subject
-        );
-
-        if (masterRule) {
-            const currentHours = allLessonSchedules.filter(s =>
-                s.teacherId === user.id &&
-                s.subject === scheduleToAdd.subject
-            ).length;
-
-            if (currentHours >= masterRule.totalHours) {
-                throw new Error(`Total jam Anda untuk mata pelajaran ${scheduleToAdd.subject} sudah mencapai batas maksimum (${masterRule.totalHours} jam) dari jadwal induk.`);
-            }
-        }
-
-        // Check for schedule conflicts before adding
-        const conflict = await checkScheduleConflict(scheduleToAdd.day, scheduleToAdd.period, scheduleToAdd.class);
-        if (conflict) {
-            throw new Error(`Jadwal bentrok! Kelas ${conflict.class} jam ke-${conflict.period} pada hari ${conflict.day} sudah diisi oleh ${conflict.teacher} (${conflict.subject}).`);
-        }
-
-        const newScheduleWithId = await addLessonSchedule(scheduleToAdd);
-        
-        // Update the full schedule list for the modal
-        setFullSchedule(prevSchedules => {
-            const updatedSchedules = [...prevSchedules, newScheduleWithId];
-            // Sort to maintain order in the modal view
-            const dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-            return updatedSchedules.sort((a, b) => {
-                const dayComparison = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
-                if (dayComparison !== 0) return dayComparison;
-                return a.time.localeCompare(b.time);
-            });
-        });
-        
-        // Also update the global list for future validation in the same session
-        setAllLessonSchedules(prev => [...prev, newScheduleWithId]);
-
-        // Update today's schedule list for the dashboard view
-        const todayDayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
-        if (newScheduleWithId.day === todayDayName) {
-            setTodaysSchedule(prevSchedules => {
-                const updatedSchedules = [...prevSchedules, newScheduleWithId];
-                return updatedSchedules.sort((a, b) => a.time.localeCompare(b.time));
-            });
-        }
-        
-        // Reset form
-        setNewScheduleData({ day: 'Senin', startTime: '', endTime: '', subject: '', class: '', period: 1 });
-        setModalError('');
-    } catch (err) {
-        setModalError(err instanceof Error ? err.message : "Gagal menambahkan jadwal. Coba lagi.");
-    } finally {
-        setIsSubmitting(false);
-    }
-  };
-
   const handleScanSuccess = (qrData: string) => {
     setShowScanner(false);
     setScannedQrData(qrData);
@@ -547,7 +438,7 @@ const TeacherDashboard: React.FC = () => {
     setModalSuccess('');
   };
 
-  const handleSelectScheduleForAttendance = async (schedule: LessonSchedule) => {
+  const handleSelectScheduleForAttendance = async (schedule: MasterSchedule) => {
     if (!user || !scannedQrData) return;
     setIsSubmitting(true);
     setModalError('');
@@ -674,9 +565,8 @@ const TeacherDashboard: React.FC = () => {
     if (!acc[day]) acc[day] = [];
     acc[day].push(schedule);
     return acc;
-  }, {} as Record<string, LessonSchedule[]>);
+  }, {} as Record<string, MasterSchedule[]>);
   const scheduleOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const daysOfWeek = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   
   const getRoleBadgeClass = (role: Role) => {
     switch (role) {
@@ -711,7 +601,7 @@ const TeacherDashboard: React.FC = () => {
         <button onClick={() => setIsScheduleModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-blue-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
           <ScheduleIcon/>
           <h3 className="font-bold text-lg mt-4 text-white">Jadwal Mengajar</h3>
-          <p className="text-sm text-slate-400 mt-1">Lihat & tambah jadwal mengajar Anda</p>
+          <p className="text-sm text-slate-400 mt-1">Lihat jadwal mengajar lengkap Anda</p>
         </button>
         <button onClick={() => setIsReportAbsenceModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-yellow-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-500">
           <ReportIcon/>
@@ -744,7 +634,7 @@ const TeacherDashboard: React.FC = () => {
                   <li key={s.id} className={`flex justify-between items-center p-4 rounded-lg transition-colors ${isAttended ? 'bg-slate-800 opacity-60' : 'bg-slate-700/50'}`}>
                     <div>
                       <p className={`font-semibold text-base ${isAttended ? 'text-slate-400 line-through' : 'text-white'}`}>{s.subject} <span className="text-slate-400 font-normal">- Jam ke-{s.period}</span></p>
-                      <p className="text-sm text-slate-400">{s.class} • {s.time}</p>
+                      <p className="text-sm text-slate-400">{s.waktu} • {s.class} • {s.jumlahJam} JP</p>
                     </div>
                     {isAttended ? <CheckCircleIcon /> : <span className="px-2 py-1 text-xs font-semibold text-blue-300 bg-blue-500/30 rounded-full">Belum Absen</span>}
                   </li>
@@ -754,7 +644,7 @@ const TeacherDashboard: React.FC = () => {
           ) : (
             <div className="text-center py-10">
               <EmptyScheduleIcon/>
-              <p className="mt-4 text-slate-400">Tidak ada jadwal mengajar hari ini.</p>
+              <p className="mt-4 text-slate-400">{user?.kode ? "Tidak ada jadwal mengajar hari ini." : "Atur 'Kode Guru' di profil untuk melihat jadwal."}</p>
             </div>
           )}
         </div>
@@ -1021,65 +911,27 @@ const TeacherDashboard: React.FC = () => {
 
       <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title="Jadwal Mengajar Lengkap">
         <div className="max-h-[70vh] overflow-y-auto space-y-4 pr-2">
-            <form onSubmit={handleAddScheduleSubmit} className="space-y-4 p-4 mb-4 border border-slate-700 rounded-lg bg-slate-900/50">
-                <h4 className="font-bold text-lg text-white">Tambah Jadwal Baru</h4>
-                 <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Hari</label>
-                    <select name="day" value={newScheduleData.day} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-1">Waktu Mulai</label>
-                        <input type="time" name="startTime" value={newScheduleData.startTime} onChange={handleFormChange} required className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-1">Waktu Selesai</label>
-                        <input type="time" name="endTime" value={newScheduleData.endTime} onChange={handleFormChange} required className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                    </div>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Mata Pelajaran</label>
-                     <select name="subject" value={newScheduleData.subject} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">Pilih Mata Pelajaran</option>
-                        {uniqueSubjects.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Kelas</label>
-                    <select name="class" value={newScheduleData.class} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">Pilih Kelas</option>
-                        {availableClasses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Jam Ke-</label>
-                    <input type="number" name="period" value={newScheduleData.period === 0 ? '' : newScheduleData.period} onChange={handleFormChange} className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" min="1" />
-                </div>
-
-                {modalError && <p className="text-sm text-red-500 pt-1">{modalError}</p>}
-                
-                <div className="pt-2">
-                    <Button type="submit" isLoading={isSubmitting} className="w-full">Simpan Jadwal</Button>
-                </div>
-            </form>
-
           {isLoadingSchedule ? <Spinner/> : scheduleOrder.map(day => groupedSchedule[day] && (
             <div key={day}>
               <h4 className="font-bold text-lg text-white sticky top-0 bg-slate-800 py-2">{day}</h4>
               <ul className="space-y-2 mt-2">
                 {groupedSchedule[day].map(s => (
-                   <li key={s.id} className="flex justify-between items-center bg-slate-700 p-3 rounded-md">
+                   <li key={s.id} className="bg-slate-700 p-3 rounded-md">
                       <div>
                         <p className="font-semibold text-white">{s.subject} <span className="text-slate-400 font-normal">- Jam ke-{s.period}</span></p>
-                        <p className="text-sm text-slate-400">{s.class} • {s.time}</p>
+                        <p className="text-sm text-slate-400">{s.waktu} • {s.class} • {s.jumlahJam} JP</p>
                       </div>
                     </li>
                 ))}
               </ul>
             </div>
           ))}
+          {!isLoadingSchedule && fullSchedule.length === 0 && (
+             <div className="text-center py-10">
+              <EmptyScheduleIcon/>
+              <p className="mt-4 text-slate-400">{user?.kode ? "Tidak ada jadwal yang ditetapkan untuk Anda." : "Atur 'Kode Guru' di profil Anda untuk melihat jadwal."}</p>
+            </div>
+          )}
         </div>
       </Modal>
 
