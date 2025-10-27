@@ -119,11 +119,12 @@ const CoachAttendanceReportPage: React.FC = () => {
     const doc = new jsPDF();
     doc.text("Laporan Absensi Pembina Ekstrakurikuler", 14, 16);
     (doc as any).autoTable({
-        head: [['Nama Pembina', 'Waktu Datang', 'Waktu Pulang', 'Keterangan']],
+        head: [['Nama Pembina', 'Tanggal', 'Waktu Datang', 'Waktu Pulang', 'Keterangan']],
         body: reportData.map(r => [
             r.userName,
-            r.timestamp.toLocaleString('id-ID'),
-            r.checkOutTimestamp ? new Date(r.checkOutTimestamp).toLocaleString('id-ID') : '-',
+            r.date,
+            r.timestamp.toLocaleTimeString('id-ID'),
+            r.checkOutTimestamp ? new Date(r.checkOutTimestamp).toLocaleTimeString('id-ID') : '-',
             r.keterangan,
         ]),
         startY: 20,
@@ -135,8 +136,9 @@ const CoachAttendanceReportPage: React.FC = () => {
     if (reportData.length === 0) return;
     const reportSheet = reportData.map(r => ({
         'Nama Pembina': r.userName,
-        'Waktu Datang': r.timestamp.toLocaleString('id-ID'),
-        'Waktu Pulang': r.checkOutTimestamp ? new Date(r.checkOutTimestamp).toLocaleString('id-ID') : '-',
+        'Tanggal': r.date,
+        'Waktu Datang': r.timestamp.toLocaleTimeString('id-ID'),
+        'Waktu Pulang': r.checkOutTimestamp ? new Date(r.checkOutTimestamp).toLocaleTimeString('id-ID') : '-',
         'Keterangan': r.keterangan,
     }));
     const worksheet = XLSX.utils.json_to_sheet(reportSheet);
@@ -151,6 +153,7 @@ const CoachAttendanceReportPage: React.FC = () => {
         <thead className="bg-slate-800">
           <tr className="hidden md:table-row">
             <th className="p-4 text-sm font-semibold text-gray-200">Nama Pembina</th>
+            <th className="p-4 text-sm font-semibold text-gray-200">Tanggal</th>
             <th className="p-4 text-sm font-semibold text-gray-200">Waktu Datang</th>
             <th className="p-4 text-sm font-semibold text-gray-200">Waktu Pulang</th>
             <th className="p-4 text-sm font-semibold text-gray-200">Keterangan</th>
@@ -160,8 +163,9 @@ const CoachAttendanceReportPage: React.FC = () => {
           {reportData.map((record) => (
             <tr key={record.id} className="block p-4 space-y-3 md:table-row md:p-0 md:space-y-0 hover:bg-slate-800/50 transition-colors">
               <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap font-medium"><span className="text-sm font-semibold text-slate-400 md:hidden">Nama</span><span>{record.userName}</span></td>
-              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Waktu Datang</span><span>{record.timestamp.toLocaleString('id-ID')}</span></td>
-              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Waktu Pulang</span><span>{record.checkOutTimestamp ? new Date(record.checkOutTimestamp).toLocaleString('id-ID') : '-'}</span></td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Tanggal</span><span>{record.date}</span></td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Waktu Datang</span><span>{record.timestamp.toLocaleTimeString('id-ID')}</span></td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Waktu Pulang</span><span>{record.checkOutTimestamp ? new Date(record.checkOutTimestamp).toLocaleTimeString('id-ID') : '-'}</span></td>
               <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-yellow-400 text-xs"><span className="text-sm font-semibold text-slate-400 md:hidden">Keterangan</span><span>{record.keterangan}</span></td>
             </tr>
           ))}
@@ -184,7 +188,7 @@ const CoachAttendanceReportPage: React.FC = () => {
       
       <Card>
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
                 <label className="text-sm text-gray-400">Nama Pembina</label>
                 <select value={selectedCoach} onChange={e => setSelectedCoach(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md">
@@ -199,6 +203,9 @@ const CoachAttendanceReportPage: React.FC = () => {
              <div>
                 <label className="text-sm text-gray-400">Tanggal Selesai</label>
                 <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md placeholder-gray-400"/>
+            </div>
+            <div className="self-end">
+                <Button onClick={handleFetchReport} isLoading={isLoading} className="w-full">Tampilkan Laporan</Button>
             </div>
           </div>
           <div className="flex justify-end space-x-4">

@@ -25,7 +25,15 @@ const EmptyHistoryIcon = () => <svg className="h-16 w-16 text-slate-600" fill="n
 const EmptyScheduleIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 const EmptyReportIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
 const EmptyMessageIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
+const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>;
 
+// New interface for student list in the report modal
+interface AbsentStudentEntry {
+  id: number;
+  name: string;
+  reason: 'Sakit' | 'Izin' | 'Alpa';
+  absentPeriods: number[];
+}
 
 const PesanContent: React.FC<{
     user: User | null;
@@ -134,10 +142,10 @@ const TeacherDashboard: React.FC = () => {
   const [absenceReason, setAbsenceReason] = useState<'Sakit' | 'Izin' | 'Tugas Luar'>('Sakit');
   const [absencePeriods, setAbsencePeriods] = useState('');
   const [absenceDescription, setAbsenceDescription] = useState('');
-  const [studentName, setStudentName] = useState('');
+
+  // New states for multi-student absence report
+  const [absentStudents, setAbsentStudents] = useState<AbsentStudentEntry[]>([{ id: Date.now(), name: '', reason: 'Sakit', absentPeriods: [] }]);
   const [studentClass, setStudentClass] = useState('');
-  const [studentReason, setStudentReason] = useState<'Sakit' | 'Izin' | 'Alpa'>('Sakit');
-  const [studentAbsentPeriods, setStudentAbsentPeriods] = useState<number[]>([]);
   
   // Profile form states
   const [profileData, setProfileData] = useState<Partial<User>>({});
@@ -343,46 +351,55 @@ const TeacherDashboard: React.FC = () => {
     setIsSubmitting(false);
   };
   
-  const handleReportStudentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !studentName.trim() || !studentClass) {
-        setModalError("Nama siswa dan kelas harus diisi.");
-        return;
-    }
-    setIsSubmitting(true);
-    setModalError('');
-    setModalSuccess('');
+    const handleReportStudentSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !studentClass) {
+            setModalError("Kelas harus dipilih.");
+            return;
+        }
+        const validStudents = absentStudents.filter(s => s.name.trim() !== '');
+        if (validStudents.length === 0) {
+            setModalError("Mohon isi nama untuk setidaknya satu siswa.");
+            return;
+        }
 
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    
-    const record: Omit<StudentAbsenceRecord, 'id'> = {
-        studentName: studentName.trim(),
-        class: studentClass,
-        date: todayStr,
-        reason: studentReason,
-        reportedBy: user.name,
-        teacherId: user.id,
-        absentPeriods: studentAbsentPeriods,
+        setIsSubmitting(true);
+        setModalError('');
+        setModalSuccess('');
+
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        
+        const reportPromises = validStudents.map(student => {
+            const record: Omit<StudentAbsenceRecord, 'id'> = {
+                studentName: student.name.trim(),
+                class: studentClass,
+                date: todayStr,
+                reason: student.reason,
+                reportedBy: user.name,
+                teacherId: user.id,
+                absentPeriods: student.absentPeriods.length > 0 ? student.absentPeriods : undefined,
+            };
+            return reportStudentAbsence(record);
+        });
+
+        try {
+            await Promise.all(reportPromises);
+            setModalSuccess(`Laporan untuk ${validStudents.length} siswa berhasil disimpan.`);
+            await refreshData();
+            // Reset form
+            setAbsentStudents([{ id: Date.now(), name: '', reason: 'Sakit', absentPeriods: [] }]);
+            setStudentClass('');
+            setTimeout(() => {
+                setIsReportStudentModalOpen(false);
+                setModalSuccess('');
+            }, 2000);
+        } catch (err) {
+            setModalError(err instanceof Error ? err.message : "Gagal menyimpan laporan.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
-    try {
-        await reportStudentAbsence(record);
-        setModalSuccess("Laporan siswa berhasil disimpan.");
-        await refreshData();
-        // Reset form
-        setStudentName('');
-        setStudentClass(todaysSchedule[0]?.class || '');
-        setStudentReason('Sakit');
-        setStudentAbsentPeriods([]);
-        setTimeout(() => {
-            setIsReportStudentModalOpen(false);
-            setModalSuccess('');
-        }, 2000);
-    } catch (err) {
-        setModalError(err instanceof Error ? err.message : "Gagal menyimpan laporan.");
-    }
-    setIsSubmitting(false);
-  };
   
   const handleProfileFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -420,12 +437,38 @@ const TeacherDashboard: React.FC = () => {
     }
   };
 
+  // Handlers for multi-student report form
+    const handleAddStudent = () => {
+        setAbsentStudents(prev => [...prev, { id: Date.now(), name: '', reason: 'Sakit', absentPeriods: [] }]);
+    };
 
-  const handleStudentPeriodChange = (period: number) => {
-    setStudentAbsentPeriods(prev =>
-      prev.includes(period)
-        ? prev.filter(p => p !== period)
-        : [...prev, period].sort((a, b) => a - b)
+    const handleRemoveStudent = (idToRemove: number) => {
+        if (absentStudents.length > 1) {
+            setAbsentStudents(prev => prev.filter(student => student.id !== idToRemove));
+        }
+    };
+
+    const handleStudentDataChange = (id: number, field: 'name' | 'reason', value: string) => {
+        setAbsentStudents(prev => 
+            prev.map(student => 
+                student.id === id 
+                ? { ...student, [field]: value as 'Sakit' | 'Izin' | 'Alpa' | string } 
+                : student
+            )
+        );
+    };
+
+  const handleStudentPeriodChange = (studentId: number, period: number) => {
+    setAbsentStudents(prev =>
+      prev.map(student => {
+        if (student.id === studentId) {
+          const newPeriods = student.absentPeriods.includes(period)
+            ? student.absentPeriods.filter(p => p !== period)
+            : [...student.absentPeriods, period];
+          return { ...student, absentPeriods: newPeriods.sort((a, b) => a - b) };
+        }
+        return student;
+      })
     );
   };
   
@@ -1002,41 +1045,83 @@ const TeacherDashboard: React.FC = () => {
 
       <Modal isOpen={isReportStudentModalOpen} onClose={() => setIsReportStudentModalOpen(false)} title="Lapor Siswa Tidak Hadir">
          <form onSubmit={handleReportStudentSubmit} className="space-y-4">
+            {/* Shared Fields */}
             <div>
-              <label className="block text-sm font-medium text-gray-300">Nama Lengkap Siswa</label>
-              <input type="text" value={studentName} onChange={e => setStudentName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
-            </div>
-             <div>
               <label className="block text-sm font-medium text-gray-300">Kelas</label>
               <select value={studentClass} onChange={e => setStudentClass(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
                 <option value="">Pilih Kelas</option>
                 {uniqueTodayClasses.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Tidak Hadir Pada Jam Pelajaran Ke-</label>
-              <div className="mt-2 grid grid-cols-5 gap-2">
-                {Array.from({ length: 10 }, (_, i) => i + 1).map(period => (
-                  <label key={period} className="flex items-center space-x-2 p-1 rounded-md hover:bg-slate-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={studentAbsentPeriods.includes(period)}
-                      onChange={() => handleStudentPeriodChange(period)}
-                      className="h-5 w-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-800"
-                    />
-                    <span className="text-sm select-none">{period}</span>
-                  </label>
+            
+            <hr className="border-slate-600" />
+            
+            {/* Student List */}
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                {absentStudents.map((student) => (
+                    <div key={student.id} className="p-3 bg-slate-700/50 rounded-lg space-y-3">
+                        <div className="flex items-end gap-2">
+                            <div className="flex-grow">
+                                <label htmlFor={`studentName-${student.id}`} className="block text-sm font-medium text-gray-300">Nama Lengkap Siswa</label>
+                                <input
+                                    id={`studentName-${student.id}`}
+                                    type="text"
+                                    value={student.name}
+                                    onChange={e => handleStudentDataChange(student.id, 'name', e.target.value)}
+                                    required
+                                    className="mt-1 block w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-md text-white"
+                                />
+                            </div>
+                            <Button
+                                type="button"
+                                onClick={() => handleRemoveStudent(student.id)}
+                                disabled={absentStudents.length <= 1}
+                                className="!p-0 h-10 w-10 flex-shrink-0 items-center justify-center !bg-red-600/50 hover:!bg-red-600/80 disabled:!bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                aria-label="Hapus Siswa"
+                            >
+                                <TrashIcon />
+                            </Button>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300">Tidak Hadir Pada Jam Pelajaran Ke-</label>
+                            <div className="mt-2 grid grid-cols-5 gap-2">
+                                {Array.from({ length: 10 }, (_, i) => i + 1).map(period => (
+                                <label key={period} className="flex items-center space-x-2 p-1 rounded-md hover:bg-slate-700 cursor-pointer">
+                                    <input
+                                    type="checkbox"
+                                    checked={student.absentPeriods.includes(period)}
+                                    onChange={() => handleStudentPeriodChange(student.id, period)}
+                                    className="h-5 w-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-800"
+                                    />
+                                    <span className="text-sm select-none">{period}</span>
+                                </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                             <label htmlFor={`studentReason-${student.id}`} className="block text-sm font-medium text-gray-300">Alasan</label>
+                            <select
+                                id={`studentReason-${student.id}`}
+                                value={student.reason}
+                                onChange={e => handleStudentDataChange(student.id, 'reason', e.target.value)}
+                                className="mt-1 block w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-md text-white"
+                            >
+                                <option value="Sakit">Sakit</option>
+                                <option value="Izin">Izin</option>
+                                <option value="Alpa">Alpa</option>
+                            </select>
+                        </div>
+
+                    </div>
                 ))}
-              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Alasan</label>
-              <select value={studentReason} onChange={(e) => setStudentReason(e.target.value as 'Sakit' | 'Izin' | 'Alpa')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
-                <option value="Sakit">Sakit</option>
-                <option value="Izin">Izin</option>
-                <option value="Alpa">Alpa</option>
-              </select>
-            </div>
+
+            <Button type="button" onClick={handleAddStudent} variant="secondary" className="w-full">
+                + Tambah Siswa
+            </Button>
+            
             {modalError && <p className="text-sm text-red-400">{modalError}</p>}
             {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
             <div className="flex justify-end pt-2">
