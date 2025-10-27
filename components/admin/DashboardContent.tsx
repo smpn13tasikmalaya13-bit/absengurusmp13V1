@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
-import { AttendanceRecord, Role, User } from '../../types';
-import { getAttendanceReport, getFullReport } from '../../services/attendanceService';
+import { AttendanceRecord, MasterSchedule, Role, User } from '../../types';
+import { getFullReport } from '../../services/attendanceService';
 import { getAllUsers } from '../../services/authService';
+import { getAllMasterSchedules } from '../../services/dataService';
 import AttendancePieChart from './AttendancePieChart';
 import { Spinner } from '../ui/Spinner';
 
@@ -33,36 +34,64 @@ const EmptyStateDashboard: React.FC = () => (
   </Card>
 );
 
+const getLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const DashboardContent: React.FC = () => {
   const [stats, setStats] = useState({ total: 0, present: 0, absent: 0 });
   const [recentRecords, setRecentRecords] = useState<(AttendanceRecord & { role?: Role })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSystemEmpty, setIsSystemEmpty] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const allUsers = await getAllUsers();
-        const userMap = new Map(allUsers.map(user => [user.id, user.role]));
+        const [allUsers, masterSchedules, allAttendanceRecords] = await Promise.all([
+            getAllUsers(),
+            getAllMasterSchedules(),
+            getFullReport(),
+        ]);
 
-        const totalTeachers = allUsers.filter(u => u.role === Role.Teacher || u.role === Role.Coach).length;
-        
-        const today = new Date();
-        const presentRecords = await getAttendanceReport(today);
-        const presentCount = presentRecords.length;
+        if (allUsers.length <= 1 && masterSchedules.length === 0) {
+            setIsSystemEmpty(true);
+        } else {
+            setIsSystemEmpty(false);
 
-        const recent = await getFullReport(5);
-        const recentWithRoles = recent.map(record => ({
-            ...record,
-            role: userMap.get(record.teacherId)
-        }));
+            const personnelUsers = allUsers.filter(u =>
+                u.role === Role.Teacher ||
+                u.role === Role.Coach ||
+                u.role === Role.AdministrativeStaff
+            );
+            const totalPersonnel = personnelUsers.length;
 
-        setStats({
-          total: totalTeachers,
-          present: presentCount,
-          absent: totalTeachers - presentCount,
-        });
-        setRecentRecords(recentWithRoles);
+            const todayStr = getLocalDateString(new Date());
+            const personnelIds = new Set(personnelUsers.map(u => u.id));
+
+            const presentPersonnelIds = new Set(
+                allAttendanceRecords
+                    .filter(r => r.date === todayStr && personnelIds.has(r.teacherId))
+                    .map(r => r.teacherId)
+            );
+            const presentCount = presentPersonnelIds.size;
+            
+            setStats({
+                total: totalPersonnel,
+                present: presentCount,
+                absent: totalPersonnel - presentCount,
+            });
+
+            const userMap = new Map(allUsers.map(user => [user.id, user.role]));
+            const recentWithRoles = allAttendanceRecords.slice(0, 5).map(record => ({
+                ...record,
+                role: userMap.get(record.teacherId)
+            }));
+            setRecentRecords(recentWithRoles);
+        }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
@@ -74,7 +103,7 @@ const DashboardContent: React.FC = () => {
   }, []);
   
   const formatDate = (date: Date) => {
-    const datePart = date.toLocaleDateString('en-GB'); // dd/mm/yyyy
+    const datePart = date.toLocaleDateString('id-ID', {day: '2-digit', month: '2-digit', year: 'numeric'});
     const timePart = date.toLocaleTimeString('id-ID', { hour12: false }).replace(/\./g, ':');
     return `${datePart}, ${timePart}`;
   };
@@ -87,9 +116,7 @@ const DashboardContent: React.FC = () => {
     );
   }
   
-  const isDataEmpty = stats.total === 0 && recentRecords.length === 0;
-  
-    const getRoleBadgeClass = (role?: Role) => {
+  const getRoleBadgeClass = (role?: Role) => {
     if (!role) return 'bg-gray-500/30 text-gray-300';
     switch (role) {
       case Role.Admin:
@@ -111,14 +138,14 @@ const DashboardContent: React.FC = () => {
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
       </div>
 
-      {isDataEmpty ? (
+      {isSystemEmpty ? (
         <EmptyStateDashboard />
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <StatCard title="Total Guru" value={stats.total} />
-            <StatCard title="Guru Hadir Hari Ini" value={stats.present} colorClass="text-emerald-400" />
-            <StatCard title="Guru Absen Hari Ini" value={stats.absent} colorClass="text-red-400" />
+            <StatCard title="Total Personil Terdaftar" value={stats.total} />
+            <StatCard title="Personil Hadir Hari Ini" value={stats.present} colorClass="text-emerald-400" />
+            <StatCard title="Personil Absen Hari Ini" value={stats.absent} colorClass="text-red-400" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
