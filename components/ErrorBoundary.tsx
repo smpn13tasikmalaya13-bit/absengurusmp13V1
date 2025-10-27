@@ -64,14 +64,11 @@ interface State {
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
-  // FIX: Switched to constructor for state initialization to resolve a potential 'this' context typing issue reported by the linter.
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-    };
-  }
+  // FIX: Using a class property for state initialization. This is a common pattern and resolves issues with 'this' context being incorrectly typed by the linter.
+  state: State = {
+    hasError: false,
+    error: null,
+  };
 
   static getDerivedStateFromError(error: Error): State {
     // Update state so the next render will show the fallback UI.
