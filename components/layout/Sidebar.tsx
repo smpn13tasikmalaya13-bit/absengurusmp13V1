@@ -64,6 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, unreadMessag
             <div className="mt-2 space-y-2">
                 <NavItem icon={<ReportIcon />} label="Absensi Guru" view="teacher-attendance-report" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ReportIcon />} label="Absensi Tendik" view="staff-attendance-report" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<ReportIcon />} label="Absensi Pembina Eskul" view="coach-attendance-report" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ReportIcon />} label="Absensi Siswa" view="student-absence-report" currentView={currentView} onNavigate={onNavigate} />
             </div>
         </div>

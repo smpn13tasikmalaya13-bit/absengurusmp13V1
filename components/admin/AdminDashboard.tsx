@@ -5,6 +5,7 @@ import Sidebar from '../layout/Sidebar';
 import DashboardContent from './DashboardContent';
 import TeacherAttendanceReportPage from './TeacherAttendanceReportPage';
 import StaffAttendanceReportPage from './StaffAttendanceReportPage'; // Import baru
+import CoachAttendanceReportPage from './CoachAttendanceReportPage'; // Import baru
 import StudentAbsenceReportPage from './StudentAbsenceReportPage';
 import ManageUsers from './ManageUsers';
 import ManageLessonSchedule from './ManageLessonSchedule';
@@ -242,6 +243,8 @@ const AdminDashboard: React.FC = () => {
         return <TeacherAttendanceReportPage />;
       case 'staff-attendance-report': // Case baru
         return <StaffAttendanceReportPage />;
+      case 'coach-attendance-report':
+        return <CoachAttendanceReportPage />;
       case 'student-absence-report':
         return <StudentAbsenceReportPage />;
       case 'manage-teachers':
