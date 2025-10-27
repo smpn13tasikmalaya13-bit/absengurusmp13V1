@@ -9,18 +9,27 @@ import { AttendanceRecord, Role, User, Message } from '../../types';
 import { Card } from '../ui/Card';
 import QRScanner from './QRScanner';
 import { Modal } from '../ui/Modal';
+import { useToast } from '../../context/ToastContext';
 
 // Add a new interface for processed records with fine information
 interface ProcessedHistoryRecord extends AttendanceRecord {
   denda: number;
 }
 
+// A helper function to get a robust local date string
+const getLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 // Icons for Navbar
 const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>;
 const HistoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ProfileIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
 const MessageIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
-const EmptyMessageIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
+const EmptyMessageIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 
 const PesanContent: React.FC<{
     user: User | null;
@@ -30,6 +39,7 @@ const PesanContent: React.FC<{
     onDeleteMessage: (messageId: string) => Promise<void>;
 }> = ({ user, messages, isLoading, onSendMessage, onDeleteMessage }) => {
     const [replyContent, setReplyContent] = useState('');
+    const addToast = useToast();
     const messagesEndRef = React.useRef<HTMLUListElement>(null);
 
     useEffect(() => {
@@ -43,7 +53,7 @@ const PesanContent: React.FC<{
             await onSendMessage(replyContent.trim());
             setReplyContent('');
         } catch (error) {
-            console.error("Failed to send reply:", error);
+            addToast(error instanceof Error ? error.message : "Gagal mengirim pesan.", 'error');
         }
     };
 
@@ -94,11 +104,11 @@ const PesanContent: React.FC<{
 
 const AdministrativeStaffDashboard: React.FC = () => {
     const { user, logout, updateUserContext } = useAuth();
+    const addToast = useToast();
     const [activeView, setActiveView] = useState('beranda');
     const [isWithinRadius, setIsWithinRadius] = useState<boolean | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const [history, setHistory] = useState<ProcessedHistoryRecord[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [showScanner, setShowScanner] = useState(false);
@@ -116,8 +126,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
     // Form states
     const [absenceReason, setAbsenceReason] = useState<'Sakit' | 'Izin' | 'Tugas Luar'>('Sakit');
     const [absenceDescription, setAbsenceDescription] = useState('');
-    const [modalError, setModalError] = useState('');
-    const [modalSuccess, setModalSuccess] = useState('');
     
     // Profile form states
     const [profileData, setProfileData] = useState<Partial<User>>({});
@@ -223,13 +231,12 @@ const AdministrativeStaffDashboard: React.FC = () => {
         if (!user) return;
         setShowScanner(false);
         setIsSubmitting(true);
-        setMessage(null);
         const result = await recordStaffAttendanceWithQR(user, qrData);
         if (result.success) {
-            setMessage({ text: result.message, type: 'success' });
+            addToast(result.message, 'success');
             fetchHistory(); // Refresh history
         } else {
-            setMessage({ text: result.message, type: 'error' });
+            addToast(result.message, 'error');
         }
         setIsSubmitting(false);
     };
@@ -239,21 +246,15 @@ const AdministrativeStaffDashboard: React.FC = () => {
         e.preventDefault();
         if (!user) return;
         setIsSubmitting(true);
-        setModalError('');
-        setModalSuccess('');
-
         const result = await reportTeacherAbsence(user, absenceReason, absenceDescription);
 
         if (result.success) {
-            setModalSuccess(result.message);
+            addToast(result.message, 'success');
             await fetchHistory(); // Refresh data to disable buttons
-            setTimeout(() => {
-                setIsReportAbsenceModalOpen(false);
-                setModalSuccess('');
-                setAbsenceDescription('');
-            }, 2000);
+            setIsReportAbsenceModalOpen(false);
+            setAbsenceDescription('');
         } else {
-            setModalError(result.message);
+            addToast(result.message, 'error');
         }
         setIsSubmitting(false);
     };
@@ -263,8 +264,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
             setProfileData(user);
             setPhotoPreview(user.photoURL || null);
             setProfilePhotoFile(null);
-            setModalError('');
-            setModalSuccess('');
             setIsEditProfileModalOpen(true);
         }
     };
@@ -287,9 +286,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
         if (!user) return;
 
         setIsSubmitting(true);
-        setModalError('');
-        setModalSuccess('');
-
         try {
             let photoURL = user.photoURL;
 
@@ -303,13 +299,10 @@ const AdministrativeStaffDashboard: React.FC = () => {
             await updateUserProfile(user.id, dataToUpdate);
             updateUserContext(dataToUpdate);
 
-            setModalSuccess('Profil berhasil diperbarui!');
-            setTimeout(() => {
-                setIsEditProfileModalOpen(false);
-                setModalSuccess('');
-            }, 2000);
+            addToast('Profil berhasil diperbarui!', 'success');
+            setIsEditProfileModalOpen(false);
         } catch (err) {
-            setModalError(err instanceof Error ? err.message : 'Gagal memperbarui profil.');
+            addToast(err instanceof Error ? err.message : 'Gagal memperbarui profil.', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -317,25 +310,21 @@ const AdministrativeStaffDashboard: React.FC = () => {
     
     const handleSendMessage = async (content: string) => {
         if (!user) return;
-        try {
-            const admins = await getAdminUsers();
-            if (admins.length === 0) {
-                throw new Error("Tidak ada admin yang ditemukan untuk dikirimi pesan.");
-            }
-            const recipientId = admins[0].id; // Send to the first admin found
-            await sendMessage(user.id, user.name, recipientId, content);
-        } catch (error) {
-            console.error("Failed to send reply:", error);
-            throw error; // Re-throw to be caught by the component
+        const admins = await getAdminUsers();
+        if (admins.length === 0) {
+            throw new Error("Tidak ada admin yang ditemukan untuk dikirimi pesan.");
         }
+        const recipientId = admins[0].id; // Send to the first admin found
+        await sendMessage(user.id, user.name, recipientId, content);
     };
 
     const handleDeleteMessage = async (messageId: string) => {
         if (window.confirm('Apakah Anda yakin ingin menghapus pesan ini?')) {
             try {
                 await deleteMessage(messageId);
+                addToast('Pesan dihapus.', 'info');
             } catch (error) {
-                console.error("Failed to delete message:", error);
+                addToast('Gagal menghapus pesan.', 'error');
             }
         }
     };
@@ -404,11 +393,14 @@ const AdministrativeStaffDashboard: React.FC = () => {
             const isBeforeEnd = currentHour < 15 || (currentHour === 15 && currentMinute <= 20);
             isCheckOutTime = isAfterStart && isBeforeEnd;
         } else { // It's Monday-Thursday
-            isCheckOutTime = currentHour === 15 && currentMinute >= 0 && currentMinute <= 20;
+            isCheckOutTime = currentHour >= 15 && currentHour < 16; // 15:00 - 15:59
+             if (currentHour === 15 && currentMinute > 20) {
+                 isCheckOutTime = false;
+             }
         }
     }
 
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayStr = getLocalDateString(new Date());
     const todaysRecords = history.filter(r => r.date === todayStr);
 
     // Determine status based on ALL of today's records for robustness
@@ -469,7 +461,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
     }
     
     const isButtonDisabled = isWithinRadius !== true || isSubmitting || isButtonDisabledByTime;
-    const isReportButtonDisabled = hasClockedIn || hasClockedOut || hasReportedAbsence;
 
 
     if (showScanner) {
@@ -505,11 +496,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
                             {buttonText}
                         </Button>
                     </div>
-                    {message && (
-                        <p className={`text-sm text-center p-2 rounded-md mt-4 ${message.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
-                            {message.text}
-                        </p>
-                    )}
                 </div>
             </Card>
 
@@ -520,7 +506,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
                         onClick={() => setIsReportAbsenceModalOpen(true)}
                         variant="primary"
                         className="w-full max-w-sm mx-auto"
-                        disabled={isReportButtonDisabled}
                     >
                         Laporkan
                     </Button>
@@ -697,8 +682,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-300">Email</label>
                         <input value={profileData.email || ''} type="email" disabled className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
                      </div>
-                     {modalError && <p className="text-sm text-red-400">{modalError}</p>}
-                     {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
                      <div className="flex justify-end pt-2">
                          <Button type="submit" isLoading={isSubmitting} className="w-full">Simpan Perubahan</Button>
                      </div>
@@ -719,8 +702,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-300">Keterangan Tambahan (Opsional)</label>
                         <input type="text" value={absenceDescription} onChange={e => setAbsenceDescription(e.target.value)} placeholder="Contoh: Ada acara keluarga" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
                     </div>
-                    {modalError && <p className="text-sm text-red-400">{modalError}</p>}
-                    {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
                     <div className="flex justify-end pt-2">
                         <Button type="submit" isLoading={isSubmitting} className="w-full">Kirim Laporan</Button>
                     </div>

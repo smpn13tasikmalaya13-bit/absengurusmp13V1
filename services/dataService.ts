@@ -91,8 +91,8 @@ export const uploadMasterSchedule = async (schedules: Omit<MasterSchedule, 'id'>
 
     try {
         const existingSchedulesSnapshot = await getDocs(query(masterSchedulesCol));
-        existingSchedulesSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
+        existingSchedulesSnapshot.forEach(scheduleDoc => {
+            batch.delete(scheduleDoc.ref);
         });
 
         schedules.forEach(scheduleData => {
@@ -145,7 +145,7 @@ export const getAllMasterSchedules = async (): Promise<MasterSchedule[]> => {
         const masterSchedulesCol = collection(db, 'masterSchedules');
         const q = query(masterSchedulesCol);
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MasterSchedule));
+        return snapshot.docs.map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() } as MasterSchedule));
     } catch (error: any) {
         console.error("Error fetching master schedules:", error);
         if (error.code === 'permission-denied') {
@@ -160,7 +160,7 @@ export const getMasterSchedulesByTeacherCode = async (kode: string): Promise<Mas
         const schedulesCol = collection(db, 'masterSchedules');
         const q = query(schedulesCol, where('kode', '==', kode));
         const snapshot = await getDocs(q);
-        const schedules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MasterSchedule));
+        const schedules = snapshot.docs.map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() } as MasterSchedule));
         
         const dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         schedules.sort((a, b) => {
@@ -181,7 +181,7 @@ export const getAllClasses = async (): Promise<Class[]> => {
         const classesCol = collection(db, 'classes');
         const q = query(classesCol, orderBy('name'));
         const classSnapshot = await getDocs(q);
-        return classSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
+        return classSnapshot.docs.map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() } as Class));
     } catch (error) {
         console.error("Error fetching classes:", error);
         return [];
@@ -219,7 +219,7 @@ export const getAllEskuls = async (): Promise<Eskul[]> => {
         const eskulsCol = collection(db, 'eskuls');
         const q = query(eskulsCol, orderBy('name'));
         const eskulSnapshot = await getDocs(q);
-        return eskulSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Eskul));
+        return eskulSnapshot.docs.map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() } as Eskul));
     } catch (error) {
         console.error("Error fetching eskuls:", error);
         return [];
@@ -257,7 +257,7 @@ export const getAllLessonSchedules = async (): Promise<LessonSchedule[]> => {
         const schedulesCol = collection(db, 'lessonSchedules');
         const q = query(schedulesCol, orderBy('day'), orderBy('time'));
         const scheduleSnapshot = await getDocs(q);
-        return scheduleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonSchedule));
+        return scheduleSnapshot.docs.map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() } as LessonSchedule));
     } catch (error: any) {
         console.error("Error fetching lesson schedules:", error);
         if (error.code === 'failed-precondition') {
@@ -309,7 +309,7 @@ export const getAllEskulSchedules = async (): Promise<EskulSchedule[]> => {
         const schedulesCol = collection(db, 'eskulSchedules');
         const q = query(schedulesCol, orderBy('day'), orderBy('time'));
         const scheduleSnapshot = await getDocs(q);
-        return scheduleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EskulSchedule));
+        return scheduleSnapshot.docs.map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() } as EskulSchedule));
     } catch (error) {
         console.error("Error fetching eskul schedules:", error);
         return [];
@@ -362,7 +362,7 @@ export const getSchedulesByTeacher = async (teacherId: string): Promise<LessonSc
             orderBy('time')
         );
         const scheduleSnapshot = await getDocs(q);
-        return scheduleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LessonSchedule));
+        return scheduleSnapshot.docs.map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() } as LessonSchedule));
     } catch (error: any) {
         console.error("Error fetching schedules by teacher:", error);
         if (error.code === 'failed-precondition') {
@@ -391,7 +391,7 @@ export const getStudentAbsencesByTeacherForDate = async (teacherId: string, date
             where('date', '==', date)
         );
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentAbsenceRecord));
+        return snapshot.docs.map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() } as StudentAbsenceRecord));
     } catch (error) {
         console.error("Error fetching student absences:", error);
         return [];
@@ -406,7 +406,7 @@ export const getStudentAbsencesByTeacher = async (teacherId: string): Promise<St
             where('teacherId', '==', teacherId)
         );
         const snapshot = await getDocs(q);
-        const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentAbsenceRecord));
+        const records = snapshot.docs.map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() } as StudentAbsenceRecord));
         
         records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
@@ -446,9 +446,9 @@ export const getFilteredStudentAbsenceReport = async ({
 
     try {
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
+        return querySnapshot.docs.map(docSnapshot => ({
+            id: docSnapshot.id,
+            ...docSnapshot.data(),
         } as StudentAbsenceRecord));
     } catch (error: any) {
         console.error("Error fetching filtered student absence report:", error);
@@ -470,8 +470,8 @@ export const checkScheduleConflict = async (day: string, period: number, classNa
         );
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
-            const doc = querySnapshot.docs[0];
-            return { id: doc.id, ...doc.data() } as LessonSchedule;
+            const docSnapshot = querySnapshot.docs[0];
+            return { id: docSnapshot.id, ...docSnapshot.data() } as LessonSchedule;
         }
         return null;
     } catch (error: any) {
@@ -490,7 +490,7 @@ export const getAdminUsers = async (): Promise<User[]> => {
         const q = query(usersCol, where('role', '==', Role.Admin));
         const snapshot = await getDocs(q);
         if (snapshot.empty) return [];
-        return snapshot.docs.map(doc => doc.data() as User);
+        return snapshot.docs.map(userDoc => userDoc.data() as User);
     } catch (error) {
         console.error("Error fetching admin users:", error);
         return [];
@@ -539,10 +539,10 @@ export const getMessagesForUser = (userId: string, callback: (messages: Message[
 
 
   const unsubscribeTo = onSnapshot(qSentTo, (snapshot) => {
-    receivedMessages = snapshot.docs.map(doc => {
-        const data = doc.data();
+    receivedMessages = snapshot.docs.map(messageDoc => {
+        const data = messageDoc.data();
         return {
-            id: doc.id,
+            id: messageDoc.id,
             ...data,
             timestamp: (data.timestamp as Timestamp)?.toDate() || new Date(),
         } as Message;
@@ -551,10 +551,10 @@ export const getMessagesForUser = (userId: string, callback: (messages: Message[
   }, (error) => handleError(error, 'received'));
 
   const unsubscribeBy = onSnapshot(qSentBy, (snapshot) => {
-    sentMessages = snapshot.docs.map(doc => {
-        const data = doc.data();
+    sentMessages = snapshot.docs.map(messageDoc => {
+        const data = messageDoc.data();
         return {
-            id: doc.id,
+            id: messageDoc.id,
             ...data,
             timestamp: (data.timestamp as Timestamp)?.toDate() || new Date(),
         } as Message;
@@ -583,8 +583,8 @@ export const getAllConversations = (adminId: string, callback: (conversations: C
         const conversationsMap = new Map<string, Conversation>();
         const userFetchPromises = new Map<string, Promise<DocumentSnapshot<User>>>();
 
-        for (const doc of snapshot.docs) {
-            const message = { id: doc.id, ...doc.data(), timestamp: (doc.data().timestamp as Timestamp)?.toDate() || new Date() } as Message;
+        for (const messageDoc of snapshot.docs) {
+            const message = { id: messageDoc.id, ...messageDoc.data(), timestamp: (messageDoc.data().timestamp as Timestamp)?.toDate() || new Date() } as Message;
             const otherUserId = message.senderId === adminId ? message.recipientId : message.senderId;
 
             if (!conversationsMap.has(otherUserId)) {
@@ -668,8 +668,8 @@ export const deleteConversation = async (userId1: string, userId2: string): Prom
     try {
         const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
 
-        snapshot1.forEach(doc => batch.delete(doc.ref));
-        snapshot2.forEach(doc => batch.delete(doc.ref));
+        snapshot1.forEach(messageDoc => batch.delete(messageDoc.ref));
+        snapshot2.forEach(messageDoc => batch.delete(messageDoc.ref));
 
         await batch.commit();
     } catch (error) {
@@ -715,10 +715,10 @@ export const getAnnouncements = (callback: (announcements: Announcement[]) => vo
     const q = query(announcementsCol, orderBy('timestamp', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        const announcements = snapshot.docs.map(doc => {
-            const data = doc.data();
+        const announcements = snapshot.docs.map(docSnapshot => {
+            const data = docSnapshot.data();
             return {
-                id: doc.id,
+                id: docSnapshot.id,
                 ...data,
                 timestamp: (data.timestamp as Timestamp)?.toDate() || new Date(),
             } as Announcement;

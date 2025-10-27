@@ -1,7 +1,21 @@
-import { AttendanceRecord, LessonSchedule, User } from '../types';
+import { AttendanceRecord, LessonSchedule, User, MasterSchedule } from '../types';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, updateDoc, doc } from 'firebase/firestore';
 import { STAFF_QR_CODE_DATA } from '../constants';
+
+/**
+ * Creates a timezone-aware YYYY-MM-DD string from a Date object.
+ * This prevents bugs where UTC date differs from the local date.
+ * @param date The date to convert.
+ * @returns A string in YYYY-MM-DD format based on the local timezone.
+ */
+const getLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 
 // FIX: Implement missing QR code generation and retrieval functions.
 // Key for storing the daily QR code data in localStorage
@@ -18,7 +32,7 @@ interface DailyQrCode {
  * @returns The generated QR code data string.
  */
 export const generateQrCodeData = (): string => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
     const newQrData = `HADIRKU-${today}-${crypto.randomUUID()}`;
     const dataToStore: DailyQrCode = { date: today, data: newQrData };
     localStorage.setItem(QR_CODE_STORAGE_KEY, JSON.stringify(dataToStore));
@@ -37,7 +51,7 @@ export const getCurrentQrCodeData = (): string | null => {
 
     try {
         const qrCodeObject: DailyQrCode = JSON.parse(storedData);
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateString(new Date());
 
         if (qrCodeObject.date === today) {
             return qrCodeObject.data;
@@ -58,15 +72,11 @@ const CHECK_IN_DEADLINE_HOUR = 8; // 8 AM
 
 export const recordAttendance = async (
   user: User,
-  qrCodeData: string, // This is now just a trigger, not a secret to be validated here.
-  scheduleInfo?: Pick<LessonSchedule, 'id' | 'subject' | 'class' | 'period'>
+  qrCodeData: string, 
+  scheduleInfo: Pick<MasterSchedule, 'id' | 'subject' | 'class' | 'period'>
 ): Promise<{ success: boolean; message: string }> => {
-  // The check for a daily, matching QR code has been removed as requested.
-  // Any valid QR scan (that's not an empty string) from a teacher within the location radius is now considered a valid trigger.
-
   const now = new Date();
-  // Use a simple YYYY-MM-DD string for date checks, which is more efficient in Firestore
-  const todayDateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const todayDateString = getLocalDateString(now);
 
 
   // Use the top-level 'absenceRecords' collection
@@ -78,7 +88,6 @@ export const recordAttendance = async (
       attendanceCol,
       where('teacherId', '==', user.id),
       where('scheduleId', '==', scheduleInfo.id),
-      // Use the string date for a more efficient query that doesn't require a composite index
       where('date', '==', todayDateString)
     );
     const checkSnapshot = await getDocs(qCheck);
@@ -86,12 +95,11 @@ export const recordAttendance = async (
       return { success: false, message: `Anda sudah absen untuk pelajaran ${scheduleInfo.subject} hari ini.` };
     }
   } else {
-    // Fallback for general check-in if scheduleInfo is not provided
+    // This fallback is unlikely with the new flow, but kept for safety.
      const q = query(
       attendanceCol,
       where('teacherId', '==', user.id),
       where('date', '==', todayDateString),
-       // We can only check for general check-in if there is no scheduleId
       where('scheduleId', '==', null) 
     );
     const querySnapshot = await getDocs(q);
@@ -111,15 +119,13 @@ export const recordAttendance = async (
       date: todayDateString,
       status,
       reason: '', // Reason is empty for QR code check-in
-      scheduleId: scheduleInfo?.id || null,
-      subject: scheduleInfo?.subject || null,
-      class: scheduleInfo?.class || null,
-      period: scheduleInfo?.period || null,
+      scheduleId: scheduleInfo?.id,
+      subject: scheduleInfo?.subject,
+      class: scheduleInfo?.class,
+      period: scheduleInfo?.period,
     };
     await addDoc(attendanceCol, newRecord);
-    const successMessage = scheduleInfo 
-      ? `Absensi untuk ${scheduleInfo.subject} kelas ${scheduleInfo.class} berhasil.`
-      : `Attendance recorded successfully as ${status}.`;
+    const successMessage = `Absensi untuk ${scheduleInfo.subject} kelas ${scheduleInfo.class} berhasil.`;
     return { success: true, message: successMessage };
   } catch (error) {
     console.error("Error recording attendance: ", error);
@@ -136,11 +142,9 @@ export const recordStaffAttendanceWithQR = async (
   }
   
   const now = new Date();
-  const todayDateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const todayDateString = getLocalDateString(now);
   const attendanceCol = collection(db, 'absenceRecords');
 
-  // Query for ALL of today's attendance records for this staff member
-  // Using the date string is often more efficient and less likely to require a composite index
   const q = query(
     attendanceCol,
     where('teacherId', '==', user.id),
@@ -149,25 +153,21 @@ export const recordStaffAttendanceWithQR = async (
   
   try {
     const querySnapshot = await getDocs(q);
-    const todaysRecords = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() as Omit<AttendanceRecord, 'id'> }));
+    const todaysRecords = querySnapshot.docs.map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() as Omit<AttendanceRecord, 'id'> }));
 
-    // Check existing records to determine action
     const clockedInRecord = todaysRecords.find(r => r.status === 'Datang');
     const clockedOutRecord = todaysRecords.find(r => r.status === 'Pulang');
     const otherStatusRecord = todaysRecords.find(r => r.status !== 'Datang' && r.status !== 'Pulang');
 
     if (clockedOutRecord) {
-      // Already clocked out, nothing to do.
       return { success: false, message: 'Anda sudah melakukan absen pulang hari ini.' };
     }
 
     if (otherStatusRecord) {
-      // Has another status like 'Sakit' or 'Izin', cannot use QR code.
       return { success: false, message: `Anda sudah tercatat '${otherStatusRecord.status}' hari ini dan tidak bisa absen via QR.` };
     }
 
     if (clockedInRecord) {
-      // Has a 'Datang' record but no 'Pulang' record, so CLOCK OUT.
       const recordRef = doc(db, 'absenceRecords', clockedInRecord.id);
       await updateDoc(recordRef, {
         status: 'Pulang',
@@ -176,14 +176,13 @@ export const recordStaffAttendanceWithQR = async (
       return { success: true, message: 'Absen pulang berhasil direkam.' };
     } 
     
-    // No relevant records found for today, so CLOCK IN.
     await addDoc(attendanceCol, {
       teacherId: user.id,
       userName: user.name,
       timestamp: Timestamp.fromDate(now),
       date: todayDateString,
       status: 'Datang',
-      checkOutTimestamp: null, // Explicitly set to null for consistency
+      checkOutTimestamp: null,
       reason: '',
       scheduleId: null,
       subject: null,
@@ -194,28 +193,26 @@ export const recordStaffAttendanceWithQR = async (
 
   } catch (error) {
     console.error("Error recording staff attendance with QR:", error);
-    // Make the error message more user-friendly
-    return { success: false, message: 'Gagal merekam absensi. Periksa koneksi internet Anda atau hubungi admin.' };
+    const errorMessage = error instanceof Error ? error.message : 'Penyebab tidak diketahui.';
+    return { success: false, message: `Gagal merekam absensi. Periksa koneksi Anda atau hubungi admin. Detail: ${errorMessage}` };
   }
 };
 
 
 export const getAttendanceReport = async (date: Date): Promise<AttendanceRecord[]> => {
-    const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+    const dateString = getLocalDateString(date);
     const attendanceCol = collection(db, 'absenceRecords');
     const q = query(
       attendanceCol,
-      where('timestamp', '>=', startOfDay),
-      where('timestamp', '<', endOfDay),
+      where('date', '==', dateString),
       orderBy('timestamp', 'desc')
     );
   try {
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data();
+    return querySnapshot.docs.map(docSnapshot => {
+      const data = docSnapshot.data();
       return {
-        id: doc.id,
+        id: docSnapshot.id,
         ...data,
         timestamp: (data.timestamp as Timestamp).toDate(),
         checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
@@ -241,28 +238,35 @@ export const getFilteredAttendanceReport = async ({
     teacherId?: string;
 }): Promise<AttendanceRecord[]> => {
     const attendanceCol = collection(db, 'absenceRecords');
+    // Using date strings for range queries is more robust against timezone issues
+    const startString = getLocalDateString(startDate);
+    const endString = getLocalDateString(endDate);
+
     const constraints = [
-        where('timestamp', '>=', Timestamp.fromDate(startDate)),
-        where('timestamp', '<=', Timestamp.fromDate(endDate)),
+        where('date', '>=', startString),
+        where('date', '<=', endString),
     ];
 
     if (teacherId) {
         constraints.push(where('teacherId', '==', teacherId));
     }
 
-    const q = query(attendanceCol, ...constraints, orderBy('timestamp', 'desc'));
+    const q = query(attendanceCol, ...constraints, orderBy('date', 'desc'));
 
     try {
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => {
-            const data = doc.data();
+        const records = querySnapshot.docs.map(docSnapshot => {
+            const data = docSnapshot.data();
             return {
-                id: doc.id,
+                id: docSnapshot.id,
                 ...data,
                 timestamp: (data.timestamp as Timestamp).toDate(),
                 checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
             } as AttendanceRecord;
         });
+        // Client-side sort by actual timestamp since Firestore can only order by one field in a range query
+        records.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+        return records;
     } catch (error: any) {
         console.error("Error fetching filtered attendance report:", error);
         if (error.code === 'permission-denied') {
@@ -283,10 +287,10 @@ export const getFullReport = async (recordLimit?: number): Promise<AttendanceRec
       : query(attendanceCol, orderBy('timestamp', 'desc'));
   try {
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data();
+    return querySnapshot.docs.map(docSnapshot => {
+      const data = docSnapshot.data();
       return {
-        id: doc.id,
+        id: docSnapshot.id,
         ...data,
         timestamp: (data.timestamp as Timestamp).toDate(),
         checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,
@@ -307,7 +311,7 @@ export const reportTeacherAbsence = async (
   reason?: string
 ): Promise<{ success: boolean; message: string }> => {
   const now = new Date();
-  const todayDateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const todayDateString = getLocalDateString(now);
 
 
   const attendanceCol = collection(db, 'absenceRecords');
@@ -347,10 +351,10 @@ export const getAttendanceForTeacher = async (teacherId: string, recordLimit?: n
 
   try {
     const querySnapshot = await getDocs(q);
-    let records = querySnapshot.docs.map(doc => {
-        const data = doc.data();
+    let records = querySnapshot.docs.map(docSnapshot => {
+        const data = docSnapshot.data();
         return {
-          id: doc.id,
+          id: docSnapshot.id,
           ...data,
           timestamp: (data.timestamp as Timestamp).toDate(),
           checkOutTimestamp: data.checkOutTimestamp ? (data.checkOutTimestamp as Timestamp).toDate() : undefined,

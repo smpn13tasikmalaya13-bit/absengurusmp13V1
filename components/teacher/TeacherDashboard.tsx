@@ -643,7 +643,8 @@ const TeacherDashboard: React.FC = () => {
         <button onClick={() => setIsReportAbsenceModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-yellow-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-500">
           <ReportIcon/>
           <h3 className="font-bold text-lg mt-4 text-white">Lapor Ketidakhadiran</h3>
-          <p className="text-sm text-slate-400 mt-1">Laporkan jika tidak dapat hadir hari ini</p>
+          <p className="text-sm text-slate-400 mt-1">Laporkan jika tidak dapat hadir hari ini.</p>
+          <p className="text-xs text-slate-500 mt-2">Fitur ini tidak memerlukan lokasi.</p>
         </button>
         <button onClick={() => { if (todaysSchedule.length > 0) setIsReportStudentModalOpen(true) }} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-orange-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled={todaysSchedule.length === 0}>
           <StudentIcon/>

@@ -36,6 +36,7 @@ const EmptyStateDashboard: React.FC = () => (
 const DashboardContent: React.FC = () => {
   const [stats, setStats] = useState({ total: 0, present: 0, absent: 0 });
   const [recentRecords, setRecentRecords] = useState<(AttendanceRecord & { role?: Role })[]>([]);
+  const [totalUserCount, setTotalUserCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -43,6 +44,7 @@ const DashboardContent: React.FC = () => {
       setIsLoading(true);
       try {
         const allUsers = await getAllUsers();
+        setTotalUserCount(allUsers.length);
         const userMap = new Map(allUsers.map(user => [user.id, user.role]));
 
         const totalTeachers = allUsers.filter(u => u.role === Role.Teacher || u.role === Role.Coach).length;
@@ -87,7 +89,7 @@ const DashboardContent: React.FC = () => {
     );
   }
   
-  const isDataEmpty = stats.total === 0 && recentRecords.length === 0;
+  const isDataEmpty = totalUserCount <= 1 && recentRecords.length === 0;
   
     const getRoleBadgeClass = (role?: Role) => {
     if (!role) return 'bg-gray-500/30 text-gray-300';
