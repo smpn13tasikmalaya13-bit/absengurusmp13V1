@@ -30,7 +30,8 @@ export interface AttendanceRecord {
   status: string; // e.g., 'Present', 'Late', 'Sakit', 'Datang', 'Pulang'
   reason?: string;
   // Fields to link attendance to a specific lesson
-  scheduleId: string; 
+  // FIX: Made `scheduleId` optional as it may not exist for staff or general absence records.
+  scheduleId?: string; 
   subject?: string;
   class?: string;
   period?: number;

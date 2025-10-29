@@ -15,14 +15,16 @@ interface ProcessedStaffRecord extends AttendanceRecord {
   denda: number;
 }
 
-// FIX: Moved interfaces outside of the component to be accessible for type annotations.
 interface SummaryDetails {
     lateCount: number;
     missedCheckoutCount: number;
+    alpaCount: number;
     totalLateFine: number;
     missedCheckoutFine: number;
+    totalAlpaFine: number;
     totalFine: number;
 }
+
 
 interface SummaryData {
     [userName: string]: SummaryDetails;
@@ -53,14 +55,24 @@ const StaffAttendanceReportPage: React.FC = () => {
   const processStaffReport = (records: AttendanceRecord[]): { processedRecords: ProcessedStaffRecord[], summary: SummaryData } => {
     const lateFine = 2000;
     const missedCheckoutFine = 20000;
-    const userStats: { [userName: string]: { lateCount: number; missedCheckoutCount: number } } = {};
+    const alpaFine = 25000;
+    const userStats: { [userName: string]: { lateCount: number; missedCheckoutCount: number; alpaCount: number } } = {};
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const processedRecords = records.map(record => {
         if (!userStats[record.userName]) {
-            userStats[record.userName] = { lateCount: 0, missedCheckoutCount: 0 };
+            userStats[record.userName] = { lateCount: 0, missedCheckoutCount: 0, alpaCount: 0 };
+        }
+        
+        if (['Sakit', 'Izin', 'Tugas Luar'].includes(record.status)) {
+            return { ...record, keterangan: record.status, denda: 0 };
+        }
+        
+        if (record.status === 'Alpa') {
+            userStats[record.userName].alpaCount += 1;
+            return { ...record, keterangan: 'Alpa (Tidak Ada Kehadiran)', denda: alpaFine };
         }
 
         const recordDate = record.timestamp;
@@ -72,11 +84,13 @@ const StaffAttendanceReportPage: React.FC = () => {
         // Rules only apply from Monday to Friday
         if (day >= 1 && day <= 5) {
             // Check for lateness
-            const checkInHour = recordDate.getHours();
-            const checkInMinute = recordDate.getMinutes();
-            if (checkInHour > 7 || (checkInHour === 7 && checkInMinute > 15)) {
-                isLate = true;
-                userStats[record.userName].lateCount += 1;
+            if (record.status === 'Datang' || record.status === 'Pulang') {
+                const checkInHour = recordDate.getHours();
+                const checkInMinute = recordDate.getMinutes();
+                if (checkInHour > 7 || (checkInHour === 7 && checkInMinute > 15)) {
+                    isLate = true;
+                    userStats[record.userName].lateCount += 1;
+                }
             }
 
             // Check if it should count as a missed checkout for fine calculation
@@ -138,15 +152,18 @@ const StaffAttendanceReportPage: React.FC = () => {
       const stats = userStats[userName];
       const totalLateFine = stats.lateCount * lateFine;
       const finalMissedCheckoutFine = stats.missedCheckoutCount > 3 ? missedCheckoutFine : 0;
-      const totalFine = totalLateFine + finalMissedCheckoutFine;
+      const totalAlpaFine = stats.alpaCount * alpaFine;
+      const totalFine = totalLateFine + finalMissedCheckoutFine + totalAlpaFine;
 
-      // Include summary if there are any stats, not just if there's a fine yet.
-      if (stats.lateCount > 0 || stats.missedCheckoutCount > 0) {
+
+      if (stats.lateCount > 0 || stats.missedCheckoutCount > 0 || stats.alpaCount > 0) {
         summary[userName] = {
             lateCount: stats.lateCount,
             missedCheckoutCount: stats.missedCheckoutCount,
+            alpaCount: stats.alpaCount,
             totalLateFine,
             missedCheckoutFine: finalMissedCheckoutFine,
+            totalAlpaFine,
             totalFine,
         };
       }
@@ -172,21 +189,62 @@ const StaffAttendanceReportPage: React.FC = () => {
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
 
-    const data = await getFilteredAttendanceReport({
-      startDate: start,
-      endDate: end,
-      teacherId: selectedStaff || undefined,
-    });
-    
-    // FIX: Filter staff records by checking teacherId against the staffMembers list,
-    // as AttendanceRecord does not have a 'role' property.
-    const staffIds = new Set(staffMembers.map(s => s.id));
-    const staffRecords = data.filter(d => staffIds.has(d.teacherId));
-    
-    const { processedRecords, summary } = processStaffReport(staffRecords);
-    setReportData(processedRecords);
-    setSummaryData(summary);
-    setIsLoading(false);
+    try {
+        const allRecordsInRange = await getFilteredAttendanceReport({
+            startDate: start,
+            endDate: end,
+        });
+
+        const relevantStaff = selectedStaff 
+            ? staffMembers.filter(s => s.id === selectedStaff)
+            : staffMembers;
+        
+        const staffIds = new Set(relevantStaff.map(s => s.id));
+        const staffRecordsInRange = allRecordsInRange.filter(r => staffIds.has(r.teacherId));
+
+        const recordsLookup = new Set<string>();
+        staffRecordsInRange.forEach(record => {
+            recordsLookup.add(`${record.teacherId}-${record.date}`);
+        });
+
+        const comprehensiveRecords: AttendanceRecord[] = [...staffRecordsInRange];
+
+        const loopDate = new Date(start);
+        while (loopDate <= end) {
+            const dayOfWeek = loopDate.getDay();
+            if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday to Friday
+                const dateString = `${loopDate.getFullYear()}-${String(loopDate.getMonth() + 1).padStart(2, '0')}-${String(loopDate.getDate()).padStart(2, '0')}`;
+                
+                for (const staff of relevantStaff) {
+                    const lookupKey = `${staff.id}-${dateString}`;
+                    if (!recordsLookup.has(lookupKey)) {
+                        comprehensiveRecords.push({
+                            id: `alpa-${lookupKey}`,
+                            teacherId: staff.id,
+                            userName: staff.name,
+                            timestamp: loopDate,
+                            date: dateString,
+                            status: 'Alpa',
+                            reason: 'Tidak ada catatan kehadiran',
+                        });
+                    }
+                }
+            }
+            loopDate.setDate(loopDate.getDate() + 1);
+        }
+
+        const { processedRecords, summary } = processStaffReport(comprehensiveRecords);
+        
+        processedRecords.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.userName.localeCompare(b.userName));
+
+        setReportData(processedRecords);
+        setSummaryData(summary);
+
+    } catch (err) {
+        console.error("Failed to generate staff report:", err);
+    } finally {
+        setIsLoading(false);
+    }
   }, [startDate, endDate, selectedStaff, staffMembers]);
 
   useEffect(() => {
@@ -204,7 +262,7 @@ const StaffAttendanceReportPage: React.FC = () => {
         body: reportData.map(r => [
             r.userName,
             Role.AdministrativeStaff,
-            r.timestamp.toLocaleString('id-ID'),
+            r.status === 'Alpa' ? '-' : r.timestamp.toLocaleString('id-ID'),
             r.checkOutTimestamp ? new Date(r.checkOutTimestamp).toLocaleString('id-ID') : '-',
             r.keterangan,
             r.denda.toLocaleString('id-ID')
@@ -214,11 +272,11 @@ const StaffAttendanceReportPage: React.FC = () => {
     if (Object.keys(summaryData).length > 0) {
         (doc as any).autoTable({
             head: [['Ringkasan Denda (Periode Laporan)']],
-            // FIX: Explicitly type 'data' to resolve property access errors.
             body: Object.entries(summaryData).map(([name, data]: [string, SummaryDetails]) => {
                 let summaryText = `${name}:\n`;
                 summaryText += ` - Keterlambatan: ${data.lateCount} kali (Rp ${data.totalLateFine.toLocaleString('id-ID')})\n`;
                 summaryText += ` - Tdk Absen Pulang: ${data.missedCheckoutCount} kali (Denda: Rp ${data.missedCheckoutFine.toLocaleString('id-ID')})\n`;
+                summaryText += ` - Alpa: ${data.alpaCount} kali (Denda: Rp ${data.totalAlpaFine.toLocaleString('id-ID')})\n`;
                 summaryText += ` - Total Denda: Rp ${data.totalFine.toLocaleString('id-ID')}`;
                 return [summaryText];
             }),
@@ -233,7 +291,7 @@ const StaffAttendanceReportPage: React.FC = () => {
     const reportSheet = reportData.map(r => ({
         'Nama': r.userName,
         'Jabatan': Role.AdministrativeStaff,
-        'Waktu Datang': r.timestamp.toLocaleString('id-ID'),
+        'Waktu Datang': r.status === 'Alpa' ? '-' : r.timestamp.toLocaleString('id-ID'),
         'Waktu Pulang': r.checkOutTimestamp ? new Date(r.checkOutTimestamp).toLocaleString('id-ID') : '-',
         'Keterangan': r.keterangan,
         'Denda Harian (Rp)': r.denda
@@ -245,14 +303,15 @@ const StaffAttendanceReportPage: React.FC = () => {
     if (Object.keys(summaryData).length > 0) {
         const summarySheetData = [
             ['Ringkasan Denda (Periode Laporan)'],
-            ['Nama Tendik', 'Total Terlambat', 'Denda Terlambat', 'Total Tdk Absen Pulang', 'Denda Tdk Absen Pulang', 'Total Denda Keseluruhan'],
-             // FIX: Explicitly type 'data' to resolve property access errors.
+            ['Nama Tendik', 'Total Terlambat', 'Denda Terlambat', 'Total Tdk Absen Pulang', 'Denda Tdk Absen Pulang', 'Total Alpa', 'Denda Alpa', 'Total Denda Keseluruhan'],
              ...Object.entries(summaryData).map(([name, data]: [string, SummaryDetails]) => [
                 name,
                 data.lateCount,
                 data.totalLateFine,
                 data.missedCheckoutCount,
                 data.missedCheckoutFine,
+                data.alpaCount,
+                data.totalAlpaFine,
                 data.totalFine
             ])
         ];
@@ -279,7 +338,7 @@ const StaffAttendanceReportPage: React.FC = () => {
           {reportData.map((record) => (
             <tr key={record.id} className="block p-4 space-y-3 md:table-row md:p-0 md:space-y-0 hover:bg-slate-800/50 transition-colors">
               <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap font-medium"><span className="text-sm font-semibold text-slate-400 md:hidden">Nama</span><span>{record.userName}</span></td>
-              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Waktu Datang</span><span>{record.timestamp.toLocaleString('id-ID')}</span></td>
+              <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Waktu Datang</span><span>{record.status === 'Alpa' ? '-' : record.timestamp.toLocaleString('id-ID')}</span></td>
               <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-gray-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Waktu Pulang</span><span>{record.checkOutTimestamp ? new Date(record.checkOutTimestamp).toLocaleString('id-ID') : '-'}</span></td>
               <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap text-yellow-400 text-xs"><span className="text-sm font-semibold text-slate-400 md:hidden">Keterangan</span><span>{record.keterangan}</span></td>
               <td className="flex justify-between items-center md:table-cell md:p-4 md:whitespace-nowrap font-semibold text-red-400"><span className="text-sm font-semibold text-slate-400 md:hidden">Denda (Rp)</span><span>{record.denda > 0 ? record.denda.toLocaleString('id-ID') : '-'}</span></td>
@@ -294,13 +353,13 @@ const StaffAttendanceReportPage: React.FC = () => {
     Object.keys(summaryData).length > 0 && (
       <Card title="Ringkasan Konsekuensi">
         <div className="space-y-4">
-          {/* FIX: Explicitly type 'data' to resolve property access errors. */}
           {Object.entries(summaryData).map(([name, data]: [string, SummaryDetails]) => (
             <div key={name} className="p-3 bg-slate-700/50 rounded-md">
               <h4 className="font-semibold text-white">{name}</h4>
               <ul className="list-disc list-inside text-sm text-slate-300 mt-1">
                 <li>Total Keterlambatan: {data.lateCount} kali (Denda: Rp {data.totalLateFine.toLocaleString('id-ID')})</li>
                 <li>Total Tidak Absen Pulang: {data.missedCheckoutCount} kali (Denda: Rp {data.missedCheckoutFine.toLocaleString('id-ID')})</li>
+                <li>Total Alpa: {data.alpaCount} kali (Denda: Rp {data.totalAlpaFine.toLocaleString('id-ID')})</li>
               </ul>
               <p className="font-bold text-amber-400 mt-2">Total Denda: Rp {data.totalFine.toLocaleString('id-ID')}</p>
             </div>

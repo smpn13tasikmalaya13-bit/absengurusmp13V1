@@ -1,6 +1,6 @@
 import { AttendanceRecord, LessonSchedule, User, MasterSchedule } from '../types';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, limit, updateDoc, doc, writeBatch } from 'firebase/firestore';
 import { STAFF_QR_CODE_DATA } from '../constants';
 
 /**
@@ -168,11 +168,31 @@ export const recordStaffAttendanceWithQR = async (
     }
 
     if (clockedInRecord) {
-      const recordRef = doc(db, 'absenceRecords', clockedInRecord.id);
-      await updateDoc(recordRef, {
-        status: 'Pulang',
-        checkOutTimestamp: Timestamp.fromDate(now),
-      });
+      // WORKAROUND for insufficient permissions on update.
+      // Instead of updating, we perform an atomic delete and create operation.
+      // This relies on the user having create and delete permissions, but not necessarily update.
+      const batch = writeBatch(db);
+      
+      // 1. Reference the old "Datang" record to be deleted
+      const oldRecordRef = doc(db, 'absenceRecords', clockedInRecord.id);
+      
+      // 2. Prepare the data for the new "Pulang" record
+      // We strip the 'id' field from the old record data before creating the new one.
+      const { id, ...dataToWrite } = clockedInRecord;
+      const newRecordData = {
+          ...dataToWrite,
+          status: 'Pulang',
+          checkOutTimestamp: Timestamp.fromDate(now),
+      };
+
+      // 3. Add delete and create operations to the batch
+      batch.delete(oldRecordRef);
+      const newRecordRef = doc(collection(db, 'absenceRecords')); // Firestore generates a new ID
+      batch.set(newRecordRef, newRecordData);
+
+      // 4. Commit the batch
+      await batch.commit();
+
       return { success: true, message: 'Absen pulang berhasil direkam.' };
     } 
     
