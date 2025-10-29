@@ -4,8 +4,8 @@ import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
 import { getFilteredAttendanceReport } from '../../services/attendanceService';
 import { getAllUsers } from '../../services/authService';
-import { getAllClasses, getAllEskuls, getAllMasterSchedules } from '../../services/dataService';
-import { AttendanceRecord, User, Class, Eskul, Role, MasterSchedule } from '../../types';
+import { getAllClasses, getAllMasterSchedules } from '../../services/dataService';
+import { AttendanceRecord, User, Class, Role, MasterSchedule } from '../../types';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -26,12 +26,9 @@ interface ComprehensiveReportEntry {
 
 
 const TeacherAttendanceReportPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('kelas');
-
   // Filter state
   const [teachers, setTeachers] = useState<User[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
-  const [eskuls, setEskuls] = useState<Eskul[]>([]);
   
   const [selectedTeacher, setSelectedTeacher] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
@@ -52,8 +49,6 @@ const TeacherAttendanceReportPage: React.FC = () => {
         setTeachers(allUsers.filter(u => u.role === Role.Teacher || u.role === Role.Coach));
         const classData = await getAllClasses();
         setClasses(classData);
-        const eskulData = await getAllEskuls();
-        setEskuls(eskulData);
       } catch (err) {
         setError('Gagal memuat data filter.');
       }
@@ -258,19 +253,6 @@ const TeacherAttendanceReportPage: React.FC = () => {
     };
 
 
-  const TabButton: React.FC<{tabId: string; label: string}> = ({ tabId, label }) => (
-    <button
-      onClick={() => setActiveTab(tabId)}
-      className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-        activeTab === tabId
-          ? 'border-b-2 border-blue-500 text-white'
-          : 'text-gray-400 hover:text-white'
-      }`}
-    >
-      {label}
-    </button>
-  );
-
   const ReportTable = () => (
     <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg mt-6 overflow-x-auto">
       <table className="w-full text-left">
@@ -321,11 +303,7 @@ const TeacherAttendanceReportPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-white">Laporan Absensi Guru</h1>
-      <div className="border-b border-slate-700">
-        <TabButton tabId="kelas" label="Absensi Kelas" />
-        <TabButton tabId="ekstrakurikuler" label="Absensi Ekstrakurikuler" />
-      </div>
+      <h1 className="text-xl font-bold text-white">Laporan Absensi Guru Mengajar</h1>
       <Card>
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -337,14 +315,10 @@ const TeacherAttendanceReportPage: React.FC = () => {
                 </select>
             </div>
             <div>
-                <label className="text-sm text-gray-400">{activeTab === 'kelas' ? 'Kelas' : 'Eskul'}</label>
+                <label className="text-sm text-gray-400">Kelas</label>
                 <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded-md">
-                    <option value="">{activeTab === 'kelas' ? 'Semua Kelas' : 'Semua Eskul'}</option>
-                    {activeTab === 'kelas' 
-                        ? classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
-                        // FIX: Added eskuls mapping for the dropdown.
-                        : eskuls.map(e => <option key={e.id} value={e.id}>{e.name}</option>)
-                    }
+                    <option value="">Semua Kelas</option>
+                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
             </div>
             <div>
