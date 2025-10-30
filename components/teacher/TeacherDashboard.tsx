@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import QRScanner from './QRScanner';
-import { reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile, getAllMasterSchedules, getMessagesForUser, sendMessage, markMessagesAsRead, deleteMessage, getAdminUsers, getMasterSchedulesByTeacherCode } from '../../services/dataService';
+import { reportStudentAbsence, getStudentAbsencesByTeacher, getAllClasses, getStudentAbsencesByTeacherForDate, uploadProfilePhoto, updateUserProfile, getAllMasterSchedules, getMessagesForUser, sendMessage, markMessagesAsRead, deleteMessage, getAdminUsers, getMasterSchedulesByTeacherCode, getAllMasterCoaches } from '../../services/dataService';
 import { getAttendanceForTeacher, reportTeacherAbsence, recordAttendance } from '../../services/attendanceService';
 import { getDeviceId } from '../../services/authService';
-import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, User, MasterSchedule, Message } from '../../types';
+import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, User, MasterSchedule, Message, MasterCoach } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
@@ -119,6 +119,7 @@ const TeacherDashboard: React.FC = () => {
   const [todaysSchedule, setTodaysSchedule] = useState<MasterSchedule[]>([]);
   const [fullSchedule, setFullSchedule] = useState<MasterSchedule[]>([]);
   const [masterSchedules, setMasterSchedules] = useState<MasterSchedule[]>([]);
+  const [masterCoaches, setMasterCoaches] = useState<MasterCoach[]>([]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(true);
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -235,19 +236,27 @@ const TeacherDashboard: React.FC = () => {
             classesData, 
             allReportedStudents,
             masterSchedulesData,
+            masterCoachesData,
         ] = await Promise.all([
           getAttendanceForTeacher(user.id),
           getStudentAbsencesByTeacherForDate(user.id, todayStr),
           getAllClasses(),
           getStudentAbsencesByTeacher(user.id),
           getAllMasterSchedules(),
+          getAllMasterCoaches(),
         ]);
 
         if (user.kode) {
-            const teacherSchedules = await getMasterSchedulesByTeacherCode(user.kode);
-            setFullSchedule(teacherSchedules);
-            const todayDayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
-            setTodaysSchedule(teacherSchedules.filter(s => s.day === todayDayName));
+            // For teachers, use master schedule. For coaches, there is no schedule to show here.
+            if (user.role === Role.Teacher) {
+                const teacherSchedules = await getMasterSchedulesByTeacherCode(user.kode);
+                setFullSchedule(teacherSchedules);
+                const todayDayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
+                setTodaysSchedule(teacherSchedules.filter(s => s.day === todayDayName));
+            } else {
+                setFullSchedule([]);
+                setTodaysSchedule([]);
+            }
         } else {
             setFullSchedule([]);
             setTodaysSchedule([]);
@@ -255,6 +264,7 @@ const TeacherDashboard: React.FC = () => {
 
         setAvailableClasses(classesData);
         setMasterSchedules(masterSchedulesData);
+        setMasterCoaches(masterCoachesData);
         
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const startOfWeek = new Date(startOfToday);
@@ -311,10 +321,12 @@ const TeacherDashboard: React.FC = () => {
         );
     }, [attendanceHistory]);
     
-    const availableTeacherCodes = useMemo(() => {
-        if (!masterSchedules) return [];
+    const availableCodes = useMemo(() => {
+        if (user?.role === Role.Coach) {
+            return [...new Set(masterCoaches.map(c => c.kode))].sort();
+        }
         return [...new Set(masterSchedules.map(s => s.kode))].sort();
-    }, [masterSchedules]);
+    }, [masterSchedules, masterCoaches, user?.role]);
 
 
   const locationStatus = locationError ? { text: locationError, color: 'text-red-400' }
@@ -405,24 +417,41 @@ const TeacherDashboard: React.FC = () => {
     const { name, value } = e.target;
 
     if (name === 'kode') {
-        const selectedSchedule = masterSchedules.find(s => s.kode === value);
-        if (selectedSchedule) {
-            // Autofill name and subject based on the selected code
-            setProfileData(prev => ({
-                ...prev,
-                kode: value,
-                name: selectedSchedule.namaGuru,
-                subject: selectedSchedule.subject,
-            }));
+        let autoFilledData: Partial<User> = {};
+        if (user?.role === Role.Coach) {
+            const selectedCoach = masterCoaches.find(s => s.kode === value);
+            if(selectedCoach) {
+                autoFilledData = {
+                    kode: value,
+                    name: selectedCoach.namaLengkap,
+                    subject: selectedCoach.bidangEskul,
+                    position: selectedCoach.jabatan,
+                };
+            }
+        } else { // Teacher
+            const selectedSchedule = masterSchedules.find(s => s.kode === value);
+            if (selectedSchedule) {
+                autoFilledData = {
+                    kode: value,
+                    name: selectedSchedule.namaGuru,
+                    subject: selectedSchedule.subject,
+                };
+            }
+        }
+        
+        if (value) {
+            setProfileData(prev => ({ ...prev, ...autoFilledData }));
         } else {
-            // If the user deselects the code ("-- Pilih Kode --"), revert to original data
-            setProfileData(prev => ({
+            // Revert to original data on deselect
+             setProfileData(prev => ({
                 ...prev,
                 kode: '',
-                name: user?.name || '', // Revert to original user name
-                subject: user?.subject || '', // Revert to original user subject
-            }));
+                name: user?.name || '',
+                subject: user?.subject || '',
+                position: user?.position || '',
+             }));
         }
+
     } else {
         // Handle other form fields normally
         setProfileData(prev => ({ ...prev, [name]: value }));
@@ -543,7 +572,7 @@ const TeacherDashboard: React.FC = () => {
     if (!user) return;
     
     if (!profileData.kode) {
-        setModalError("Kode Guru wajib diisi untuk validasi jadwal.");
+        setModalError("Kode wajib diisi untuk validasi jadwal dan data.");
         return;
     }
 
@@ -573,7 +602,7 @@ const TeacherDashboard: React.FC = () => {
 
         // --- DEVICE BINDING LOGIC ---
         // If the user profile doesn't have a deviceId yet, bind the current one.
-        // This happens when they first set their Kode Guru.
+        // This happens when they first set their Kode.
         const dataToUpdate: Partial<User> = {};
         if (!user.deviceId) {
             dataToUpdate.deviceId = getDeviceId();
@@ -725,7 +754,7 @@ const TeacherDashboard: React.FC = () => {
           ) : (
             <div className="text-center py-10">
               <EmptyScheduleIcon/>
-              <p className="mt-4 text-slate-400">{user?.kode ? "Tidak ada jadwal mengajar hari ini." : "Atur 'Kode Guru' di profil untuk melihat jadwal."}</p>
+              <p className="mt-4 text-slate-400">{user?.kode ? "Tidak ada jadwal mengajar hari ini." : "Atur 'Kode' di profil untuk melihat jadwal."}</p>
             </div>
           )}
         </div>
@@ -740,62 +769,42 @@ const TeacherDashboard: React.FC = () => {
                     <p className="font-semibold text-white">{r.subject ? `${r.subject} (${r.class})` : new Date(r.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                     <p className="text-sm text-slate-400">{new Date(r.timestamp).toLocaleString('id-ID')}</p>
                   </div>
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.status === 'Present' ? 'bg-emerald-500/30 text-emerald-200' : r.status === 'Late' ? 'bg-yellow-500/30 text-yellow-200' : 'bg-red-500/30 text-red-200'}`}>{r.status}</span>
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.status === 'Present' ? 'bg-emerald-500/30 text-emerald-200' : r.status === 'Late' ? 'bg-yellow-500/30 text-yellow-200' : 'bg-slate-500/30 text-slate-200'}`}>
+                    {r.status}
+                  </span>
                 </li>
               ))}
             </ul>
           ) : (
-              <div className="text-center py-10">
+            <div className="text-center py-10">
               <EmptyHistoryIcon/>
               <p className="mt-4 text-slate-400">Belum ada riwayat absensi.</p>
             </div>
           )}
         </div>
-
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl lg:col-span-2">
-          <h3 className="font-bold text-lg text-white mb-4">Siswa Absen Dilaporkan Hari Ini</h3>
-          {isLoadingReported ? <Spinner/> : reportedAbsences.length > 0 ? (
-              <ul className="space-y-3">
-              {reportedAbsences.map(r => (
-                <li key={r.id} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg">
-                  <div>
-                    <p className="font-semibold text-white">{r.studentName} <span className="text-slate-400 font-normal">({r.class})</span></p>
-                  </div>
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.reason === 'Sakit' ? 'bg-yellow-500/30 text-yellow-200' : r.reason === 'Izin' ? 'bg-blue-500/30 text-blue-200' : 'bg-red-500/30 text-red-200'}`}>{r.reason}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-center py-10">
-              <EmptyReportIcon/>
-              <p className="mt-4 text-slate-400">Belum ada siswa yang dilaporkan absen hari ini.</p>
-            </div>
-          )}
-        </div>
       </div>
-      <footer className="text-center text-slate-500 text-sm pt-4">
-        © Rullp 2025 HadirKu. All rights reserved.
-      </footer>
     </>
   );
 
-  const RiwayatAbsenContent = () => (
+  const RiwayatContent = () => (
     <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
         <h3 className="font-bold text-lg text-white mb-4">Semua Riwayat Absensi</h3>
         {isLoadingHistory ? <Spinner/> : attendanceHistory.length > 0 ? (
-        <ul className="space-y-3 max-h-[60vh] overflow-y-auto">
+        <ul className="space-y-3 max-h-[70vh] overflow-y-auto">
             {attendanceHistory.map(r => (
             <li key={r.id} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg">
                 <div>
-                <p className="font-semibold text-white">{r.subject ? `${r.subject} (${r.class})` : new Date(r.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                <p className="text-sm text-slate-400">{new Date(r.timestamp).toLocaleString('id-ID')}</p>
+                    <p className="font-semibold text-white">{r.subject ? `${r.subject} (${r.class})` : new Date(r.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                    <p className="text-sm text-slate-400">{new Date(r.timestamp).toLocaleString('id-ID')}</p>
                 </div>
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.status === 'Present' ? 'bg-emerald-500/30 text-emerald-200' : r.status === 'Late' ? 'bg-yellow-500/30 text-yellow-200' : 'bg-red-500/30 text-red-200'}`}>{r.status}</span>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.status === 'Present' ? 'bg-emerald-500/30 text-emerald-200' : r.status === 'Late' ? 'bg-yellow-500/30 text-yellow-200' : 'bg-slate-500/30 text-slate-200'}`}>
+                    {r.status}
+                </span>
             </li>
             ))}
         </ul>
         ) : (
-            <div className="text-center py-10">
+        <div className="text-center py-10">
             <EmptyHistoryIcon/>
             <p className="mt-4 text-slate-400">Belum ada riwayat absensi.</p>
         </div>
@@ -803,334 +812,322 @@ const TeacherDashboard: React.FC = () => {
     </div>
   );
 
-  const RiwayatSiswaContent = () => (
-    <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
-        <h3 className="font-bold text-lg text-white mb-4">Semua Riwayat Laporan Siswa</h3>
-        {isLoadingReported ? <Spinner/> : allStudentAbsences.length > 0 ? (
-            <ul className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {allStudentAbsences.map(r => (
-                <li key={r.id} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg">
-                <div>
-                    <p className="font-semibold text-white">{r.studentName} <span className="text-slate-400 font-normal">({r.class})</span></p>
-                    <p className="text-sm text-slate-400">{new Date(r.date).toLocaleDateString('id-ID', { timeZone: 'UTC', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                </div>
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.reason === 'Sakit' ? 'bg-yellow-500/30 text-yellow-200' : r.reason === 'Izin' ? 'bg-blue-500/30 text-blue-200' : 'bg-red-500/30 text-red-200'}`}>{r.reason}</span>
-                </li>
-            ))}
-            </ul>
-        ) : (
-            <div className="text-center py-10">
-                <EmptyReportIcon/>
-                <p className="mt-4 text-slate-400">Belum ada siswa yang dilaporkan absen.</p>
-            </div>
-        )}
-    </div>
-  );
-  
-  const ProfilContent = () => (
+  const LaporanSiswaContent = () => (
      <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
-        <h3 className="font-bold text-lg text-white mb-4">Profil Anda</h3>
-        {user && (
-             <div className="space-y-4">
-                 <div className="flex items-center space-x-4">
-                    <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.name.replace(' ', '+')}&background=0f172a&color=cbd5e1`} alt="Profile" className="h-20 w-20 rounded-full object-cover border-2 border-slate-600" />
+        <h3 className="font-bold text-lg text-white mb-4">Riwayat Laporan Siswa Absen</h3>
+        {isLoadingReported ? <Spinner/> : allStudentAbsences.length > 0 ? (
+        <ul className="space-y-3 max-h-[70vh] overflow-y-auto">
+            {allStudentAbsences.map(r => (
+            <li key={r.id} className="bg-slate-700/50 p-4 rounded-lg">
+                <div className="flex justify-between items-center">
                     <div>
-                        <p className="text-white font-semibold text-xl">{user.name}</p>
-                        <p className="text-slate-400 text-sm">{user.email}</p>
-                        <span className={`mt-1 inline-block px-3 py-1 text-xs font-semibold rounded-full ${getRoleBadgeClass(user.role)}`}>{user.role}</span>
+                        <p className="font-semibold text-white">{r.studentName} - {r.class}</p>
+                        <p className="text-sm text-slate-400">{new Date(r.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                     </div>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${r.reason === 'Sakit' ? 'bg-yellow-500/30 text-yellow-200' : r.reason === 'Izin' ? 'bg-blue-500/30 text-blue-200' : 'bg-red-500/30 text-red-200'}`}>
+                        {r.reason}
+                    </span>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-700">
-                    <div>
-                        <label className="text-sm text-slate-400">Jabatan</label>
-                        <p className="text-white font-semibold">{user.position || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="text-sm text-slate-400">Gol/Pangkat</label>
-                        <p className="text-white font-semibold">{user.rank || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="text-sm text-slate-400">Kode Guru</label>
-                        {user.kode ? (
-                            <p className="text-white font-semibold">{user.kode}</p>
-                        ) : (
-                            <p className="text-yellow-400 font-semibold">Belum diatur. Silakan ubah profil.</p>
-                        )}
-                    </div>
-                </div>
-
-                <div className="pt-4">
-                    <Button onClick={handleEditProfile} variant="primary" className="w-full max-w-xs mx-auto">Ubah Profil</Button>
-                </div>
-            </div>
+                {r.absentPeriods && <p className="text-xs text-slate-400 mt-2">Jam ke: {r.absentPeriods.join(', ')}</p>}
+            </li>
+            ))}
+        </ul>
+        ) : (
+        <div className="text-center py-10">
+            <EmptyReportIcon/>
+            <p className="mt-4 text-slate-400">Anda belum pernah melaporkan siswa absen.</p>
+        </div>
         )}
     </div>
   );
 
-  const renderContent = () => {
-    switch (activeView) {
-      case 'beranda': return <BerandaContent />;
-      case 'riwayatAbsen': return <RiwayatAbsenContent />;
-      case 'riwayatSiswa': return <RiwayatSiswaContent />;
-      case 'pesan': return <PesanContent user={user} messages={messages} isLoading={isLoadingMessages} onSendMessage={handleSendMessage} onDeleteMessage={handleDeleteMessage} />;
-      case 'profil': return <ProfilContent />;
-      default: return <BerandaContent />;
-    }
-  };
+  const ProfilContent = () => (
+       <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl">
+           {user && (
+                 <div className="space-y-4">
+                     <div className="flex items-center space-x-4">
+                        <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.name.replace(' ', '+')}&background=0f172a&color=cbd5e1`} alt="Profile" className="h-20 w-20 rounded-full object-cover border-2 border-slate-600" />
+                        <div>
+                            <p className="text-white font-semibold text-xl">{user.name}</p>
+                            <p className="text-slate-400 text-sm">{user.email}</p>
+                            <span className={`mt-1 inline-block px-3 py-1 text-xs font-semibold rounded-full ${getRoleBadgeClass(user.role)}`}>{user.role}</span>
+                        </div>
+                    </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-700">
+                         <div>
+                            <label className="text-sm text-slate-400">Kode Guru/Pembina</label>
+                            <p className="text-white font-semibold">{user.kode || 'Belum diatur'}</p>
+                        </div>
+                        <div>
+                            <label className="text-sm text-slate-400">Jabatan</label>
+                            <p className="text-white font-semibold">{user.position || '-'}</p>
+                        </div>
+                         <div>
+                            <label className="text-sm text-slate-400">Mapel/Bidang</label>
+                            <p className="text-white font-semibold">{user.subject || '-'}</p>
+                        </div>
+                         <div>
+                            <label className="text-sm text-slate-400">Gelar</label>
+                            <p className="text-white font-semibold">{user.title || '-'}</p>
+                        </div>
+                    </div>
 
-  const NavItem = ({ view, label, icon, hasNotification }: { view: string; label: string; icon: React.ReactNode, hasNotification?: boolean }) => (
-    <button onClick={() => setActiveView(view)} className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-colors duration-200 ${activeView === view ? 'text-indigo-400' : 'text-slate-400 hover:text-white'}`}>
-      <div className="relative">
-        {icon}
-        {hasNotification && (
-            <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-slate-800"></span>
-        )}
-      </div>
-      <span className="text-xs mt-1">{label}</span>
-    </button>
-  );
+                    <div className="pt-4">
+                        <Button onClick={handleEditProfile} variant="primary" className="w-full max-w-xs mx-auto">Ubah Profil</Button>
+                    </div>
+                </div>
+           )}
+       </div>
+    );
+    
+    const renderContent = () => {
+        switch (activeView) {
+            case 'beranda': return <BerandaContent />;
+            case 'riwayat': return <RiwayatContent />;
+            case 'laporan-siswa': return <LaporanSiswaContent />;
+            case 'pesan': return <PesanContent user={user} messages={messages} isLoading={isLoadingMessages} onSendMessage={handleSendMessage} onDeleteMessage={handleDeleteMessage} />;
+            case 'profil': return <ProfilContent />;
+            default: return <BerandaContent />;
+        }
+    };
+    
+    const NavItem = ({ view, label, icon, hasNotification }: { view: string; label: string; icon: React.ReactNode; hasNotification?: boolean }) => (
+        <button onClick={() => setActiveView(view)} className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-colors duration-200 ${activeView === view ? 'text-indigo-400' : 'text-slate-400 hover:text-white'}`}>
+          <div className="relative">
+            {icon}
+            {hasNotification && (
+                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-slate-800"></span>
+            )}
+          </div>
+          <span className="text-xs mt-1">{label}</span>
+        </button>
+    );
 
   return (
-    <>
-      <div className="bg-slate-900 text-slate-300 min-h-screen pb-24">
-        <header className="flex justify-between items-center p-4 border-b border-slate-700/50 sticky top-0 bg-slate-900/50 backdrop-blur-sm z-10">
-            <div className="flex items-center gap-3">
-                <img src={user?.photoURL || `https://ui-avatars.com/api/?name=${user?.name.replace(' ', '+')}&background=1e293b&color=cbd5e1&size=128`} alt="Avatar" className="h-10 w-10 rounded-full object-cover"/>
-                <div className="text-left">
-                    <p className="text-xs text-slate-400 whitespace-nowrap">Selamat datang,</p>
-                    <p className="font-semibold text-white -mt-1 whitespace-nowrap">{user?.name}</p>
-                </div>
-            </div>
-            <div className="flex-1 text-center">
-                <h2 className="text-xl font-bold text-white capitalize hidden md:block">{activeView === 'riwayatAbsen' ? 'Riwayat Absen' : activeView === 'riwayatSiswa' ? 'Riwayat Siswa' : activeView}</h2>
-            </div>
-            <div className="flex-1 text-right">
-                <button onClick={logout} aria-label="Logout" className="p-2 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
-                    </svg>
-                </button>
-            </div>
-        </header>
+        <>
+            <div className="bg-slate-900 text-slate-300 min-h-screen pb-24">
+                 <header className="flex justify-between items-center p-4 border-b border-slate-700/50 sticky top-0 bg-slate-900/50 backdrop-blur-sm z-10">
+                    <div className="flex items-center gap-3">
+                        <img src={user?.photoURL || `https://ui-avatars.com/api/?name=${user?.name.replace(' ', '+')}&background=1e293b&color=cbd5e1&size=128`} alt="Avatar" className="h-10 w-10 rounded-full object-cover"/>
+                        <div className="text-left">
+                            <p className="text-xs text-slate-400 whitespace-nowrap">Selamat datang,</p>
+                            <p className="font-semibold text-white -mt-1 whitespace-nowrap">{user?.name}</p>
+                        </div>
+                    </div>
+                    <div className="flex-1 text-center">
+                         <h2 className="text-xl font-bold text-white capitalize hidden md:block">{activeView}</h2>
+                    </div>
+                    <div className="flex-1 text-right">
+                        <button onClick={logout} aria-label="Logout" className="p-2 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+                            </svg>
+                        </button>
+                    </div>
+                </header>
 
-        <main className="p-6 md:p-8 space-y-6">
-          {renderContent()}
-        </main>
-        
-        <footer className="fixed bottom-0 left-0 right-0 bg-slate-800/80 backdrop-blur-lg border-t border-slate-700 z-20 flex justify-around">
-            <NavItem view="beranda" label="Beranda" icon={<HomeIcon />} />
-            <NavItem view="riwayatAbsen" label="Absensi" icon={<HistoryIcon />} />
-            <NavItem view="riwayatSiswa" label="Siswa" icon={<StudentHistoryIcon />} />
-            <NavItem view="pesan" label="Pesan" icon={<MessageIcon />} hasNotification={unreadCount > 0} />
-            <NavItem view="profil" label="Profil" icon={<ProfileIcon />} />
-        </footer>
-      </div>
+                <main className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+                    {renderContent()}
+                    <footer className="text-center text-slate-500 text-sm pt-4">
+                        © Rullp 2025 HadirKu. All rights reserved.
+                    </footer>
+                </main>
 
-      {/* --- MODALS --- */}
-       <Modal isOpen={isEditProfileModalOpen} onClose={() => setIsEditProfileModalOpen(false)} title="Ubah Profil">
-         <form onSubmit={handleProfileUpdateSubmit} className="space-y-4">
-            <div className="flex items-center space-x-4">
-                <img src={photoPreview || `https://ui-avatars.com/api/?name=${profileData.name?.replace(' ', '+')}&background=0f172a&color=cbd5e1`} alt="Preview" className="h-20 w-20 rounded-full object-cover border-2 border-slate-600" />
-                <div>
-                    <label htmlFor="photo-upload" className="cursor-pointer bg-slate-600 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors">
-                        Unggah Foto
-                    </label>
-                    <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
-                    <p className="text-xs text-slate-400 mt-2">JPG, PNG. Max 2MB.</p>
-                </div>
+                <footer className="fixed bottom-0 left-0 right-0 bg-slate-800/80 backdrop-blur-lg border-t border-slate-700 z-20 flex justify-around">
+                    <NavItem view="beranda" label="Beranda" icon={<HomeIcon />} />
+                    <NavItem view="riwayat" label="Riwayat Saya" icon={<HistoryIcon />} />
+                    <NavItem view="laporan-siswa" label="Laporan Siswa" icon={<StudentHistoryIcon />} />
+                    <NavItem view="pesan" label="Pesan" icon={<MessageIcon />} hasNotification={unreadCount > 0} />
+                    <NavItem view="profil" label="Profil" icon={<ProfileIcon />} />
+                </footer>
             </div>
-             <div>
-                <label className="block text-sm font-medium text-gray-300">Kode Guru (Wajib untuk validasi jadwal)</label>
-                <select
-                    name="kode"
-                    value={profileData.kode || ''}
-                    onChange={handleProfileFormChange}
-                    className={`mt-1 block w-full px-3 py-2 bg-slate-700 border rounded-md text-white ${!profileData.kode ? 'border-yellow-500' : 'border-slate-600'} disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed`}
-                    required
-                    disabled={!!user?.kode}
-                >
-                    <option value="">-- Pilih Kode Guru Anda --</option>
-                    {availableTeacherCodes.map(code => <option key={code} value={code}>{code}</option>)}
-                </select>
-                <p className="text-xs text-slate-400 mt-1">Kode ini mengikat profil Anda ke jadwal induk. Setelah disimpan, kode tidak dapat diubah.</p>
-            </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div>
-                    <label className="block text-sm font-medium text-gray-300">Nama Lengkap & Gelar</label>
-                    <input name="name" value={profileData.name || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white read-only:bg-slate-800 read-only:text-slate-400 read-only:cursor-not-allowed" readOnly={!!profileData.kode}/>
-                 </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-300">Jabatan</label>
-                    <input name="position" value={profileData.position || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="Contoh: Guru Mapel"/>
-                 </div>
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-300">Gol/Pangkat</label>
-                    <input name="rank" value={profileData.rank || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="Contoh: III/d, Penata Tk. I"/>
-                </div>
-                {(user?.role === Role.Teacher || user?.role === Role.Coach) && (
+            
+            <Modal isOpen={isEditProfileModalOpen} onClose={() => setIsEditProfileModalOpen(false)} title="Ubah Profil">
+                 <form onSubmit={handleProfileUpdateSubmit} className="space-y-4">
+                    <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
+                        <label htmlFor="kode" className="block text-sm font-medium text-slate-300">
+                            Pilih Kode Guru/Pembina Anda
+                        </label>
+                         <p className="text-xs text-slate-400 mt-1 mb-2">Pilih kode unik Anda dari jadwal induk. Ini akan menyinkronkan data Anda. Tindakan ini hanya bisa dilakukan sekali dan akan mengikat akun ke perangkat ini.</p>
+                         <select
+                            id="kode"
+                            name="kode"
+                            value={profileData.kode || ''}
+                            onChange={handleProfileFormChange}
+                            className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white disabled:bg-slate-800 disabled:cursor-not-allowed"
+                            disabled={!!user?.kode} // Disable if kode is already set
+                        >
+                            <option value="">-- Pilih Kode --</option>
+                            {availableCodes.map(code => (
+                                <option key={code} value={code}>{code}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex items-center space-x-4">
+                        <img src={photoPreview || `https://ui-avatars.com/api/?name=${profileData.name?.replace(' ', '+')}&background=0f172a&color=cbd5e1`} alt="Preview" className="h-20 w-20 rounded-full object-cover border-2 border-slate-600" />
+                        <div>
+                            <label htmlFor="photo-upload" className="cursor-pointer bg-slate-600 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors">
+                                Unggah Foto
+                            </label>
+                            <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                            <p className="text-xs text-slate-400 mt-2">JPG, PNG. Max 2MB.</p>
+                        </div>
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div>
+                            <label className="block text-sm font-medium text-gray-300">Nama Lengkap</label>
+                            <input name="name" value={profileData.name || ''} type="text" disabled className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-300">Gelar (S.Pd, M.Kom)</label>
+                            <input name="title" value={profileData.title || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" />
+                         </div>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div>
+                            <label className="block text-sm font-medium text-gray-300">Jabatan</label>
+                            <input name="position" value={profileData.position || ''} disabled type="text" className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-300">Mapel / Bidang Eskul</label>
+                            <input name="subject" value={profileData.subject || ''} disabled type="text" className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
+                         </div>
+                     </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-300">Email</label>
+                        <input value={profileData.email || ''} type="email" disabled className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
+                     </div>
+
+                    {modalError && <p className="text-sm text-red-400">{modalError}</p>}
+                    {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
+                     <div className="flex justify-end pt-2">
+                         <Button type="submit" isLoading={isSubmitting} className="w-full">Simpan Perubahan</Button>
+                     </div>
+                 </form>
+            </Modal>
+
+            <Modal isOpen={isReportAbsenceModalOpen} onClose={() => setIsReportAbsenceModalOpen(false)} title="Lapor Ketidakhadiran">
+                <form onSubmit={handleReportAbsenceSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-300">Mata Pelajaran</label>
-                        <input name="subject" value={profileData.subject || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white read-only:bg-slate-800 read-only:text-slate-400 read-only:cursor-not-allowed" placeholder="Contoh: Matematika" readOnly={!!profileData.kode}/>
+                        <label className="block text-sm font-medium text-gray-300">Alasan Tidak Hadir</label>
+                        <select value={absenceReason} onChange={(e) => setAbsenceReason(e.target.value as 'Sakit' | 'Izin' | 'Tugas Luar')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                            <option value="Sakit">Sakit</option>
+                            <option value="Izin">Izin</option>
+                            <option value="Tugas Luar">Tugas Luar</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300">Keterangan Tambahan (Opsional)</label>
+                        <input type="text" value={absenceDescription} onChange={e => setAbsenceDescription(e.target.value)} placeholder="Contoh: Ada acara keluarga" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300">Untuk Jam Pelajaran Ke- (Opsional)</label>
+                        <input type="text" value={absencePeriods} onChange={e => setAbsencePeriods(e.target.value)} placeholder="Contoh: 1, 2, 5" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
+                    </div>
+                    {modalError && <p className="text-sm text-red-400">{modalError}</p>}
+                    {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
+                    <div className="flex justify-end pt-2">
+                        <Button type="submit" isLoading={isSubmitting} className="w-full">Kirim Laporan</Button>
+                    </div>
+                </form>
+            </Modal>
+            
+            <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title="Jadwal Mengajar Lengkap">
+                {isLoadingSchedule ? <Spinner /> : fullSchedule.length > 0 ? (
+                    <div className="max-h-[70vh] overflow-y-auto pr-2 space-y-4">
+                        {scheduleOrder.map(day => (
+                            groupedSchedule[day] && (
+                                <div key={day}>
+                                    <h4 className="font-bold text-lg text-white mb-2 sticky top-0 bg-slate-800 py-1">{day}</h4>
+                                    <ul className="space-y-2">
+                                        {groupedSchedule[day].map(s => (
+                                            <li key={s.id} className="bg-slate-700/50 p-3 rounded-lg">
+                                                <p className="font-semibold text-white">{s.subject} - {s.class}</p>
+                                                <p className="text-sm text-slate-400">{s.waktu} • Jam ke-{s.period} • {s.jumlahJam} JP</p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )
+                        ))}
+                    </div>
+                ) : (
+                     <div className="text-center py-10">
+                        <EmptyScheduleIcon/>
+                        <p className="mt-4 text-slate-400">{user?.kode ? "Jadwal tidak ditemukan." : "Atur 'Kode' di profil Anda untuk melihat jadwal."}</p>
                     </div>
                 )}
-             </div>
-             <div>
-                <label className="block text-sm font-medium text-gray-300">Email</label>
-                <input value={profileData.email || ''} type="email" disabled className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
-             </div>
-             {modalError && <p className="text-sm text-red-400">{modalError}</p>}
-             {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
-             <div className="flex justify-end pt-2">
-                 <Button type="submit" isLoading={isSubmitting} className="w-full">Simpan Perubahan</Button>
-             </div>
-         </form>
-       </Modal>
+            </Modal>
 
-
-      <Modal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} title="Jadwal Mengajar Lengkap">
-        <div className="max-h-[70vh] overflow-y-auto space-y-4 pr-2">
-          {isLoadingSchedule ? <Spinner/> : scheduleOrder.map(day => groupedSchedule[day] && (
-            <div key={day}>
-              <h4 className="font-bold text-lg text-white sticky top-0 bg-slate-800 py-2">{day}</h4>
-              <ul className="space-y-2 mt-2">
-                {groupedSchedule[day].map(s => (
-                   <li key={s.id} className="bg-slate-700 p-3 rounded-md">
-                      <div>
-                        <p className="font-semibold text-white">{s.subject} <span className="text-slate-400 font-normal">- Jam ke-{s.period}</span></p>
-                        <p className="text-sm text-slate-400">{s.waktu} • {s.class} • {s.jumlahJam} JP</p>
-                      </div>
-                    </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-          {!isLoadingSchedule && fullSchedule.length === 0 && (
-             <div className="text-center py-10">
-              <EmptyScheduleIcon/>
-              <p className="mt-4 text-slate-400">{user?.kode ? "Tidak ada jadwal yang ditetapkan untuk Anda." : "Atur 'Kode Guru' di profil Anda untuk melihat jadwal."}</p>
-            </div>
-          )}
-        </div>
-      </Modal>
-
-      <Modal isOpen={isReportAbsenceModalOpen} onClose={() => setIsReportAbsenceModalOpen(false)} title="Lapor Ketidakhadiran">
-         <form onSubmit={handleReportAbsenceSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Alasan Tidak Hadir</label>
-              <select value={absenceReason} onChange={(e) => setAbsenceReason(e.target.value as 'Sakit' | 'Izin' | 'Tugas Luar')} className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
-                <option value="Sakit">Sakit</option>
-                <option value="Izin">Izin</option>
-                <option value="Tugas Luar">Tugas Luar</option>
-              </select>
-            </div>
-             <div>
-              <label className="block text-sm font-medium text-gray-300">Pelajaran Ke- (Opsional)</label>
-              <input type="text" value={absencePeriods} onChange={e => setAbsencePeriods(e.target.value)} placeholder="Contoh: 1-4" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
-            </div>
-             <div>
-              <label className="block text-sm font-medium text-gray-300">Keterangan Tambahan (Opsional)</label>
-              <input type="text" value={absenceDescription} onChange={e => setAbsenceDescription(e.target.value)} placeholder="Contoh: Ada acara keluarga" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
-            </div>
-             {modalError && <p className="text-sm text-red-400">{modalError}</p>}
-            {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
-            <div className="flex justify-end pt-2">
-              <Button type="submit" isLoading={isSubmitting} className="w-full">Kirim Laporan</Button>
-            </div>
-        </form>
-      </Modal>
-
-      <Modal isOpen={isReportStudentModalOpen} onClose={() => setIsReportStudentModalOpen(false)} title="Lapor Siswa Tidak Hadir">
-         <form onSubmit={handleReportStudentSubmit} className="space-y-4">
-            {/* Shared Fields */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Kelas</label>
-              <select value={studentClass} onChange={e => setStudentClass(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
-                <option value="">Pilih Kelas</option>
-                {uniqueTodayClasses.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            
-            <hr className="border-slate-600" />
-            
-            {/* Student List */}
-            <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                {absentStudents.map((student) => (
-                    <div key={student.id} className="p-3 bg-slate-700/50 rounded-lg space-y-3">
-                        <div className="flex items-end gap-2">
-                            <div className="flex-grow">
-                                <label htmlFor={`studentName-${student.id}`} className="block text-sm font-medium text-gray-300">Nama Lengkap Siswa</label>
+            <Modal isOpen={isReportStudentModalOpen} onClose={() => setIsReportStudentModalOpen(false)} title="Lapor Siswa Tidak Hadir">
+                 <form onSubmit={handleReportStudentSubmit} className="space-y-4">
+                     <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Kelas</label>
+                        <select value={studentClass} onChange={e => setStudentClass(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                            <option value="">-- Pilih Kelas --</option>
+                            {uniqueTodayClasses.map(className => (
+                                <option key={className} value={className}>{className}</option>
+                            ))}
+                        </select>
+                     </div>
+                     <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
+                        {absentStudents.map((student, index) => (
+                            <div key={student.id} className="p-3 bg-slate-700/50 rounded-lg space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm text-slate-300">Siswa #{index + 1}</label>
+                                    {absentStudents.length > 1 && (
+                                        <button type="button" onClick={() => handleRemoveStudent(student.id)} className="text-red-400 hover:text-red-300"><TrashIcon /></button>
+                                    )}
+                                </div>
                                 <input
-                                    id={`studentName-${student.id}`}
                                     type="text"
                                     value={student.name}
-                                    onChange={e => handleStudentDataChange(student.id, 'name', e.target.value)}
+                                    onChange={(e) => handleStudentDataChange(student.id, 'name', e.target.value)}
+                                    placeholder="Nama Siswa"
                                     required
-                                    className="mt-1 block w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-md text-white"
+                                    className="block w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-md text-white"
                                 />
+                                <select
+                                    value={student.reason}
+                                    onChange={(e) => handleStudentDataChange(student.id, 'reason', e.target.value)}
+                                    className="block w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-md text-white"
+                                >
+                                    <option value="Sakit">Sakit</option>
+                                    <option value="Izin">Izin</option>
+                                    <option value="Alpa">Alpa</option>
+                                </select>
+                                <div className="pt-1">
+                                    <label className="block text-xs text-slate-400 mb-1">Tidak Hadir Jam Ke- (Opsional)</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[...Array(10)].map((_, i) => (
+                                            <button
+                                                type="button"
+                                                key={i}
+                                                onClick={() => handleStudentPeriodChange(student.id, i + 1)}
+                                                className={`h-8 w-8 rounded-md text-sm transition-colors ${student.absentPeriods.includes(i + 1) ? 'bg-indigo-600 text-white' : 'bg-slate-600 text-slate-300 hover:bg-slate-500'}`}
+                                            >
+                                                {i + 1}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
-                            <Button
-                                type="button"
-                                onClick={() => handleRemoveStudent(student.id)}
-                                disabled={absentStudents.length <= 1}
-                                className="!p-0 h-10 w-10 flex-shrink-0 items-center justify-center !bg-red-600/50 hover:!bg-red-600/80 disabled:!bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                aria-label="Hapus Siswa"
-                            >
-                                <TrashIcon />
-                            </Button>
-                        </div>
-                        
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300">Tidak Hadir Pada Jam Pelajaran Ke-</label>
-                            <div className="mt-2 grid grid-cols-5 gap-2">
-                                {Array.from({ length: 10 }, (_, i) => i + 1).map(period => (
-                                <label key={period} className="flex items-center space-x-2 p-1 rounded-md hover:bg-slate-700 cursor-pointer">
-                                    <input
-                                    type="checkbox"
-                                    checked={student.absentPeriods.includes(period)}
-                                    onChange={() => handleStudentPeriodChange(student.id, period)}
-                                    className="h-5 w-5 rounded bg-slate-600 border-slate-500 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-800"
-                                    />
-                                    <span className="text-sm select-none">{period}</span>
-                                </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div>
-                             <label htmlFor={`studentReason-${student.id}`} className="block text-sm font-medium text-gray-300">Alasan</label>
-                            <select
-                                id={`studentReason-${student.id}`}
-                                value={student.reason}
-                                onChange={e => handleStudentDataChange(student.id, 'reason', e.target.value)}
-                                className="mt-1 block w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-md text-white"
-                            >
-                                <option value="Sakit">Sakit</option>
-                                <option value="Izin">Izin</option>
-                                <option value="Alpa">Alpa</option>
-                            </select>
-                        </div>
-
+                        ))}
                     </div>
-                ))}
-            </div>
 
-            <Button type="button" onClick={handleAddStudent} variant="secondary" className="w-full">
-                + Tambah Siswa
-            </Button>
-            
-            {modalError && <p className="text-sm text-red-400">{modalError}</p>}
-            {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
-            <div className="flex justify-end pt-2">
-              <Button type="submit" isLoading={isSubmitting} className="w-full">Simpan Laporan</Button>
-            </div>
-        </form>
-      </Modal>
-    </>
-  );
+                    <Button type="button" onClick={handleAddStudent} variant="secondary" className="w-full text-sm">Tambah Siswa Lain</Button>
+
+                    {modalError && <p className="text-sm text-red-400">{modalError}</p>}
+                    {modalSuccess && <p className="text-sm text-green-400">{modalSuccess}</p>}
+                     <div className="flex justify-end pt-2">
+                         <Button type="submit" isLoading={isSubmitting} className="w-full">Simpan Laporan</Button>
+                     </div>
+                 </form>
+            </Modal>
+        </>
+    );
 };
 
 export default TeacherDashboard;

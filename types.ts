@@ -90,6 +90,24 @@ export interface MasterSchedule {
   waktu: string; // Waktu pelajaran, e.g., "07:30 - 08:10"
 }
 
+// New type for Master Staff data
+export interface MasterStaff {
+  id: string;
+  kode: string;
+  namaLengkap: string;
+  jabatan: string;
+  golPangkat: string;
+}
+
+// New type for Master Coach data
+export interface MasterCoach {
+  id: string;
+  kode: string;
+  namaLengkap: string;
+  bidangEskul: string;
+  jabatan: string;
+}
+
 export interface Message {
   id: string;
   senderId: string;

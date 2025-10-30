@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider, ToastContainer } from './context/ToastContext';
 import Login from './components/auth/Login';
 import AdminDashboard from './components/admin/AdminDashboard';
+// FIX: TeacherDashboard is now a default export and can be imported directly.
 import TeacherDashboard from './components/teacher/TeacherDashboard';
 import AdministrativeStaffDashboard from './components/staff/AdministrativeStaffDashboard';
 import { Role } from './types';

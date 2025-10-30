@@ -45,20 +45,6 @@ export const login = async (email: string, pass: string): Promise<FirebaseUser> 
             await signOut(auth); // Log out immediately
             throw new Error('Login gagal, perangkat sudah terikat dengan device lain. Silahkan minta reset ke admin.');
         }
-    } else if (userProfile.role === Role.AdministrativeStaff) {
-        // --- AUTO-BIND DEVICE FOR STAFF ON FIRST LOGIN ---
-        // If it's a staff member and they don't have a deviceId,
-        // this is their first login. Bind the current device.
-        try {
-            const currentDeviceId = getDeviceId();
-            const userDocRef = doc(db, 'users', firebaseUser.uid);
-            await updateDoc(userDocRef, { deviceId: currentDeviceId });
-        } catch (updateError) {
-            console.error("Failed to auto-bind device for staff:", updateError);
-            // Fail the login for security reasons if binding fails.
-            await signOut(auth);
-            throw new Error('Gagal mengikat perangkat ke akun Anda. Hubungi admin.');
-        }
     }
     // --- END DEVICE BINDING ---
 

@@ -1,4 +1,4 @@
-import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User, MasterSchedule, Message, Role, Announcement } from '../types';
+import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User, MasterSchedule, Message, Role, Announcement, MasterStaff, MasterCoach } from '../types';
 // FIX: Import `DocumentSnapshot` from firestore to resolve missing type error.
 import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch, serverTimestamp, onSnapshot, Timestamp, getDoc, DocumentSnapshot } from 'firebase/firestore';
 import { db, storage } from '../firebase';
@@ -136,6 +136,46 @@ export const uploadMasterSchedule = async (schedules: Omit<MasterSchedule, 'id'>
     }
 };
 
+export const uploadMasterStaff = async (staffList: Omit<MasterStaff, 'id'>[]): Promise<void> => {
+    const batch = writeBatch(db);
+    const masterStaffCol = collection(db, 'masterStaff');
+
+    try {
+        const existingSnapshot = await getDocs(query(masterStaffCol));
+        existingSnapshot.forEach(doc => batch.delete(doc.ref));
+
+        staffList.forEach(staffData => {
+            const docRef = doc(masterStaffCol);
+            batch.set(docRef, staffData);
+        });
+
+        await batch.commit();
+    } catch (error: any) {
+        console.error("Error uploading master staff data:", error);
+        throw new Error("Gagal mengunggah data tendik.");
+    }
+};
+
+export const uploadMasterCoaches = async (coachList: Omit<MasterCoach, 'id'>[]): Promise<void> => {
+    const batch = writeBatch(db);
+    const masterCoachesCol = collection(db, 'masterCoaches');
+
+    try {
+        const existingSnapshot = await getDocs(query(masterCoachesCol));
+        existingSnapshot.forEach(doc => batch.delete(doc.ref));
+
+        coachList.forEach(coachData => {
+            const docRef = doc(masterCoachesCol);
+            batch.set(docRef, coachData);
+        });
+
+        await batch.commit();
+    } catch (error: any) {
+        console.error("Error uploading master coach data:", error);
+        throw new Error("Gagal mengunggah data pembina.");
+    }
+};
+
 // ========================================================================
 // FIRESTORE DATA FETCHING FUNCTIONS
 // ========================================================================
@@ -152,6 +192,28 @@ export const getAllMasterSchedules = async (): Promise<MasterSchedule[]> => {
             throw new Error("Gagal mengambil jadwal induk: Izin ditolak. SOLUSI: Buka Firebase Console > Firestore Database > Rules, dan pastikan pengguna yang login (guru/admin) diizinkan untuk 'read' koleksi 'masterSchedules'. Contoh: 'allow read: if request.auth != null;'.");
         }
         throw new Error("Gagal mengambil data jadwal induk dari server.");
+    }
+};
+
+export const getAllMasterStaff = async (): Promise<MasterStaff[]> => {
+    try {
+        const staffCol = collection(db, 'masterStaff');
+        const snapshot = await getDocs(query(staffCol));
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as MasterStaff));
+    } catch (error: any) {
+        console.error("Error fetching master staff:", error);
+        throw new Error("Gagal mengambil data induk tendik dari server.");
+    }
+};
+
+export const getAllMasterCoaches = async (): Promise<MasterCoach[]> => {
+    try {
+        const coachesCol = collection(db, 'masterCoaches');
+        const snapshot = await getDocs(query(coachesCol));
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as MasterCoach));
+    } catch (error: any) {
+        console.error("Error fetching master coaches:", error);
+        throw new Error("Gagal mengambil data induk pembina dari server.");
     }
 };
 

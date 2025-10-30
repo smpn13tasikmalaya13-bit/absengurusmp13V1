@@ -13,6 +13,8 @@ import ManageExtracurricularSchedule from './ManageExtracurricularSchedule';
 import ManageClasses from './ManageClasses';
 import ManageExtracurriculars from './ManageExtracurriculars';
 import UploadMasterSchedule from './UploadMasterSchedule';
+import UploadMasterStaff from './UploadMasterStaff';
+import UploadMasterCoach from './UploadMasterCoach';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import StaffQRCodeGenerator from './StaffQRCodeGenerator';
@@ -255,6 +257,10 @@ const AdminDashboard: React.FC = () => {
         return <ManageLessonSchedule />;
       case 'upload-master-schedule':
         return <UploadMasterSchedule />;
+      case 'upload-master-staff':
+        return <UploadMasterStaff />;
+      case 'upload-master-coach':
+        return <UploadMasterCoach />;
       case 'manage-eskul-schedule':
         return <ManageExtracurricularSchedule />;
       case 'manage-classes':

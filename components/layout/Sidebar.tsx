@@ -76,6 +76,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, unreadMessag
                 <NavItem icon={<UsersIcon />} label="Admin & Tendik" view="manage-admins" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ScheduleIcon />} label="Jadwal Pelajaran" view="manage-lesson-schedule" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<UploadIcon />} label="Unggah Jadwal Induk" view="upload-master-schedule" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<UploadIcon />} label="Unggah Data Tendik" view="upload-master-staff" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<UploadIcon />} label="Unggah Data Pembina" view="upload-master-coach" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<ScheduleIcon />} label="Jadwal Eskul" view="manage-eskul-schedule" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<DataIcon />} label="Data Kelas" view="manage-classes" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<DataIcon />} label="Data Eskul" view="manage-eskuls" currentView={currentView} onNavigate={onNavigate} />
