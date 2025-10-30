@@ -168,31 +168,13 @@ export const recordStaffAttendanceWithQR = async (
     }
 
     if (clockedInRecord) {
-      // WORKAROUND for insufficient permissions on update.
-      // Instead of updating, we perform an atomic delete and create operation.
-      // This relies on the user having create and delete permissions, but not necessarily update.
-      const batch = writeBatch(db);
-      
-      // 1. Reference the old "Datang" record to be deleted
-      const oldRecordRef = doc(db, 'absenceRecords', clockedInRecord.id);
-      
-      // 2. Prepare the data for the new "Pulang" record
-      // We strip the 'id' field from the old record data before creating the new one.
-      const { id, ...dataToWrite } = clockedInRecord;
-      const newRecordData = {
-          ...dataToWrite,
-          status: 'Pulang',
-          checkOutTimestamp: Timestamp.fromDate(now),
-      };
-
-      // 3. Add delete and create operations to the batch
-      batch.delete(oldRecordRef);
-      const newRecordRef = doc(collection(db, 'absenceRecords')); // Firestore generates a new ID
-      batch.set(newRecordRef, newRecordData);
-
-      // 4. Commit the batch
-      await batch.commit();
-
+      // REFACTORED: Use a direct update, which is cleaner and more idiomatic.
+      // This requires adding an 'update' rule to your Firestore Security Rules.
+      const recordToUpdateRef = doc(db, 'absenceRecords', clockedInRecord.id);
+      await updateDoc(recordToUpdateRef, {
+        status: 'Pulang',
+        checkOutTimestamp: Timestamp.fromDate(now)
+      });
       return { success: true, message: 'Absen pulang berhasil direkam.' };
     } 
     

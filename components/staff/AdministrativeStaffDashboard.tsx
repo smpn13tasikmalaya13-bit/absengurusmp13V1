@@ -443,20 +443,18 @@ const AdministrativeStaffDashboard: React.FC = () => {
     // Weekday check-out logic
     let isCheckOutTime = false;
     let checkOutStartTime = "15:00";
-    let checkOutEndTime = "15:20";
+    let checkOutEndTime = "16:00"; // Changed
     
     if (!isWeekend) {
         if (currentDay === 5) { // It's Friday
             checkOutStartTime = "11:30";
-            checkOutEndTime = "15:20";
+            checkOutEndTime = "16:00"; // Changed
             const isAfterStart = currentHour > 11 || (currentHour === 11 && currentMinute >= 30);
-            const isBeforeEnd = currentHour < 15 || (currentHour === 15 && currentMinute <= 20);
+            const isBeforeEnd = currentHour < 16; // Ends at 15:59:59
             isCheckOutTime = isAfterStart && isBeforeEnd;
         } else { // It's Monday-Thursday
-            isCheckOutTime = currentHour >= 15 && currentHour < 16; // 15:00 - 15:59
-             if (currentHour === 15 && currentMinute > 20) {
-                 isCheckOutTime = false;
-             }
+            // Check if it's between 15:00 and 15:59
+            isCheckOutTime = currentHour === 15;
         }
     }
 
@@ -500,7 +498,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
             isButtonDisabledByTime = false;
         } else { // It's a weekday
             const isBeforeWork = currentHour < 5;
-            const isAfterWork = currentHour > 15 || (currentHour === 15 && currentMinute > 20); // After 15:20
+            const isAfterWork = currentHour >= 16; // After 16:00
 
             if (isBeforeWork) {
                 timeStatusMessage = 'Belum waktunya absen datang. Dibuka pukul 05:00.';
@@ -508,7 +506,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
             } else if (isAfterWork) {
                 timeStatusMessage = 'Waktu kerja sudah berakhir. Tidak bisa absen datang.';
                 isButtonDisabledByTime = true;
-            } else { // It's during work hours (5:00 - 15:20)
+            } else { // It's during work hours
                 isButtonDisabledByTime = false; // Enable the button
                 const isLate = currentHour > 7 || (currentHour === 7 && currentMinute > 15);
                 if (isLate) {
