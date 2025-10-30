@@ -152,6 +152,9 @@ export const uploadMasterStaff = async (staffList: Omit<MasterStaff, 'id'>[]): P
         await batch.commit();
     } catch (error: any) {
         console.error("Error uploading master staff data:", error);
+        if (error.code === 'permission-denied') {
+            throw new Error("Gagal mengunggah data tendik: Izin ditolak. Periksa Aturan Keamanan Firestore Anda untuk koleksi 'masterStaff'.");
+        }
         throw new Error("Gagal mengunggah data tendik.");
     }
 };
@@ -172,6 +175,9 @@ export const uploadMasterCoaches = async (coachList: Omit<MasterCoach, 'id'>[]):
         await batch.commit();
     } catch (error: any) {
         console.error("Error uploading master coach data:", error);
+        if (error.code === 'permission-denied') {
+            throw new Error("Gagal mengunggah data pembina: Izin ditolak. Periksa Aturan Keamanan Firestore Anda untuk koleksi 'masterCoaches'.");
+        }
         throw new Error("Gagal mengunggah data pembina.");
     }
 };
