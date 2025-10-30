@@ -55,7 +55,7 @@ const StaffAttendanceReportPage: React.FC = () => {
   const processStaffReport = (records: AttendanceRecord[]): { processedRecords: ProcessedStaffRecord[], summary: SummaryData } => {
     const lateFine = 2000;
     const missedCheckoutFine = 20000;
-    const alpaFine = 25000;
+    const alpaFine = 20000; // FIX: Alpa fine is now 20,000 as requested
     const userStats: { [userName: string]: { lateCount: number; missedCheckoutCount: number; alpaCount: number } } = {};
 
     const now = new Date();
@@ -72,7 +72,8 @@ const StaffAttendanceReportPage: React.FC = () => {
         
         if (record.status === 'Alpa') {
             userStats[record.userName].alpaCount += 1;
-            return { ...record, keterangan: 'Alpa (Tidak Ada Kehadiran)', denda: alpaFine };
+            // The daily fine for alpa is now determined by the summary logic
+            return { ...record, keterangan: 'Alpa (Tidak Ada Kehadiran)', denda: 0 }; 
         }
 
         const recordDate = record.timestamp;
@@ -151,9 +152,10 @@ const StaffAttendanceReportPage: React.FC = () => {
     for (const userName in userStats) {
       const stats = userStats[userName];
       const totalLateFine = stats.lateCount * lateFine;
+      // NEW LOGIC: Fine is only applied after the 3rd offense (on the 4th)
       const finalMissedCheckoutFine = stats.missedCheckoutCount > 3 ? missedCheckoutFine : 0;
-      const totalAlpaFine = stats.alpaCount * alpaFine;
-      const totalFine = totalLateFine + finalMissedCheckoutFine + totalAlpaFine;
+      const finalAlpaFine = stats.alpaCount > 3 ? alpaFine : 0;
+      const totalFine = totalLateFine + finalMissedCheckoutFine + finalAlpaFine;
 
 
       if (stats.lateCount > 0 || stats.missedCheckoutCount > 0 || stats.alpaCount > 0) {
@@ -163,7 +165,7 @@ const StaffAttendanceReportPage: React.FC = () => {
             alpaCount: stats.alpaCount,
             totalLateFine,
             missedCheckoutFine: finalMissedCheckoutFine,
-            totalAlpaFine,
+            totalAlpaFine: finalAlpaFine,
             totalFine,
         };
       }
@@ -275,8 +277,8 @@ const StaffAttendanceReportPage: React.FC = () => {
             body: Object.entries(summaryData).map(([name, data]: [string, SummaryDetails]) => {
                 let summaryText = `${name}:\n`;
                 summaryText += ` - Keterlambatan: ${data.lateCount} kali (Rp ${data.totalLateFine.toLocaleString('id-ID')})\n`;
-                summaryText += ` - Tdk Absen Pulang: ${data.missedCheckoutCount} kali (Denda: Rp ${data.missedCheckoutFine.toLocaleString('id-ID')})\n`;
-                summaryText += ` - Alpa: ${data.alpaCount} kali (Denda: Rp ${data.totalAlpaFine.toLocaleString('id-ID')})\n`;
+                summaryText += ` - Tdk Absen Pulang: ${data.missedCheckoutCount} kali (Denda: Rp ${data.missedCheckoutFine.toLocaleString('id-ID')}${data.missedCheckoutCount < 4 ? ' - berlaku setelah 4 kali' : ''})\n`;
+                summaryText += ` - Alpa: ${data.alpaCount} kali (Denda: Rp ${data.totalAlpaFine.toLocaleString('id-ID')}${data.alpaCount < 4 ? ' - berlaku setelah 4 kali' : ''})\n`;
                 summaryText += ` - Total Denda: Rp ${data.totalFine.toLocaleString('id-ID')}`;
                 return [summaryText];
             }),
@@ -358,8 +360,14 @@ const StaffAttendanceReportPage: React.FC = () => {
               <h4 className="font-semibold text-white">{name}</h4>
               <ul className="list-disc list-inside text-sm text-slate-300 mt-1">
                 <li>Total Keterlambatan: {data.lateCount} kali (Denda: Rp {data.totalLateFine.toLocaleString('id-ID')})</li>
-                <li>Total Tidak Absen Pulang: {data.missedCheckoutCount} kali (Denda: Rp {data.missedCheckoutFine.toLocaleString('id-ID')})</li>
-                <li>Total Alpa: {data.alpaCount} kali (Denda: Rp {data.totalAlpaFine.toLocaleString('id-ID')})</li>
+                <li>
+                  Total Tdk Absen Pulang: {data.missedCheckoutCount} kali 
+                  <span className="text-slate-400"> (Denda Rp {data.missedCheckoutFine.toLocaleString('id-ID')}{data.missedCheckoutCount < 4 ? ' - berlaku setelah 4 kali' : ''})</span>
+                </li>
+                 <li>
+                  Total Alpa: {data.alpaCount} kali 
+                  <span className="text-slate-400"> (Denda Rp {data.totalAlpaFine.toLocaleString('id-ID')}{data.alpaCount < 4 ? ' - berlaku setelah 4 kali' : ''})</span>
+                </li>
               </ul>
               <p className="font-bold text-amber-400 mt-2">Total Denda: Rp {data.totalFine.toLocaleString('id-ID')}</p>
             </div>

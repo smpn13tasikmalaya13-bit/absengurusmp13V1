@@ -60,24 +60,23 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error: Error | null;
+  error: { message: string } | null; // Store a serializable error object
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
-  // FIX: Replaced constructor with a public class field to initialize state.
-  // This resolves errors where `this.state` and `this.props` were not recognized.
+  // FIX: Use class property for state initialization to resolve issues with 'this.state' not being found on the component type.
   state: State = {
     hasError: false,
     error: null,
   };
 
   static getDerivedStateFromError(error: Error): State {
-    // Update state so the next render will show the fallback UI.
-    return { hasError: true, error };
+    // Update state with a serializable version of the error to prevent JSON circular structure errors.
+    return { hasError: true, error: { message: error.message } };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // You can also log the error to an error reporting service
+    // You can log the original, full error object to a service here
     console.error("Uncaught error:", error, errorInfo);
   }
 
