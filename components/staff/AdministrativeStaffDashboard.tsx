@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import { recordStaffAttendanceWithQR, getAttendanceForTeacher, reportTeacherAbsence } from '../../services/attendanceService';
-import { updateUserProfile, uploadProfilePhoto, getMessagesForUser, markMessagesAsRead, deleteMessage, sendMessage, getAdminUsers } from '../../services/dataService';
+import { updateUserProfile, uploadProfilePhoto, getMessagesForUser, markMessagesAsRead, deleteMessage, sendMessage, getAdminUsers, getAllMasterStaff } from '../../services/dataService';
+import { getDeviceId } from '../../services/authService';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
-import { AttendanceRecord, Role, User, Message } from '../../types';
+import { AttendanceRecord, Role, User, Message, MasterStaff } from '../../types';
 import { Card } from '../ui/Card';
 import QRScanner from './QRScanner';
 import { Modal } from '../ui/Modal';
@@ -114,6 +115,9 @@ const AdministrativeStaffDashboard: React.FC = () => {
     const [showScanner, setShowScanner] = useState(false);
     const [totalFine, setTotalFine] = useState(0); // State for total fine
 
+    // Master data for profile sync
+    const [masterStaff, setMasterStaff] = useState<MasterStaff[]>([]);
+
     // Messaging states
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoadingMessages, setIsLoadingMessages] = useState(true);
@@ -153,6 +157,17 @@ const AdministrativeStaffDashboard: React.FC = () => {
         
         if (!user) return;
         
+        // Fetch master data for profile sync
+        const fetchMasterData = async () => {
+            try {
+                const staffData = await getAllMasterStaff();
+                setMasterStaff(staffData);
+            } catch (error) {
+                console.error("Failed to fetch master staff data:", error);
+            }
+        };
+        fetchMasterData();
+
         // Setup message listener
         const unsubscribe = getMessagesForUser(user.id, (newMessages) => {
             setMessages(newMessages);
@@ -268,10 +283,38 @@ const AdministrativeStaffDashboard: React.FC = () => {
         }
     };
     
-     const handleProfileFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const availableCodes = useMemo(() => {
+        return [...new Set(masterStaff.map(s => s.kode))].sort();
+    }, [masterStaff]);
+    
+    const handleProfileFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setProfileData(prev => ({ ...prev, [name]: value }));
+
+        if (name === 'kode') {
+            const selectedStaff = masterStaff.find(s => s.kode === value);
+            if (selectedStaff) {
+                setProfileData(prev => ({
+                    ...prev,
+                    kode: value,
+                    name: selectedStaff.namaLengkap,
+                    position: selectedStaff.jabatan,
+                    rank: selectedStaff.golPangkat,
+                }));
+            } else {
+                // Revert to original data on deselect
+                setProfileData(prev => ({
+                    ...prev,
+                    kode: '',
+                    name: user?.name || '',
+                    position: user?.position || '',
+                    rank: user?.rank || '',
+                }));
+            }
+        } else {
+            setProfileData(prev => ({ ...prev, [name]: value }));
+        }
     };
+
 
     const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -284,6 +327,18 @@ const AdministrativeStaffDashboard: React.FC = () => {
     const handleProfileUpdateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
+        
+        if (!profileData.kode) {
+            addToast("Kode wajib diisi untuk validasi data.", 'error');
+            return;
+        }
+
+        if (!user.kode && profileData.kode) {
+            const isConfirmed = window.confirm(
+                "Apakah Anda yakin ingin memilih kode ini? Setelah disimpan, kode tidak dapat diubah lagi dan akun Anda akan terikat ke perangkat ini."
+            );
+            if (!isConfirmed) return;
+        }
 
         setIsSubmitting(true);
         try {
@@ -292,9 +347,14 @@ const AdministrativeStaffDashboard: React.FC = () => {
             if (profilePhotoFile) {
                 photoURL = await uploadProfilePhoto(profilePhotoFile, user.id);
             }
+            
+            const dataToUpdate: Partial<User> = {};
+            if (!user.deviceId) {
+                dataToUpdate.deviceId = getDeviceId();
+            }
 
             const { id, email, role, ...updatableProfileData } = profileData;
-            const dataToUpdate = { ...updatableProfileData, photoURL: photoURL || null };
+            Object.assign(dataToUpdate, { ...updatableProfileData, photoURL: photoURL || null });
 
             await updateUserProfile(user.id, dataToUpdate);
             updateUserContext(dataToUpdate);
@@ -489,11 +549,11 @@ const AdministrativeStaffDashboard: React.FC = () => {
                         <Button
                             onClick={() => setShowScanner(true)}
                             isLoading={isSubmitting}
-                            disabled={isButtonDisabled}
+                            disabled={isButtonDisabled || !user?.kode}
                             variant="primary"
                             className="w-full max-w-sm mx-auto"
                         >
-                            {buttonText}
+                            {!user?.kode ? 'Atur Kode di Profil untuk Absen' : buttonText}
                         </Button>
                     </div>
                 </div>
@@ -506,6 +566,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
                         onClick={() => setIsReportAbsenceModalOpen(true)}
                         variant="primary"
                         className="w-full max-w-sm mx-auto"
+                        disabled={!user?.kode}
                     >
                         Laporkan
                     </Button>
@@ -570,6 +631,10 @@ const AdministrativeStaffDashboard: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-700">
+                        <div>
+                            <label className="text-sm text-slate-400">Kode Tendik</label>
+                            <p className="text-white font-semibold">{user.kode || 'Belum diatur'}</p>
+                        </div>
                         <div>
                             <label className="text-sm text-slate-400">Jabatan</label>
                             <p className="text-white font-semibold">{user.position || '-'}</p>
@@ -654,6 +719,26 @@ const AdministrativeStaffDashboard: React.FC = () => {
             
             <Modal isOpen={isEditProfileModalOpen} onClose={() => setIsEditProfileModalOpen(false)} title="Ubah Profil">
                  <form onSubmit={handleProfileUpdateSubmit} className="space-y-4">
+                     <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
+                        <label htmlFor="kode" className="block text-sm font-medium text-slate-300">
+                            Pilih Kode Tendik Anda
+                        </label>
+                         <p className="text-xs text-slate-400 mt-1 mb-2">Pilih kode unik Anda dari data induk. Ini akan menyinkronkan data profil Anda. Tindakan ini hanya bisa dilakukan sekali dan akan mengikat akun ke perangkat ini.</p>
+                         <select
+                            id="kode"
+                            name="kode"
+                            value={profileData.kode || ''}
+                            onChange={handleProfileFormChange}
+                            className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white disabled:bg-slate-800 disabled:cursor-not-allowed"
+                            disabled={!!user?.kode}
+                        >
+                            <option value="">-- Pilih Kode --</option>
+                            {availableCodes.map(code => (
+                                <option key={code} value={code}>{code}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="flex items-center space-x-4">
                         <img src={photoPreview || `https://ui-avatars.com/api/?name=${profileData.name?.replace(' ', '+')}&background=0f172a&color=cbd5e1`} alt="Preview" className="h-20 w-20 rounded-full object-cover border-2 border-slate-600" />
                         <div>
@@ -664,20 +749,20 @@ const AdministrativeStaffDashboard: React.FC = () => {
                             <p className="text-xs text-slate-400 mt-2">JPG, PNG. Max 2MB.</p>
                         </div>
                     </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-300">Nama Lengkap</label>
+                        <input name="name" value={profileData.name || ''} type="text" disabled className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
+                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                          <div>
-                            <label className="block text-sm font-medium text-gray-300">Nama Lengkap & Gelar</label>
-                            <input name="name" value={profileData.name || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"/>
+                            <label className="block text-sm font-medium text-gray-300">Jabatan</label>
+                            <input name="position" value={profileData.position || ''} disabled type="text" className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
                          </div>
                          <div>
-                            <label className="block text-sm font-medium text-gray-300">Jabatan</label>
-                            <input name="position" value={profileData.position || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="Contoh: Kepala TU"/>
-                         </div>
+                            <label className="block text-sm font-medium text-gray-300">Gol/Pangkat</label>
+                            <input name="rank" value={profileData.rank || ''} disabled type="text" className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
+                        </div>
                      </div>
-                     <div>
-                        <label className="block text-sm font-medium text-gray-300">Gol/Pangkat</label>
-                        <input name="rank" value={profileData.rank || ''} onChange={handleProfileFormChange} type="text" className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" placeholder="Contoh: III/d, Penata Tk. I"/>
-                    </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-300">Email</label>
                         <input value={profileData.email || ''} type="email" disabled className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
