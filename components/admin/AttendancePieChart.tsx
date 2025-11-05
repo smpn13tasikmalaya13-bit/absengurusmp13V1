@@ -29,10 +29,10 @@ const AttendancePieChart: React.FC<AttendancePieChartProps> = ({ present, absent
         ></div>
         <div className="absolute top-1/2 left-0 w-full h-px bg-white/30 -translate-y-1/2" aria-hidden="true"></div>
         <div className="absolute top-1/2 -translate-y-1/2 left-[-30px] text-white font-medium text-lg bg-slate-700 px-1 rounded">
-          {absent}
+          {present}
         </div>
         <div className="absolute top-1/2 -translate-y-1/2 right-[-30px] text-white font-medium text-lg bg-slate-700 px-1 rounded">
-          {present}
+          {absent}
         </div>
       </div>
       <div className="flex space-x-6 text-sm">
