@@ -9,6 +9,7 @@ import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, Us
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
+import { useToast } from '../../context/ToastContext';
 
 // SVG Icons for the dashboard & navbar
 const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>;
@@ -107,6 +108,7 @@ const PesanContent: React.FC<{
 
 const TeacherDashboard: React.FC = () => {
   const { user, logout, updateUserContext } = useAuth();
+  const addToast = useToast();
   const [activeView, setActiveView] = useState('beranda');
   const [showScanner, setShowScanner] = useState(false);
   const [isWithinRadius, setIsWithinRadius] = useState<boolean | null>(null);
@@ -458,13 +460,83 @@ const TeacherDashboard: React.FC = () => {
     }
 };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<File> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let { width, height } = img;
+
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height *= maxWidth / width;
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxWidth) {
+                            width *= maxWidth / height;
+                            height = maxWidth;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        return reject(new Error('Tidak bisa mendapatkan konteks canvas'));
+                    }
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob(
+                        (blob) => {
+                            if (!blob) {
+                                return reject(new Error('Gagal konversi canvas ke Blob'));
+                            }
+                            const compressedFile = new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now(),
+                            });
+                            resolve(compressedFile);
+                        },
+                        'image/jpeg',
+                        quality
+                    );
+                };
+                img.onerror = (error) => reject(error);
+            };
+            reader.onerror = (error) => reject(error);
+        });
+    };
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setProfilePhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file));
+        const file = e.target.files[0];
+        if (!file.type.startsWith('image/')) {
+            addToast('Silakan pilih file gambar yang valid.', 'error');
+            return;
+        }
+
+        setPhotoPreview(URL.createObjectURL(file)); // Show temporary preview
+
+        try {
+            addToast('Mengompres gambar...', 'info');
+            const compressedFile = await compressImage(file);
+            setProfilePhotoFile(compressedFile);
+            setPhotoPreview(URL.createObjectURL(compressedFile));
+            addToast('Gambar berhasil dikompres.', 'success');
+        } catch (error) {
+            console.error("Image compression failed:", error);
+            addToast(error instanceof Error ? error.message : 'Gagal memproses gambar.', 'error');
+            setProfilePhotoFile(null);
+            setPhotoPreview(user?.photoURL || null);
+        }
     }
   };
+
 
   // Handlers for multi-student report form
     const handleAddStudent = () => {

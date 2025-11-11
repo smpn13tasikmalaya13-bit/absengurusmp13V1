@@ -64,16 +64,11 @@ interface State {
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
-  // FIX: Replaced constructor with a class property for state initialization to resolve multiple type errors.
-  
-  // FIX: Explicitly initialize state in the constructor to ensure `this.props` is available.
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-    };
-  }
+  // FIX: Initialized state using a class property to resolve component state and props errors.
+  state: State = {
+    hasError: false,
+    error: null,
+  };
 
   static getDerivedStateFromError(error: Error): State {
     // Update state with a serializable version of the error to prevent JSON circular structure errors.

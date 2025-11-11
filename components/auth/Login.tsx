@@ -5,76 +5,11 @@ import { Role } from '../../types';
 import { register } from '../../services/authService';
 import Logo from '../ui/Logo';
 
-// ========== PWA Install Prompt Component ==========
-const PwaInstallPrompt: React.FC = () => {
-  const [installPromptEvent, setInstallPromptEvent] = useState<Event | null>(null);
-
-  useEffect(() => {
-    // If the app is already running in standalone mode, don't show the prompt.
-    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
-        return;
-    }
-
-    const beforeInstallPromptHandler = (e: Event) => {
-      e.preventDefault();
-      setInstallPromptEvent(e);
-    };
-
-    const appInstalledHandler = () => {
-      // Clear the prompt event so the button disappears
-      setInstallPromptEvent(null);
-    };
-
-    window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
-    window.addEventListener('appinstalled', appInstalledHandler);
-
-    // Cleanup: remove the event listeners when the component unmounts
-    return () => {
-      window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
-      window.removeEventListener('appinstalled', appInstalledHandler);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!installPromptEvent) return;
-    
-    // Show the install prompt
-    (installPromptEvent as any).prompt();
-    
-    // Wait for the user to respond to the prompt.
-    const { outcome } = await (installPromptEvent as any).userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
-    
-    // The button will now only disappear if the app is successfully installed,
-    // which is handled by the 'appinstalled' event listener. We no longer
-    // hide it if the user dismisses the prompt.
-  };
-  
-  // Only render the component if the `beforeinstallprompt` event has been fired.
-  if (!installPromptEvent) {
-    return null;
-  }
-
-  return (
-    <div className="mt-8 p-6 bg-slate-800/50 rounded-lg text-center border border-slate-700">
-      <h3 className="font-bold text-white">Instal Aplikasi untuk Pengalaman Terbaik</h3>
-      <p className="text-sm text-slate-400 mt-2 leading-tight">Akses lebih cepat dan fitur offline dengan menambahkan aplikasi ini ke layar utama (home screen) Anda.</p>
-      <Button
-        onClick={handleInstallClick}
-        className="mt-4 w-full !py-3 !bg-green-600 hover:!bg-green-500 focus:!ring-green-500"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-        Instal Aplikasi
-      </Button>
-    </div>
-  );
-};
-
 // ========== Common Header and Footer for Auth Pages ==========
 const AuthHeader: React.FC = () => (
-  <header className="text-center mb-1 flex flex-col items-center">
-    <Logo className="h-16 w-auto" />
-    <p className="text-slate-400 text-sm -mt-2">Sistem Absensi Guru Digital</p>
+  <header className="text-center mb-8 flex flex-col items-center">
+    <Logo className="h-12 w-auto" />
+    <p className="text-slate-400 text-sm mt-2">Sistem Absensi Guru Digital</p>
   </header>
 );
 
@@ -87,22 +22,22 @@ const AuthFooter: React.FC = () => (
 const FormInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
   <input
     {...props}
-    className="w-full px-4 py-3 bg-slate-900 text-white border-2 border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+    className="w-full px-4 py-3 bg-slate-800/50 text-white border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
   />
 );
 
 const FormSelect: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = (props) => (
   <select
     {...props}
-    className="w-full px-4 py-3 bg-slate-900 text-white border-2 border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+    className="w-full px-4 py-3 bg-slate-800/50 text-white border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
   />
 );
 
 
 // ========== LOGIN VIEW ==========
 const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToRegister }) => {
-  const [email, setEmail] = useState('admin@hadirku.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -123,7 +58,7 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
   return (
     <main>
       <form onSubmit={handleSubmit} className="space-y-6">
-        <h2 className="text-center text-2xl font-bold text-white mb-4">Login</h2>
+        <h2 className="text-center text-3xl font-bold text-white mb-8">Login</h2>
         
         <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium text-slate-400">Email</label>
@@ -133,7 +68,7 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <label htmlFor="password"className="text-sm font-medium text-slate-400">Password</label>
-            <a href="#" className="text-sm text-indigo-400 hover:underline">Lupa Password?</a>
+            <a href="#" className="text-sm text-violet-400 hover:underline">Lupa Password?</a>
           </div>
           <FormInput id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
@@ -147,11 +82,9 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
         </Button>
       </form>
       
-      <PwaInstallPrompt />
-
       <p className="text-center text-sm text-slate-400 mt-6">
         Belum punya akun?{' '}
-        <button onClick={onSwitchToRegister} className="font-semibold text-indigo-400 hover:underline">
+        <button onClick={onSwitchToRegister} className="font-semibold text-violet-400 hover:underline">
           Daftar
         </button>
       </p>
@@ -189,7 +122,7 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
   return (
     <main>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <h2 className="text-center text-2xl font-bold text-white mb-4">Daftar Akun Baru</h2>
+        <h2 className="text-center text-3xl font-bold text-white mb-8">Daftar Akun Baru</h2>
         
         <div>
           <label htmlFor="name" className="text-sm font-medium text-slate-400 block mb-1">Nama Lengkap</label>
@@ -234,7 +167,7 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
       
       <p className="text-center text-sm text-slate-400 mt-6">
         Sudah punya akun?{' '}
-        <button onClick={onSwitchToLogin} className="font-semibold text-indigo-400 hover:underline">
+        <button onClick={onSwitchToLogin} className="font-semibold text-violet-400 hover:underline">
           Login
         </button>
       </p>
@@ -249,7 +182,7 @@ const AuthComponent: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-slate-300 p-4">
-      <div className="w-full max-w-md p-8 bg-slate-800/50 backdrop-blur-sm border border-slate-700 shadow-2xl shadow-indigo-500/10 rounded-2xl">
+      <div className="w-full max-w-md">
         <AuthHeader />
         {isLoginView 
           ? <LoginView onSwitchToRegister={() => setIsLoginView(false)} /> 
