@@ -139,6 +139,7 @@ const TeacherDashboard: React.FC = () => {
   const [isReportAbsenceModalOpen, setIsReportAbsenceModalOpen] = useState(false);
   const [isReportStudentModalOpen, setIsReportStudentModalOpen] = useState(false);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+  const [isProfileDataLoading, setIsProfileDataLoading] = useState(false);
 
 
   // Form states
@@ -237,15 +238,11 @@ const TeacherDashboard: React.FC = () => {
             reported, 
             classesData, 
             allReportedStudents,
-            masterSchedulesData,
-            masterCoachesData,
         ] = await Promise.all([
           getAttendanceForTeacher(user.id),
           getStudentAbsencesByTeacherForDate(user.id, todayStr),
           getAllClasses(),
           getStudentAbsencesByTeacher(user.id),
-          getAllMasterSchedules(),
-          getAllMasterCoaches(),
         ]);
 
         if (user.kode) {
@@ -265,8 +262,6 @@ const TeacherDashboard: React.FC = () => {
         }
 
         setAvailableClasses(classesData);
-        setMasterSchedules(masterSchedulesData);
-        setMasterCoaches(masterCoachesData);
         
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const startOfWeek = new Date(startOfToday);
@@ -646,14 +641,35 @@ const TeacherDashboard: React.FC = () => {
     }
   };
 
-  const handleEditProfile = () => {
+  const handleEditProfile = async () => {
     if (user) {
-        setProfileData(user); // Pre-fill with existing user data
-        setPhotoPreview(user.photoURL || null); // Show current photo
-        setProfilePhotoFile(null); // Clear any previous selection
+        setProfileData(user);
+        setPhotoPreview(user.photoURL || null);
+        setProfilePhotoFile(null);
         setModalError('');
         setModalSuccess('');
         setIsEditProfileModalOpen(true);
+
+        const shouldFetchSchedules = user.role === Role.Teacher && masterSchedules.length === 0;
+        const shouldFetchCoaches = user.role === Role.Coach && masterCoaches.length === 0;
+
+        if (shouldFetchSchedules || shouldFetchCoaches) {
+            setIsProfileDataLoading(true);
+            try {
+                if (shouldFetchSchedules) {
+                    const schedulesData = await getAllMasterSchedules();
+                    setMasterSchedules(schedulesData);
+                }
+                if (shouldFetchCoaches) {
+                    const coachesData = await getAllMasterCoaches();
+                    setMasterCoaches(coachesData);
+                }
+            } catch (err) {
+                setModalError(err instanceof Error ? err.message : "Gagal memuat data master.");
+            } finally {
+                setIsProfileDataLoading(false);
+            }
+        }
     }
   };
 
@@ -1035,25 +1051,29 @@ const TeacherDashboard: React.FC = () => {
             
             <Modal isOpen={isEditProfileModalOpen} onClose={() => setIsEditProfileModalOpen(false)} title="Ubah Profil">
                  <form onSubmit={handleProfileUpdateSubmit} className="space-y-4">
-                    <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
-                        <label htmlFor="kode" className="block text-sm font-medium text-slate-300">
-                            Pilih Kode Guru/Pembina Anda
-                        </label>
-                         <p className="text-xs text-slate-400 mt-1 mb-2">Pilih kode unik Anda dari jadwal induk. Ini akan menyinkronkan data Anda. Tindakan ini hanya bisa dilakukan sekali dan akan mengikat akun ke perangkat ini.</p>
-                         <select
-                            id="kode"
-                            name="kode"
-                            value={profileData.kode || ''}
-                            onChange={handleProfileFormChange}
-                            className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white disabled:bg-slate-800 disabled:cursor-not-allowed"
-                            disabled={!!user?.kode} // Disable if kode is already set
-                        >
-                            <option value="">-- Pilih Kode --</option>
-                            {availableCodes.map(code => (
-                                <option key={code} value={code}>{code}</option>
-                            ))}
-                        </select>
-                    </div>
+                    {isProfileDataLoading ? (
+                        <div className="h-24 flex items-center justify-center"><Spinner /></div>
+                    ) : (
+                        <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
+                            <label htmlFor="kode" className="block text-sm font-medium text-slate-300">
+                                Pilih Kode Guru/Pembina Anda
+                            </label>
+                            <p className="text-xs text-slate-400 mt-1 mb-2">Pilih kode unik Anda dari jadwal induk. Ini akan menyinkronkan data Anda. Tindakan ini hanya bisa dilakukan sekali dan akan mengikat akun ke perangkat ini.</p>
+                            <select
+                                id="kode"
+                                name="kode"
+                                value={profileData.kode || ''}
+                                onChange={handleProfileFormChange}
+                                className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white disabled:bg-slate-800 disabled:cursor-not-allowed"
+                                disabled={!!user?.kode} // Disable if kode is already set
+                            >
+                                <option value="">-- Pilih Kode --</option>
+                                {availableCodes.map(code => (
+                                    <option key={code} value={code}>{code}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <div className="flex items-center space-x-4">
                         <img src={photoPreview || `https://ui-avatars.com/api/?name=${profileData.name?.replace(' ', '+')}&background=0f172a&color=cbd5e1`} alt="Preview" className="h-20 w-20 rounded-full object-cover border-2 border-slate-600" />

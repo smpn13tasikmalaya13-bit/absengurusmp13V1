@@ -126,6 +126,8 @@ const AdministrativeStaffDashboard: React.FC = () => {
     // Modal states
     const [isReportAbsenceModalOpen, setIsReportAbsenceModalOpen] = useState(false);
     const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+    const [isProfileDataLoading, setIsProfileDataLoading] = useState(false);
+    const [modalError, setModalError] = useState('');
 
     // Form states
     const [absenceReason, setAbsenceReason] = useState<'Sakit' | 'Izin' | 'Tugas Luar'>('Sakit');
@@ -157,17 +159,6 @@ const AdministrativeStaffDashboard: React.FC = () => {
         
         if (!user) return;
         
-        // Fetch master data for profile sync
-        const fetchMasterData = async () => {
-            try {
-                const staffData = await getAllMasterStaff();
-                setMasterStaff(staffData);
-            } catch (error) {
-                console.error("Failed to fetch master staff data:", error);
-            }
-        };
-        fetchMasterData();
-
         // Setup message listener
         const unsubscribe = getMessagesForUser(user.id, (newMessages) => {
             setMessages(newMessages);
@@ -274,12 +265,25 @@ const AdministrativeStaffDashboard: React.FC = () => {
         setIsSubmitting(false);
     };
 
-    const handleEditProfile = () => {
+    const handleEditProfile = async () => {
        if (user) {
             setProfileData(user);
             setPhotoPreview(user.photoURL || null);
             setProfilePhotoFile(null);
+            setModalError('');
             setIsEditProfileModalOpen(true);
+
+            if (masterStaff.length === 0) {
+                setIsProfileDataLoading(true);
+                try {
+                    const staffData = await getAllMasterStaff();
+                    setMasterStaff(staffData);
+                } catch (err) {
+                    setModalError(err instanceof Error ? err.message : "Gagal memuat data master.");
+                } finally {
+                    setIsProfileDataLoading(false);
+                }
+            }
         }
     };
     
@@ -785,25 +789,29 @@ const AdministrativeStaffDashboard: React.FC = () => {
             
             <Modal isOpen={isEditProfileModalOpen} onClose={() => setIsEditProfileModalOpen(false)} title="Ubah Profil">
                  <form onSubmit={handleProfileUpdateSubmit} className="space-y-4">
-                     <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
-                        <label htmlFor="kode" className="block text-sm font-medium text-slate-300">
-                            Pilih Kode Tendik Anda
-                        </label>
-                         <p className="text-xs text-slate-400 mt-1 mb-2">Pilih kode unik Anda dari data induk. Ini akan menyinkronkan data profil Anda. Tindakan ini hanya bisa dilakukan sekali dan akan mengikat akun ke perangkat ini.</p>
-                         <select
-                            id="kode"
-                            name="kode"
-                            value={profileData.kode || ''}
-                            onChange={handleProfileFormChange}
-                            className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white disabled:bg-slate-800 disabled:cursor-not-allowed"
-                            disabled={!!user?.kode}
-                        >
-                            <option value="">-- Pilih Kode --</option>
-                            {availableCodes.map(code => (
-                                <option key={code} value={code}>{code}</option>
-                            ))}
-                        </select>
-                    </div>
+                    {isProfileDataLoading ? (
+                        <div className="h-24 flex items-center justify-center"><Spinner /></div>
+                    ) : (
+                        <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
+                            <label htmlFor="kode" className="block text-sm font-medium text-slate-300">
+                                Pilih Kode Tendik Anda
+                            </label>
+                            <p className="text-xs text-slate-400 mt-1 mb-2">Pilih kode unik Anda dari data induk. Ini akan menyinkronkan data profil Anda. Tindakan ini hanya bisa dilakukan sekali dan akan mengikat akun ke perangkat ini.</p>
+                            <select
+                                id="kode"
+                                name="kode"
+                                value={profileData.kode || ''}
+                                onChange={handleProfileFormChange}
+                                className="mt-1 block w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white disabled:bg-slate-800 disabled:cursor-not-allowed"
+                                disabled={!!user?.kode}
+                            >
+                                <option value="">-- Pilih Kode --</option>
+                                {availableCodes.map(code => (
+                                    <option key={code} value={code}>{code}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <div className="flex items-center space-x-4">
                         <img src={photoPreview || `https://ui-avatars.com/api/?name=${profileData.name?.replace(' ', '+')}&background=0f172a&color=cbd5e1`} alt="Preview" className="h-20 w-20 rounded-full object-cover border-2 border-slate-600" />
@@ -833,6 +841,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-300">Email</label>
                         <input value={profileData.email || ''} type="email" disabled className="mt-1 block w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-400 cursor-not-allowed"/>
                      </div>
+                     {modalError && <p className="text-sm text-red-400">{modalError}</p>}
                      <div className="flex justify-end pt-2">
                          <Button type="submit" isLoading={isSubmitting} className="w-full">Simpan Perubahan</Button>
                      </div>
