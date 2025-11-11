@@ -63,7 +63,9 @@ export const MOCK_EXTRA_SCHEDULE: Omit<EskulSchedule, 'id'>[] = [
 
 export const uploadProfilePhoto = async (file: File, userId: string): Promise<string> => {
     try {
-        const filePath = `profile-pictures/${userId}/${file.name}`;
+        // By creating a unique filename, we prevent potential conflicts or caching issues on the server.
+        const uniqueFileName = `${Date.now()}-${file.name.replace(/\s/g, '_')}`;
+        const filePath = `profile-pictures/${userId}/${uniqueFileName}`;
         const storageRef = ref(storage, filePath);
         const snapshot = await uploadBytes(storageRef, file);
         const downloadURL = await getDownloadURL(snapshot.ref);
