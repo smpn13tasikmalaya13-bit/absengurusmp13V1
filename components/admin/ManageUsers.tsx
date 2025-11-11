@@ -310,7 +310,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
               <thead className="bg-slate-800">
                 <tr className="hidden md:table-row">
                   <th className="p-4 text-sm font-semibold text-slate-200">Nama</th>
-                  <th className="p-4 text-sm font-semibold text-slate-200">User ID (Email)</th>
+                  <th className="p-4 text-sm font-semibold text-slate-200">ID Pengguna (Email)</th>
                   <th className="p-4 text-sm font-semibold text-slate-200">Peran</th>
                   <th className="p-4 text-sm font-semibold text-slate-200">Aksi</th>
                 </tr>

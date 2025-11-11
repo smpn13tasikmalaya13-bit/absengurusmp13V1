@@ -56,7 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, unreadMessag
         <span className="ml-2 px-2 py-1 text-xs font-semibold text-indigo-200 bg-indigo-500/30 rounded-full">Admin</span>
       </div>
       <nav className="flex-1 space-y-2">
-        <NavItem icon={<DashboardIcon />} label="Dashboard" view="dashboard" currentView={currentView} onNavigate={onNavigate} />
+        <NavItem icon={<DashboardIcon />} label="Dasbor" view="dashboard" currentView={currentView} onNavigate={onNavigate} />
         <NavItem icon={<MessageIcon />} label="Pesan" view="messages" currentView={currentView} onNavigate={onNavigate} badgeCount={unreadMessageCount} />
         
         <div className="pt-4">

@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 
 interface AttendancePieChartProps {
@@ -12,7 +13,7 @@ const AttendancePieChart: React.FC<AttendancePieChartProps> = ({ present, absent
   if (total === 0) {
     return (
       <div className="flex items-center justify-center h-56 text-gray-400">
-        No attendance data for today.
+        Tidak ada data absensi untuk hari ini.
       </div>
     );
   }

@@ -45,10 +45,10 @@ export const seedDatabase = async (): Promise<void> => {
     // Commit the batch
     await batch.commit();
     console.log('Database seeded successfully!');
-    alert('Database has been successfully seeded with initial data!');
+    alert('Database berhasil diisi dengan data awal!');
   } catch (error) {
     console.error('Error seeding database:', error);
-    alert(`An error occurred while seeding the database. Check the console for details.`);
+    alert(`Terjadi kesalahan saat mengisi database. Periksa konsol untuk detail.`);
     throw new Error('Database seeding failed.');
   }
 };
