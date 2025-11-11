@@ -586,16 +586,34 @@ const TeacherDashboard: React.FC = () => {
         const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
 
         const matchingSchedule = todaysSchedule.find(schedule => {
-            if (!schedule.waktu || !schedule.waktu.includes(' - ')) return false;
+            const cleanedWaktu = schedule.waktu?.trim();
+            if (!cleanedWaktu || !cleanedWaktu.includes('-')) return false;
+
+            const timeParts = cleanedWaktu.split('-').map(p => p.trim());
+            if (timeParts.length !== 2) return false;
+
+            const [startTimeStr, endTimeStr] = timeParts;
+
+            const startParts = startTimeStr.split(':');
+            const endParts = endTimeStr.split(':');
+
+            if (startParts.length !== 2 || endParts.length !== 2) return false;
             
-            const [startTime, endTime] = schedule.waktu.split(' - ');
-            const [startHour, startMinute] = startTime.split(':').map(Number);
-            const [endHour, endMinute] = endTime.split(':').map(Number);
+            const startHour = parseInt(startParts[0], 10);
+            const startMinute = parseInt(startParts[1], 10);
+            const endHour = parseInt(endParts[0], 10);
+            const endMinute = parseInt(endParts[1], 10);
             
+            if (isNaN(startHour) || isNaN(startMinute) || isNaN(endHour) || isNaN(endMinute)) {
+                return false;
+            }
+
             const scheduleStartMinutes = startHour * 60 + startMinute;
             const scheduleEndMinutes = endHour * 60 + endMinute;
 
-            return currentTimeInMinutes >= scheduleStartMinutes && currentTimeInMinutes <= scheduleEndMinutes;
+            // Corrected logic: The interval is inclusive of the start time and exclusive of the end time [start, end).
+            // This correctly handles back-to-back schedules where one ends at HH:MM and the next starts at HH:MM.
+            return currentTimeInMinutes >= scheduleStartMinutes && currentTimeInMinutes < scheduleEndMinutes;
         });
 
         if (!matchingSchedule) {

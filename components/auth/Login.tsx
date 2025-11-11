@@ -22,14 +22,14 @@ const AuthFooter: React.FC = () => (
 const FormInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
   <input
     {...props}
-    className="w-full px-4 py-3 bg-slate-800/50 text-white border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
+    className="w-full px-4 py-3 bg-slate-800/50 text-white border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
   />
 );
 
 const FormSelect: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = (props) => (
   <select
     {...props}
-    className="w-full px-4 py-3 bg-slate-800/50 text-white border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
+    className="w-full px-4 py-3 bg-slate-800/50 text-white border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
   />
 );
 
@@ -68,7 +68,7 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <label htmlFor="password"className="text-sm font-medium text-slate-400">Password</label>
-            <a href="#" className="text-sm text-violet-400 hover:underline">Lupa Password?</a>
+            <a href="#" className="text-sm text-emerald-400 hover:underline">Lupa Password?</a>
           </div>
           <FormInput id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
@@ -84,7 +84,7 @@ const LoginView: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToReg
       
       <p className="text-center text-sm text-slate-400 mt-6">
         Belum punya akun?{' '}
-        <button onClick={onSwitchToRegister} className="font-semibold text-violet-400 hover:underline">
+        <button onClick={onSwitchToRegister} className="font-semibold text-emerald-400 hover:underline">
           Daftar
         </button>
       </p>
@@ -167,7 +167,7 @@ const RegisterView: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwitchToLog
       
       <p className="text-center text-sm text-slate-400 mt-6">
         Sudah punya akun?{' '}
-        <button onClick={onSwitchToLogin} className="font-semibold text-violet-400 hover:underline">
+        <button onClick={onSwitchToLogin} className="font-semibold text-emerald-400 hover:underline">
           Login
         </button>
       </p>
