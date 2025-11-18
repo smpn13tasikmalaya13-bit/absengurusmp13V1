@@ -9,6 +9,7 @@ const DataIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-
 const QRIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h-1m-1-6v1M5 12H4m1-6H4m16 0h-1M5 18H4m1-6h1M9 4v1m0 14v1m6-16v1m0 14v1m-6-1h1m4 0h1M9 9h1m4 0h1m-4 4h1m4 0h1M9 19h1m4 0h1m-1-4h1m-5-4h1" /></svg>;
 const UploadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>;
 const MessageIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
+const AnnouncementIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.514C18.378 1.23 18.79 1 19.232 1h.016a1 1 0 01.951.691l1.07 3.292c.304 1.002.436 2.093.436 3.292A10 10 0 017 19.683v-2.001a4.002 4.002 0 01-1.564-3.683z" /></svg>;
 
 
 interface SidebarProps {
@@ -82,6 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, unreadMessag
                 <NavItem icon={<DataIcon />} label="Data Kelas" view="manage-classes" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<DataIcon />} label="Data Eskul" view="manage-eskuls" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<QRIcon />} label="QR Code Tendik" view="staff-qr-code" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<AnnouncementIcon />} label="Buat Pengumuman" view="manage-announcements" currentView={currentView} onNavigate={onNavigate} />
             </div>
         </div>
 
