@@ -71,3 +71,45 @@ export const generateMessageDraft = async (context: {
         return "Gagal membuat draf pesan. Silakan tulis manual.";
     }
 };
+
+/**
+ * Generates a formal warning letter for a teacher with excessive absences.
+ * @param teacherName The name of the teacher.
+ * @param alpaCount The number of times the teacher was absent without notice.
+ * @param dateRange The date range of the report.
+ * @returns A promise that resolves to a string containing the warning letter.
+ */
+export const generateWarningLetter = async (teacherName: string, alpaCount: number, dateRange: string): Promise<string> => {
+    const model = "gemini-2.5-flash";
+    const prompt = `
+      Anda adalah asisten kepala sekolah yang bertugas membuat surat resmi.
+      Buatkan draf "Surat Peringatan Pertama" dalam Bahasa Indonesia yang formal dan profesional.
+
+      Konteks:
+      - Ditujukan Kepada: Yth. Bapak/Ibu ${teacherName}
+      - Pelanggaran: Tidak hadir mengajar tanpa keterangan (Alpa) sebanyak ${alpaCount} kali.
+      - Periode Laporan: ${dateRange}
+      - Pengirim: Kepala Sekolah SMP Negeri 13 Tasikmalaya
+
+      Struktur Surat:
+      1.  Kop surat sederhana (Nama Sekolah, Alamat).
+      2.  Judul: "SURAT PERINGATAN PERTAMA"
+      3.  Paragraf pembuka yang menyatakan tujuan surat.
+      4.  Paragraf isi yang merinci temuan pelanggaran (jumlah alpa dan periode waktu) berdasarkan data dari sistem absensi HadirKu.
+      5.  Paragraf yang menekankan pentingnya tanggung jawab dan dampaknya terhadap kegiatan belajar mengajar.
+      6.  Paragraf penutup yang meminta guru tersebut untuk memberikan klarifikasi dan memperbaiki kinerjanya, serta menyebutkan konsekuensi jika pelanggaran berlanjut.
+      7.  Salam penutup dan tempat untuk tanda tangan Kepala Sekolah.
+
+      Gaya bahasa harus sopan, resmi, dan konstruktif.
+    `;
+    try {
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: prompt,
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error calling Gemini API for warning letter:", error);
+        throw new Error("Gagal membuat surat peringatan karena ada masalah dengan layanan AI.");
+    }
+};
