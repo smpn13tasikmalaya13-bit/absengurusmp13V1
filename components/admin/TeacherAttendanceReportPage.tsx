@@ -2,16 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
-import { Modal } from '../ui/Modal';
 import { getFilteredAttendanceReport } from '../../services/attendanceService';
 import { getAllUsers } from '../../services/authService';
 import { getAllClasses, getAllMasterSchedules } from '../../services/dataService';
-import { generateWarningLetter } from '../../services/geminiService';
 import { AttendanceRecord, User, Class, Role, MasterSchedule } from '../../types';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { useToast } from '../../context/ToastContext';
 
 // New interface for the comprehensive report entry
 interface ComprehensiveReportEntry {
@@ -27,14 +24,8 @@ interface ComprehensiveReportEntry {
     keterangan: string; // '-' or reason
 }
 
-interface DelinquentTeacher {
-    guru: string;
-    count: number;
-}
-
 
 const TeacherAttendanceReportPage: React.FC = () => {
-  const addToast = useToast();
   // Filter state
   const [teachers, setTeachers] = useState<User[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
@@ -46,16 +37,9 @@ const TeacherAttendanceReportPage: React.FC = () => {
   
   // Data state
   const [reportData, setReportData] = useState<ComprehensiveReportEntry[]>([]);
-  const [delinquentTeachers, setDelinquentTeachers] = useState<DelinquentTeacher[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState('');
-  
-  // Warning Letter Modal State
-  const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
-  const [teacherForWarning, setTeacherForWarning] = useState<DelinquentTeacher | null>(null);
-  const [generatedLetter, setGeneratedLetter] = useState('');
-  const [isGeneratingLetter, setIsGeneratingLetter] = useState(false);
 
   // Fetch data for filters
   useEffect(() => {
@@ -81,7 +65,6 @@ const TeacherAttendanceReportPage: React.FC = () => {
     setIsLoading(true);
     setHasSearched(true);
     setError('');
-    setDelinquentTeachers([]); // Reset on new search
     
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
@@ -203,21 +186,6 @@ const TeacherAttendanceReportPage: React.FC = () => {
         });
 
         setReportData(finalReport);
-        
-        // 6. Analyze for delinquencies
-        const alpaCounts: { [key: string]: number } = {};
-        finalReport.forEach(record => {
-            if (record.status === 'Alpa') {
-                alpaCounts[record.guru] = (alpaCounts[record.guru] || 0) + 1;
-            }
-        });
-
-        const delinquentList = Object.entries(alpaCounts)
-            .filter(([_, count]) => count >= 4)
-            .map(([guru, count]) => ({ guru, count }));
-        
-        setDelinquentTeachers(delinquentList);
-
 
     } catch (err) {
         setError(err instanceof Error ? err.message : 'Gagal memuat laporan.');
@@ -226,37 +194,6 @@ const TeacherAttendanceReportPage: React.FC = () => {
         setIsLoading(false);
     }
   }, [startDate, endDate, selectedTeacher, selectedClass, classes]);
-  
-  const handleOpenWarningModal = (teacher: DelinquentTeacher) => {
-    setTeacherForWarning(teacher);
-    setGeneratedLetter('');
-    setIsWarningModalOpen(true);
-    handleGenerateLetter(teacher);
-  };
-
-  const handleGenerateLetter = async (teacher: DelinquentTeacher) => {
-      if (!teacher) return;
-      setIsGeneratingLetter(true);
-      try {
-          const letter = await generateWarningLetter(teacher.guru, teacher.count, `${startDate} to ${endDate}`);
-          setGeneratedLetter(letter);
-      } catch (err) {
-          setGeneratedLetter("Gagal membuat surat. Coba lagi.");
-          addToast(err instanceof Error ? err.message : 'Gagal menghubungi AI.', 'error');
-      } finally {
-          setIsGeneratingLetter(false);
-      }
-  };
-  
-  const handleCopyToClipboard = () => {
-      navigator.clipboard.writeText(generatedLetter)
-          .then(() => addToast('Teks berhasil disalin!', 'success'))
-          .catch(() => addToast('Gagal menyalin teks.', 'error'));
-  };
-
-  const handleOpenWhatsApp = () => {
-      window.open('https://web.whatsapp.com', '_blank');
-  };
 
 
   const handleExportPDF = () => {
@@ -365,7 +302,6 @@ const TeacherAttendanceReportPage: React.FC = () => {
   );
 
   return (
-    <>
     <div className="space-y-6">
       <h1 className="text-xl font-bold text-white">Laporan Absensi Guru Mengajar</h1>
       <Card>
@@ -405,61 +341,9 @@ const TeacherAttendanceReportPage: React.FC = () => {
         </div>
       </Card>
 
-      <div className="p-4 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-400">
-          <p>
-              <strong className="text-white">Analisis Pelanggaran Otomatis:</strong> Sistem akan secara otomatis menampilkan daftar guru yang tercatat 'Alpa' sebanyak 4 kali atau lebih dalam rentang tanggal yang Anda pilih di bagian atas hasil laporan.
-          </p>
-      </div>
-
-      {delinquentTeachers.length > 0 && (
-          <Card title="Ringkasan Pelanggaran Disiplin (≥ 4 Kali Alpa)">
-              <ul className="space-y-3">
-                  {delinquentTeachers.map(teacher => (
-                      <li key={teacher.guru} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg">
-                          <div>
-                              <p className="font-semibold text-white">{teacher.guru}</p>
-                              <p className="text-sm text-red-400">{teacher.count} kali Alpa</p>
-                          </div>
-                          <Button onClick={() => handleOpenWarningModal(teacher)} className="w-auto">
-                              Buat Surat Peringatan
-                          </Button>
-                      </li>
-                  ))}
-              </ul>
-          </Card>
-      )}
-
       {isLoading ? <Spinner /> : (reportData.length > 0 ? <ReportTable /> : <ReportPlaceholder />)}
       
     </div>
-    {teacherForWarning && (
-        <Modal isOpen={isWarningModalOpen} onClose={() => setIsWarningModalOpen(false)} title={`Surat Peringatan untuk ${teacherForWarning.guru}`}>
-             <div className="space-y-4">
-                {isGeneratingLetter ? (
-                    <div className="flex flex-col items-center justify-center h-48">
-                        <Spinner />
-                        <p className="mt-2 text-sm text-slate-400">AI sedang membuat draf surat...</p>
-                    </div>
-                ) : (
-                    <textarea
-                        readOnly
-                        value={generatedLetter}
-                        rows={12}
-                        className="w-full p-3 bg-slate-900/50 border border-slate-600 rounded-md text-slate-200 text-sm whitespace-pre-wrap"
-                    />
-                )}
-                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-2">
-                    <Button onClick={handleCopyToClipboard} variant="secondary" disabled={isGeneratingLetter || !generatedLetter}>
-                        Salin Teks
-                    </Button>
-                    <Button onClick={handleOpenWhatsApp} variant="secondary" className="!bg-emerald-600 hover:!bg-emerald-700 !text-white">
-                        Buka WhatsApp
-                    </Button>
-                </div>
-             </div>
-        </Modal>
-    )}
-    </>
   );
 };
 

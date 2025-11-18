@@ -21,7 +21,6 @@ import StaffQRCodeGenerator from './StaffQRCodeGenerator';
 import { Conversation, getAllConversations, sendMessage, deleteMessage, deleteConversation, markMessagesAsRead } from '../../services/dataService';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
-import ManageAnnouncements from './ManageAnnouncements';
 
 // Admin Messages Page Component
 const AdminMessagesPage: React.FC = () => {
@@ -270,8 +269,6 @@ const AdminDashboard: React.FC = () => {
         return <ManageExtracurriculars />;
       case 'staff-qr-code':
         return <StaffQRCodeGenerator />;
-      case 'manage-announcements':
-        return <ManageAnnouncements />;
       default:
         return <DashboardContent />;
     }
