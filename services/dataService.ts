@@ -776,6 +776,41 @@ export const addAnnouncement = async (content: string, adminName: string): Promi
 };
 
 /**
+ * Updates an existing announcement's content and timestamp.
+ * @param id Announcement document id
+ * @param content New announcement text
+ */
+export const updateAnnouncement = async (id: string, content: string): Promise<void> => {
+    if (!id) throw new Error('Announcement ID is required.');
+    if (!content.trim()) throw new Error('Isi pengumuman tidak boleh kosong.');
+    try {
+        const announcementDocRef = doc(db, 'announcements', id);
+        await updateDoc(announcementDocRef, {
+            content,
+            timestamp: serverTimestamp(),
+        });
+    } catch (error) {
+        console.error('Error updating announcement:', error);
+        throw new Error('Gagal memperbarui pengumuman.');
+    }
+};
+
+/**
+ * Deletes an announcement document by id.
+ * @param id Announcement document id
+ */
+export const deleteAnnouncement = async (id: string): Promise<void> => {
+    if (!id) throw new Error('Announcement ID is required.');
+    try {
+        const announcementDocRef = doc(db, 'announcements', id);
+        await deleteDoc(announcementDocRef);
+    } catch (error) {
+        console.error('Error deleting announcement:', error);
+        throw new Error('Gagal menghapus pengumuman.');
+    }
+};
+
+/**
  * Sets up a real-time listener for announcements.
  * @param callback The function to call with the updated announcements array.
  * @returns An unsubscribe function to detach the listener.

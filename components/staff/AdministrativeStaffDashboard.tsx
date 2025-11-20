@@ -11,6 +11,7 @@ import { Card } from '../ui/Card';
 import QRScanner from './QRScanner';
 import { Modal } from '../ui/Modal';
 import { useToast } from '../../context/ToastContext';
+import Announcements from '../ui/Announcements';
 
 // Add a new interface for processed records with fine information
 interface ProcessedHistoryRecord extends AttendanceRecord {
@@ -609,6 +610,7 @@ const AdministrativeStaffDashboard: React.FC = () => {
 
     const BerandaContent = () => (
         <>
+            <Announcements />
             <Card>
                 <div className="space-y-4 text-center">
                     <h3 className="text-lg font-bold text-white">Catat Kehadiran Hari Ini</h3>

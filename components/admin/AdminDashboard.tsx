@@ -8,6 +8,7 @@ import StaffAttendanceReportPage from './StaffAttendanceReportPage'; // Import b
 import CoachAttendanceReportPage from './CoachAttendanceReportPage'; // Import baru
 import StudentAbsenceReportPage from './StudentAbsenceReportPage';
 import ManageUsers from './ManageUsers';
+import ManageAnnouncements from './ManageAnnouncements';
 import ManageLessonSchedule from './ManageLessonSchedule';
 import ManageExtracurricularSchedule from './ManageExtracurricularSchedule';
 import ManageClasses from './ManageClasses';
@@ -251,6 +252,8 @@ const AdminDashboard: React.FC = () => {
         return <StudentAbsenceReportPage />;
       case 'manage-teachers':
         return <ManageUsers mode="teachers" />;
+            case 'manage-announcements':
+                return <ManageAnnouncements />;
       case 'manage-admins':
         return <ManageUsers mode="admins" />;
       case 'manage-lesson-schedule':

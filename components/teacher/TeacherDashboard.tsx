@@ -7,6 +7,7 @@ import { getAttendanceForTeacher, reportTeacherAbsence, recordAttendance } from 
 import { getDeviceId } from '../../services/authService';
 import { LessonSchedule, AttendanceRecord, StudentAbsenceRecord, Class, Role, User, MasterSchedule, Message, MasterCoach } from '../../types';
 import { Modal } from '../ui/Modal';
+import Announcements from '../ui/Announcements';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
 import { useToast } from '../../context/ToastContext';
@@ -807,6 +808,9 @@ const TeacherDashboard: React.FC = () => {
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="md:col-span-2 lg:col-span-4">
+                    <Announcements />
+                </div>
         <button onClick={() => setShowScanner(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-indigo-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed group" disabled={isWithinRadius !== true}>
           <ScanIcon/>
           <h3 className="font-bold text-lg mt-4 text-white">Scan QR Code</h3>

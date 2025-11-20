@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
 import { AttendanceRecord, MasterSchedule, Role, User } from '../../types';
-import { getFullReport } from '../../services/attendanceService';
+import { getFullReport, getFilteredAttendanceReport } from '../../services/attendanceService';
+import { useToast } from '../../context/ToastContext';
+import { Modal } from '../ui/Modal';
 import { getAllUsers } from '../../services/authService';
 import { getAllMasterSchedules } from '../../services/dataService';
 import AttendancePieChart from './AttendancePieChart';
@@ -43,6 +45,12 @@ const DashboardContent: React.FC = () => {
 
   const [recentRecords, setRecentRecords] = useState<(AttendanceRecord & { role?: Role })[]>([]);
   const [absentPersonnel, setAbsentPersonnel] = useState<User[]>([]);
+  const [repeatOffenders, setRepeatOffenders] = useState<Array<{ user: User; missingCount: number }>>([]);
+  const [isOffendersLoading, setIsOffendersLoading] = useState(true);
+  const [isLetterModalOpen, setIsLetterModalOpen] = useState(false);
+  const [selectedUserForLetter, setSelectedUserForLetter] = useState<User | null>(null);
+  const [letterText, setLetterText] = useState('');
+  const addToast = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSystemEmpty, setIsSystemEmpty] = useState(true);
 
@@ -113,10 +121,46 @@ const DashboardContent: React.FC = () => {
 
             const userMap = new Map(allUsers.map(user => [user.id, user.role]));
             const recentWithRoles = allAttendanceRecords.slice(0, 5).map(record => ({
-                ...record,
-                role: userMap.get(record.teacherId)
+              ...record,
+              role: userMap.get(record.teacherId)
             }));
             setRecentRecords(recentWithRoles);
+
+            // Compute repeat offenders: count 'Alpa' (per lesson) across the current week (Mon-Fri).
+            try {
+              setIsOffendersLoading(true);
+
+              // determine Monday and Friday of current week
+              const today = new Date();
+              const day = today.getDay(); // 0 (Sun) .. 6 (Sat)
+              // compute offset to Monday
+              const diffToMonday = day === 0 ? -6 : 1 - day; // if Sunday, go back 6 days to Monday
+              const monday = new Date(today);
+              monday.setDate(today.getDate() + diffToMonday);
+              monday.setHours(0,0,0,0);
+              const friday = new Date(monday);
+              friday.setDate(monday.getDate() + 4);
+              friday.setHours(23,59,59,999);
+
+              const attendanceInRange = await getFilteredAttendanceReport({ startDate: monday, endDate: friday });
+
+              // For each teacher, count records that indicate 'Alpa' and are linked to a lesson (scheduleId)
+              const offendersInfo = personnelUsers
+                .filter(u => u.role === Role.Teacher)
+                .map(u => {
+                  const records = attendanceInRange.filter(r => r.teacherId === u.id && r.scheduleId);
+                  // Count alpa entries. Some records may set status === 'Alpa' or reason === 'Alpa'
+                  const alpaCount = records.filter(r => (r.status === 'Alpa') || (String(r.reason).toLowerCase() === 'alpa')).length;
+                  return { user: u, missingCount: alpaCount };
+                })
+                .filter(info => info.missingCount > 10); // include only those exceeding 10 JP
+
+              setRepeatOffenders(offendersInfo);
+            } catch (err) {
+              console.error('Error computing repeat offenders', err);
+            } finally {
+              setIsOffendersLoading(false);
+            }
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -226,9 +270,71 @@ const DashboardContent: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 flex flex-col gap-6">
                 <Card title="Ringkasan Absensi Hari Ini">
                     <AttendancePieChart present={stats.present} absent={stats.absent} />
+                </Card>
+
+                <Card title="Rekap Pelanggaran Absensi">
+                    <div className="overflow-y-auto max-h-56">
+                      {isOffendersLoading ? (
+                        <p className="text-slate-400">Memeriksa data...</p>
+                      ) : repeatOffenders.length === 0 ? (
+                        <p className="text-slate-400">Tidak ada guru dengan alpa &gt; 10 JP pada minggu ini.</p>
+                      ) : (
+                        <ul className="space-y-3">
+                          {repeatOffenders.map(item => (
+                            <li key={item.user.id} className="flex items-start justify-between bg-slate-800/50 border border-slate-700 p-3 rounded-lg">
+                              <div>
+                                <p className="text-sm font-semibold text-white">{item.user.name}</p>
+                                <p className="text-xs text-slate-400">{item.user.email || '—'}</p>
+                                <p className="text-xs text-amber-300 mt-1">Jumlah ketidakhadiran: {item.missingCount} JP</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                <button
+                                  className="px-3 py-1 text-sm bg-amber-500 text-slate-900 rounded-lg"
+                                  onClick={() => {
+                                    // open modal with letter text
+                                    const u = item.user;
+                                    const text = `Yth. ${u.name},%0A%0AAnda tercatat tidak melakukan absensi sebanyak ${item.missingCount} Jam Pelajaran (JP) pada minggu ini. Mohon hadir dan konfirmasi kehadiran Anda segera. Jika diperlukan, silakan hadir ke kantor untuk klarifikasi.%0A%0AHormat kami,%0AAdmin`;
+                                    setSelectedUserForLetter(u);
+                                    setLetterText(decodeURIComponent(text.replace(/%0A/g, '\n')));
+                                    setIsLetterModalOpen(true);
+                                  }}
+                                >
+                                  Buat Surat / Kirim WA
+                                </button>
+                                <button
+                                  className="px-3 py-1 text-sm bg-slate-700 text-slate-200 rounded-lg border border-slate-600"
+                                  onClick={() => {
+                                    const u = item.user as any;
+                                    const phone = u.phone || u.phoneNumber || u.tel;
+                                    const plain = `Yth. ${u.name},\nAnda tercatat tidak melakukan absensi sebanyak ${item.missingCount} Jam Pelajaran (JP) pada minggu ini. Mohon hadir dan konfirmasi kehadiran Anda segera.`;
+                                    if (phone) {
+                                      let normalized = String(phone).replace(/[^0-9+]/g, '');
+                                      if (normalized.startsWith('0')) normalized = '62' + normalized.slice(1);
+                                      if (normalized.startsWith('+')) normalized = normalized.slice(1);
+                                      const waUrl = `https://wa.me/${normalized}?text=${encodeURIComponent(plain)}`;
+                                      window.open(waUrl, '_blank');
+                                    } else {
+                                      navigator.clipboard.writeText(plain).then(() => {
+                                        addToast('Teks pesan disalin. Buka WhatsApp Web dan tempel ke kontak guru.', 'info');
+                                        window.open('https://web.whatsapp.com/', '_blank');
+                                      }).catch(() => {
+                                        addToast('Gagal menyalin teks. Silakan salin secara manual.', 'error');
+                                        window.open('https://web.whatsapp.com/', '_blank');
+                                      });
+                                    }
+                                  }}
+                                >
+                                  Kirim WA
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                 </Card>
             </div>
             <div className="lg:col-span-3 flex flex-col gap-6">
@@ -290,6 +396,7 @@ const DashboardContent: React.FC = () => {
                         )}
                     </div>
                 </Card>
+                  
             </div>
           </div>
         </>
@@ -298,6 +405,42 @@ const DashboardContent: React.FC = () => {
       <footer className="text-center text-gray-500 text-sm pt-4">
         © Rullp 2025 HadirKu. All rights reserved.
       </footer>
+        <Modal isOpen={isLetterModalOpen} onClose={() => setIsLetterModalOpen(false)} title={selectedUserForLetter ? `Surat untuk ${selectedUserForLetter.name}` : 'Surat'}>
+        <div className="space-y-4">
+          <label className="text-sm text-slate-300">Teks Surat / Pesan (boleh diubah)</label>
+          <textarea value={letterText} onChange={(e) => setLetterText(e.target.value)} rows={10} className="w-full p-3 bg-slate-900 border border-slate-700 rounded-md text-slate-200" />
+          <div className="flex justify-between items-center">
+            <div>
+              <button className="px-3 py-2 bg-slate-700 text-slate-200 rounded-lg mr-2" onClick={() => { navigator.clipboard.writeText(letterText).then(() => addToast('Teks surat disalin ke clipboard.', 'success')).catch(() => addToast('Gagal menyalin teks.', 'error')); }}>Salin</button>
+              <button className="px-3 py-2 bg-indigo-600 text-white rounded-lg" onClick={() => { setLetterText(''); }}>Reset</button>
+            </div>
+            <div>
+              <button className="px-3 py-2 bg-emerald-600 text-white rounded-lg" onClick={() => {
+                // try to open WA if phone exists, otherwise open whatsapp web
+                if (!selectedUserForLetter) return;
+                const u = selectedUserForLetter as any;
+                const phone = u.phone || u.phoneNumber || u.tel;
+                const text = letterText;
+                if (phone) {
+                  let normalized = String(phone).replace(/[^0-9+]/g, '');
+                  if (normalized.startsWith('0')) normalized = '62' + normalized.slice(1);
+                  if (normalized.startsWith('+')) normalized = normalized.slice(1);
+                  const waUrl = `https://wa.me/${normalized}?text=${encodeURIComponent(text)}`;
+                  window.open(waUrl, '_blank');
+                } else {
+                  navigator.clipboard.writeText(text).then(() => {
+                    addToast('Teks surat disalin. Buka WhatsApp Web dan tempel pesan ke kontak guru.', 'info');
+                    window.open('https://web.whatsapp.com/', '_blank');
+                  }).catch(() => {
+                    addToast('Gagal menyalin teks. Silakan salin secara manual.', 'error');
+                    window.open('https://web.whatsapp.com/', '_blank');
+                  });
+                }
+              }}>Kirim via WA</button>
+            </div>
+          </div>
+        </div>
+        </Modal>
     </div>
   );
 };
