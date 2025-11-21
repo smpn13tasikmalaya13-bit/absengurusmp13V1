@@ -130,30 +130,74 @@ const DashboardContent: React.FC = () => {
             try {
               setIsOffendersLoading(true);
 
-              // determine Monday and Friday of current week
+              // determine start of current month until today (cumulative for the month)
               const today = new Date();
-              const day = today.getDay(); // 0 (Sun) .. 6 (Sat)
-              // compute offset to Monday
-              const diffToMonday = day === 0 ? -6 : 1 - day; // if Sunday, go back 6 days to Monday
-              const monday = new Date(today);
-              monday.setDate(today.getDate() + diffToMonday);
-              monday.setHours(0,0,0,0);
-              const friday = new Date(monday);
-              friday.setDate(monday.getDate() + 4);
-              friday.setHours(23,59,59,999);
+              const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+              firstOfMonth.setHours(0,0,0,0);
+              const endOfToday = new Date(today);
+              endOfToday.setHours(23,59,59,999);
 
-              const attendanceInRange = await getFilteredAttendanceReport({ startDate: monday, endDate: friday });
 
-              // For each teacher, count records that indicate 'Alpa' and are linked to a lesson (scheduleId)
-              const offendersInfo = personnelUsers
-                .filter(u => u.role === Role.Teacher)
-                .map(u => {
-                  const records = attendanceInRange.filter(r => r.teacherId === u.id && r.scheduleId);
-                  // Count alpa entries. Some records may set status === 'Alpa' or reason === 'Alpa'
-                  const alpaCount = records.filter(r => (r.status === 'Alpa') || (String(r.reason).toLowerCase() === 'alpa')).length;
-                  return { user: u, missingCount: alpaCount };
-                })
-                .filter(info => info.missingCount > 10); // include only those exceeding 10 JP
+              const attendanceInRange = await getFilteredAttendanceReport({ startDate: firstOfMonth, endDate: endOfToday });
+
+              // Reconstruct per-schedule attendance like the teacher report so Alpa counts
+              // reflect scheduled lessons that had neither a scanRecord nor a daily absence.
+              const scanMap = new Map<string, any>(); // key: `${scheduleId}-${date}`
+              const dailyAbsenceMap = new Map<string, any>(); // key: `${teacherId}-${date}`
+
+              attendanceInRange.forEach(record => {
+                if (record.scheduleId) {
+                  const key = `${record.scheduleId}-${record.date}`;
+                  scanMap.set(key, record);
+                } else if (['Sakit', 'Izin', 'Tugas Luar'].includes(String(record.status))) {
+                  const key = `${record.teacherId}-${record.date}`;
+                  dailyAbsenceMap.set(key, record);
+                }
+              });
+
+              const offendersInfo = [] as Array<{ user: any; missingCount: number }>;
+
+              // For each teacher, iterate the calendar from firstOfMonth -> endOfToday
+              for (const u of personnelUsers.filter(x => x.role === Role.Teacher)) {
+                let totalJP = 0;
+                let alpaCount = 0;
+
+                // if teacher has no kode, skip schedules
+                if (!u.kode) {
+                  // still attempt to count any explicit 'Alpa' records as fallback
+                  const explicitAlpa = attendanceInRange.filter(r => r.teacherId === u.id && (String(r.status || '').toLowerCase() === 'alpa' || String(r.reason || '').toLowerCase() === 'alpa')).length;
+                  alpaCount += explicitAlpa;
+                } else {
+                  const loopDate = new Date(firstOfMonth);
+                  while (loopDate <= endOfToday) {
+                    const dateString = getLocalDateString(loopDate);
+                    const dayName = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][loopDate.getDay()];
+
+                    // schedules for that day
+                    const dailySchedules = masterSchedules.filter((s: any) => s.day === dayName && s.kode === u.kode);
+                    for (const sched of dailySchedules) {
+                      totalJP += 1;
+                      const scanKey = `${sched.id}-${dateString}`;
+                      const absenceKey = `${u.id}-${dateString}`;
+                      const hasScan = !!scanMap.get(scanKey);
+                      const hasDailyAbsence = !!dailyAbsenceMap.get(absenceKey);
+                      if (!hasScan && !hasDailyAbsence) {
+                        alpaCount += 1;
+                      }
+                    }
+
+                    loopDate.setDate(loopDate.getDate() + 1);
+                  }
+                }
+
+                // Fallback: also include any explicit 'Alpa' records not tied to schedule
+                const explicitAlpaFallback = attendanceInRange.filter(r => r.teacherId === u.id && !(r.scheduleId) && (String(r.status || '').toLowerCase() === 'alpa' || String(r.reason || '').toLowerCase() === 'alpa')).length;
+                alpaCount += explicitAlpaFallback;
+
+                if (alpaCount > 10) {
+                  offendersInfo.push({ user: u, missingCount: alpaCount });
+                }
+              }
 
               setRepeatOffenders(offendersInfo);
             } catch (err) {
@@ -280,7 +324,7 @@ const DashboardContent: React.FC = () => {
                       {isOffendersLoading ? (
                         <p className="text-slate-400">Memeriksa data...</p>
                       ) : repeatOffenders.length === 0 ? (
-                        <p className="text-slate-400">Tidak ada guru dengan alpa &gt; 10 JP pada minggu ini.</p>
+                        <p className="text-slate-400">Tidak ada guru dengan alpa &gt; 10 JP sejak awal bulan.</p>
                       ) : (
                         <ul className="space-y-3">
                           {repeatOffenders.map(item => (
@@ -296,7 +340,7 @@ const DashboardContent: React.FC = () => {
                                   onClick={() => {
                                     // open modal with letter text
                                     const u = item.user;
-                                    const text = `Yth. ${u.name},%0A%0AAnda tercatat tidak melakukan absensi sebanyak ${item.missingCount} Jam Pelajaran (JP) pada minggu ini. Mohon hadir dan konfirmasi kehadiran Anda segera. Jika diperlukan, silakan hadir ke kantor untuk klarifikasi.%0A%0AHormat kami,%0AAdmin`;
+                                    const text = `Yth. ${u.name},%0A%0AAnda tercatat tidak melakukan absensi sebanyak ${item.missingCount} Jam Pelajaran (JP) sejak awal bulan ini. Mohon hadir dan konfirmasi kehadiran Anda segera. Jika diperlukan, silakan hadir ke kantor untuk klarifikasi.%0A%0AHormat kami,%0AAdmin`;
                                     setSelectedUserForLetter(u);
                                     setLetterText(decodeURIComponent(text.replace(/%0A/g, '\n')));
                                     setIsLetterModalOpen(true);
@@ -309,7 +353,7 @@ const DashboardContent: React.FC = () => {
                                   onClick={() => {
                                     const u = item.user as any;
                                     const phone = u.phone || u.phoneNumber || u.tel;
-                                    const plain = `Yth. ${u.name},\nAnda tercatat tidak melakukan absensi sebanyak ${item.missingCount} Jam Pelajaran (JP) pada minggu ini. Mohon hadir dan konfirmasi kehadiran Anda segera.`;
+                                    const plain = `Yth. ${u.name},\nAnda tercatat tidak melakukan absensi sebanyak ${item.missingCount} Jam Pelajaran (JP) sejak awal bulan ini. Mohon hadir dan konfirmasi kehadiran Anda segera.`;
                                     if (phone) {
                                       let normalized = String(phone).replace(/[^0-9+]/g, '');
                                       if (normalized.startsWith('0')) normalized = '62' + normalized.slice(1);
