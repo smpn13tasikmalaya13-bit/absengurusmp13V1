@@ -31,7 +31,7 @@ const NavItem: React.FC<{
       onClick={() => onNavigate(view)}
       className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
         isActive
-          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+          ? 'text-[#00e5ff] font-medium'
           : 'text-slate-300 hover:bg-slate-700 hover:text-white'
       }`}
     >
@@ -45,6 +45,51 @@ const NavItem: React.FC<{
           </span>
       )}
     </button>
+  );
+};
+
+const SubMenu: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  items: Array<{ icon?: React.ReactNode; label: string; view: string }>;
+  currentView: string;
+  onNavigate: (view: string) => void;
+}> = ({ icon, label, items, currentView, onNavigate }) => {
+  const [open, setOpen] = React.useState(() => items.some(i => i.view === currentView));
+  const isActive = items.some(i => i.view === currentView);
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+          isActive ? 'text-[#00e5ff] font-medium' : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+        }`}
+      >
+        <div className="flex items-center">
+          {icon}
+          <span className="ml-3">{label}</span>
+        </div>
+        <svg className={`h-4 w-4 ml-2 transform transition-transform ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+      </button>
+      {open && (
+        <div className="mt-1 space-y-1 pl-6">
+          {items.map((it, idx) => (
+            <button
+              key={it.view}
+              onClick={() => onNavigate(it.view)}
+              className={`w-full flex items-center px-2 py-1 text-xs rounded-md transition-colors duration-150 ${
+                currentView === it.view ? 'text-[#00e5ff] font-medium' : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+              }`}
+            >
+              <span className={`inline-flex items-center justify-center w-5 h-5 text-[12px] font-medium rounded-full mr-3 ${currentView === it.view ? 'bg-transparent text-[#00e5ff] border border-[#00e5ff]' : 'bg-slate-700 text-slate-300'}`}>
+                -
+              </span>
+              <span className="truncate whitespace-nowrap">{it.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -72,14 +117,41 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, unreadMessag
         <div className="pt-4">
             <h3 className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Manajemen</h3>
             <div className="mt-2 space-y-2">
-        <NavItem icon={<MessageIcon />} label="Pengumuman" view="manage-announcements" currentView={currentView} onNavigate={onNavigate} />
-                
-                <NavItem icon={<UsersIcon />} label="Guru & Pembina" view="manage-teachers" currentView={currentView} onNavigate={onNavigate} />
-                <NavItem icon={<UsersIcon />} label="Admin & Tendik" view="manage-admins" currentView={currentView} onNavigate={onNavigate} />
-                <NavItem icon={<ScheduleIcon />} label="Jadwal Pelajaran" view="manage-lesson-schedule" currentView={currentView} onNavigate={onNavigate} />
-                <NavItem icon={<UploadIcon />} label="Unggah Jadwal Induk" view="upload-master-schedule" currentView={currentView} onNavigate={onNavigate} />
-                <NavItem icon={<UploadIcon />} label="Unggah Data Tendik" view="upload-master-staff" currentView={currentView} onNavigate={onNavigate} />
-                <NavItem icon={<UploadIcon />} label="Unggah Data Pembina" view="upload-master-coach" currentView={currentView} onNavigate={onNavigate} />
+                <NavItem icon={<MessageIcon />} label="Pengumuman" view="manage-announcements" currentView={currentView} onNavigate={onNavigate} />
+
+                <SubMenu
+                  icon={<UsersIcon />}
+                  label="Guru & Pembina"
+                  currentView={currentView}
+                  onNavigate={onNavigate}
+                  items={[
+                    { label: 'Kelola Guru', view: 'manage-teachers' },
+                    { label: 'Unggah Data Pembina', view: 'upload-master-coach' },
+                  ]}
+                />
+
+                <SubMenu
+                  icon={<UsersIcon />}
+                  label="Admin & Tendik"
+                  currentView={currentView}
+                  onNavigate={onNavigate}
+                  items={[
+                    { label: 'Kelola Admin & Tendik', view: 'manage-admins' },
+                    { label: 'Unggah Data Tendik', view: 'upload-master-staff' },
+                  ]}
+                />
+
+                <SubMenu
+                  icon={<ScheduleIcon />}
+                  label="Jadwal Pelajaran"
+                  currentView={currentView}
+                  onNavigate={onNavigate}
+                  items={[
+                    { label: 'Kelola Jadwal', view: 'manage-lesson-schedule' },
+                    { label: 'Unggah Jadwal Induk', view: 'upload-master-schedule' },
+                  ]}
+                />
+
                 <NavItem icon={<ScheduleIcon />} label="Jadwal Eskul" view="manage-eskul-schedule" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<DataIcon />} label="Data Kelas" view="manage-classes" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<DataIcon />} label="Data Eskul" view="manage-eskuls" currentView={currentView} onNavigate={onNavigate} />
