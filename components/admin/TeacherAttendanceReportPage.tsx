@@ -219,6 +219,7 @@ const TeacherAttendanceReportPage: React.FC = () => {
 
   const handleExportExcel = () => {
     if (reportData.length === 0) return;
+    // Absensi sheet (raw records)
     const worksheet = XLSX.utils.json_to_sheet(reportData.map(r => ({
         'Tanggal': r.tanggal,
         'Guru': r.guru,
@@ -230,8 +231,64 @@ const TeacherAttendanceReportPage: React.FC = () => {
         'Keterlambatan': r.keterlambatan,
         'Keterangan': r.keterangan,
     })));
+
+    // Rekap per guru
+    // Use `teachers` state as the canonical list of teachers to include (fallback to names found in report)
+    const includedTeachers = (selectedTeacher ? teachers.filter(t => t.id === selectedTeacher) : teachers.length ? teachers : []);
+
+    // If teachers list is empty (edge case), build from reportData names
+    const teacherNamesFromReport = Array.from(new Set(reportData.map(r => r.guru)));
+    const rekapTeachers = includedTeachers.length > 0 ? includedTeachers : teacherNamesFromReport.map(name => ({ id: name, name, kode: '' } as any));
+
+    const rekapRows: Array<any> = [];
+    rekapTeachers.forEach(t => {
+      const name = t.name || t.id;
+      const kode = (t as any).kode || '';
+      const entries = reportData.filter(r => r.guru === name);
+      const totalJP = entries.length;
+      const alpaCount = entries.filter(e => e.status === 'Alpa').length;
+      const hadirTelatCount = entries.filter(e => e.status === 'Hadir' || e.status === 'Telat').length;
+      const ijinCount = entries.filter(e => e.status === 'Izin' || e.status === 'Sakit' || e.status === 'Tugas Luar').length;
+
+      const pct = (n: number) => (totalJP === 0 ? '0%' : `${Math.round((n / totalJP) * 100)}%`);
+
+      rekapRows.push({
+        kodeGuru: kode,
+        namaGuru: name,
+        totalJP: totalJP,
+        alpa: alpaCount,
+        hadirTelat: hadirTelatCount,
+        ijin: ijinCount,
+        pctAlpa: pct(alpaCount),
+        pctHadirTelat: pct(hadirTelatCount),
+        pctIjin: pct(ijinCount),
+      });
+    });
+
+    // Build summary sheet with two header rows and data rows
+    const summaryHeader1 = ['Kode Guru', 'Nama Guru', 'Total Jam Pelajaran', '', 'Kehadiran dalam 1 Minggu', '', '', 'Persentasi', '', ''];
+    const summaryHeader2 = ['', '', '', 'Alpa', 'Telat dan Hadir', 'Ijin', '', 'Alpa', 'Telat dan Hadir', 'Ijin'];
+    const summaryData = [summaryHeader1, summaryHeader2];
+    rekapRows.forEach(r => {
+      summaryData.push([
+        r.kodeGuru,
+        r.namaGuru,
+        r.totalJP,
+        r.alpa,
+        r.hadirTelat,
+        r.ijin,
+        '',
+        r.pctAlpa,
+        r.pctHadirTelat,
+        r.pctIjin,
+      ]);
+    });
+
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Absensi");
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Absensi');
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Rekap Guru');
     XLSX.writeFile(workbook, 'laporan-absensi-guru.xlsx');
   };
   
