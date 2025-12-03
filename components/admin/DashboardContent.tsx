@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
 import { AttendanceRecord, MasterSchedule, Role, User } from '../../types';
 import { getFullReport, getFilteredAttendanceReport } from '../../services/attendanceService';
+import { getQRScanSettings, setQRScanSettings, QRScanSettings } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../ui/Modal';
 import { getAllUsers } from '../../services/authService';
@@ -52,6 +53,8 @@ const DashboardContent: React.FC = () => {
   const [letterText, setLetterText] = useState('');
   const addToast = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [qrSettings, setQrSettings] = useState<QRScanSettings | null>(null);
+  const [isSavingQrSettings, setIsSavingQrSettings] = useState(false);
   const [isSystemEmpty, setIsSystemEmpty] = useState(true);
 
   useEffect(() => {
@@ -214,6 +217,16 @@ const DashboardContent: React.FC = () => {
     };
 
     fetchData();
+    // load QR settings
+    const loadSettings = async () => {
+      try {
+        const s = await getQRScanSettings();
+        setQrSettings(s);
+      } catch (err) {
+        console.error('Failed to load QR settings', err);
+      }
+    };
+    loadSettings();
   }, []);
   
   const formatDate = (date: Date) => {
@@ -257,6 +270,63 @@ const DashboardContent: React.FC = () => {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {qrSettings && (
+              <div className="lg:col-span-3">
+                <Card title="Pengaturan Scan QR (Admin)">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold text-white">Aktifkan Scan QR</h4>
+                        <p className="text-sm text-slate-400">Matikan untuk menghentikan semua scan QR sementara.</p>
+                      </div>
+                      <div>
+                        <label className="inline-flex items-center">
+                          <input type="checkbox" checked={qrSettings.globalEnabled} onChange={(e) => setQrSettings(prev => prev ? ({ ...prev, globalEnabled: e.target.checked }) : prev)} className="mr-2" />
+                          <span className="text-sm">{qrSettings.globalEnabled ? 'Aktif' : 'Nonaktif'}</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="p-3 bg-slate-800/40 rounded">
+                        <p className="text-sm text-slate-300">Guru</p>
+                        <label className="inline-flex items-center mt-2">
+                          <input type="checkbox" checked={qrSettings.roles.Teacher} onChange={(e) => setQrSettings(prev => prev ? ({ ...prev, roles: { ...prev.roles, Teacher: e.target.checked } }) : prev)} className="mr-2" />
+                          <span className="text-sm">{qrSettings.roles.Teacher ? 'Aktif' : 'Nonaktif'}</span>
+                        </label>
+                      </div>
+                      <div className="p-3 bg-slate-800/40 rounded">
+                        <p className="text-sm text-slate-300">Pembina</p>
+                        <label className="inline-flex items-center mt-2">
+                          <input type="checkbox" checked={qrSettings.roles.Coach} onChange={(e) => setQrSettings(prev => prev ? ({ ...prev, roles: { ...prev.roles, Coach: e.target.checked } }) : prev)} className="mr-2" />
+                          <span className="text-sm">{qrSettings.roles.Coach ? 'Aktif' : 'Nonaktif'}</span>
+                        </label>
+                      </div>
+                      <div className="p-3 bg-slate-800/40 rounded">
+                        <p className="text-sm text-slate-300">Tendik</p>
+                        <label className="inline-flex items-center mt-2">
+                          <input type="checkbox" checked={qrSettings.roles.AdministrativeStaff} onChange={(e) => setQrSettings(prev => prev ? ({ ...prev, roles: { ...prev.roles, AdministrativeStaff: e.target.checked } }) : prev)} className="mr-2" />
+                          <span className="text-sm">{qrSettings.roles.AdministrativeStaff ? 'Aktif' : 'Nonaktif'}</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button className="px-4 py-2 bg-indigo-600 text-white rounded" disabled={isSavingQrSettings} onClick={async () => {
+                        setIsSavingQrSettings(true);
+                        try {
+                          if (qrSettings) await setQRScanSettings(qrSettings);
+                        } catch (err) {
+                          console.error('Failed to save QR settings', err);
+                        } finally {
+                          setIsSavingQrSettings(false);
+                        }
+                      }}>{isSavingQrSettings ? 'Menyimpan...' : 'Simpan Pengaturan'}</button>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
             <Card>
               <h4 className="text-sm font-medium text-gray-400 text-center">Total Personil Terdaftar</h4>
               <p className="text-5xl font-bold text-white text-center py-4">{stats.total}</p>
