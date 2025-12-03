@@ -1,20 +1,74 @@
-%PDF-1.1
+%PDF-1.3
 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
 2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
 3 0 obj << /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 612 792] /Contents 5 0 R >> endobj
 4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
-5 0 obj << /Length 96 >> stream
-BT /F1 18 Tf 72 740 Td (Panduan Penggunaan Aplikasi HadirKu) Tj 0 -30 Td (1. Login sebagai Admin atau pengguna terdaftar.) Tj 0 -20 Td (2. Untuk melakukan scan QR, buka halaman QR Scanner.) Tj 0 -20 Td (3. Admin dapat menonaktifkan scan secara global, per bidang, atau per pengguna.) Tj ET
+5 0 obj << /Length 840 >> stream
+BT
+/F1 20 Tf
+72 740 Td (Panduan Penggunaan Aplikasi - HadirKu) Tj
+0 -28 Td ( ) Tj
+0 -18 Td (Ringkasan Aplikasi:) Tj
+0 -16 Td (Nama Aplikasi: HadirKu) Tj
+0 -14 Td (Tujuan: Aplikasi absensi berbasis QR untuk Guru, Pembina, dan Tendik.) Tj
+0 -18 Td ( ) Tj
+0 -18 Td (Instalasi & Menjalankan (Developer):) Tj
+0 -16 Td (1. Install dependencies: npm install) Tj
+0 -14 Td (2. Menjalankan dev server: npm run dev) Tj
+0 -14 Td (3. Build production: npm run build) Tj
+0 -18 Td ( ) Tj
+0 -18 Td (Peran Pengguna:) Tj
+0 -16 Td (- Admin: akses penuh untuk manajemen, pengaturan, dan panduan.) Tj
+0 -14 Td (- Guru: melakukan scan QR untuk absensi pelajaran.) Tj
+0 -14 Td (- Pembina: scan QR untuk eskul.) Tj
+0 -14 Td (- Tendik: scan QR untuk absensi staf administrasi.) Tj
+0 -18 Td ( ) Tj
+0 -18 Td (Fitur Utama:) Tj
+0 -16 Td (1. Scan QR dengan verifikasi lokasi (GPS).) Tj
+0 -16 Td (2. Kontrol Scan: global on/off, per-role, per-user override.) Tj
+0 -16 Td (3. Manajemen pengguna, laporan, pengumuman, dan panduan PDF.) Tj
+0 -18 Td ( ) Tj
+0 -18 Td (Cara kerja kontrol Scan:) Tj
+0 -16 Td (- Pengaturan global berada pada dokumen Firestore: settings/qrScan) Tj
+0 -14 Td (- Per-role: Teacher / Coach / AdministrativeStaff diatur oleh admin.) Tj
+0 -14 Td (- Per-user: field qrScanEnabled di dokumen users/{uid} menjadi override.) Tj
+0 -18 Td ( ) Tj
+0 -18 Td (Panduan Admin - Langkah singkat:) Tj
+0 -16 Td (1. Login sebagai Admin.) Tj
+0 -14 Td (2. Buka Dasbor -> card Pengaturan Scan QR (Admin).) Tj
+0 -14 Td (3. Toggle global atau per-role sesuai kebutuhan, lalu klik "Simpan Pengaturan".) Tj
+0 -14 Td (4. Untuk per-user: buka Manajemen -> pada baris pengguna klik "Nonaktifkan Scan" / "Aktifkan Scan".) Tj
+0 -18 Td ( ) Tj
+0 -18 Td (Panduan Pengguna (Guru/Pembina/Tendik) - Singkat:) Tj
+0 -16 Td (1. Login dengan akun terdaftar.) Tj
+0 -14 Td (2. Buka halaman QR Scanner dan izinkan akses kamera.) Tj
+0 -14 Td (3. Sistem memeriksa: a) hak scan (per-user/global/role), b) izin kamera, c) lokasi dalam radius sekolah.) Tj
+0 -14 Td (4. Jika valid, arahkan kamera ke QR untuk melakukan absensi.) Tj
+0 -18 Td ( ) Tj
+0 -18 Td (Troubleshooting:) Tj
+0 -16 Td (- Jika kamera tidak terbuka: periksa izin browser dan tab lain yang menggunakan kamera.) Tj
+0 -14 Td (- Jika scan diblokir: periksa pengaturan Scan admin (global/role/per-user).) Tj
+0 -14 Td (- Jika perubahan tidak tersimpan: pastikan akun admin punya permission write pada settings/qrScan dan users/{id}.) Tj
+0 -18 Td ( ) Tj
+0 -18 Td (Mengganti Panduan PDF:) Tj
+0 -16 Td (- Ganti file di public/panduan.pdf dengan versi final Anda lalu commit & push.) Tj
+0 -18 Td ( ) Tj
+0 -18 Td (Ide Lanjutan:) Tj
+0 -16 Td (- Audit log untuk pencatatan siapa/kapan mengubah pengaturan.) Tj
+0 -14 Td (- Tambah icon status ringkas di tabel utama.) Tj
+0 -14 Td (- Gunakan PDF viewer (pdf.js) untuk toolbar zoom/print.) Tj
+0 -28 Td (Terima kasih. Untuk versi PDF yang diformat lebih baik, kirim file panduan final Anda dan saya akan menggantinya.) Tj
+ET
 endstream endobj
 xref
 0 6
 0000000000 65535 f 
 0000000010 00000 n 
-0000000079 00000 n 
-0000000130 00000 n 
-0000000231 00000 n 
-0000000308 00000 n 
+0000000061 00000 n 
+0000000112 00000 n 
+0000000271 00000 n 
+0000000338 00000 n 
 trailer << /Root 1 0 R /Size 6 >>
 startxref
-408
+420
 %%EOF
