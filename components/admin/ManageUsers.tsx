@@ -5,7 +5,7 @@ import {
     register,
     resetUserDevice,
 } from '../../services/authService';
-import { getAllMasterSchedules, sendMessage } from '../../services/dataService';
+  import { getAllMasterSchedules, sendMessage, updateUserProfile } from '../../services/dataService';
 import { Role, User, MasterSchedule } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
@@ -312,6 +312,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
                   <th className="p-4 text-sm font-semibold text-slate-200">Nama</th>
                   <th className="p-4 text-sm font-semibold text-slate-200">ID Pengguna (Email)</th>
                   <th className="p-4 text-sm font-semibold text-slate-200">Peran</th>
+                  <th className="p-4 text-sm font-semibold text-slate-200">Status Scan</th>
                   <th className="p-4 text-sm font-semibold text-slate-200">Aksi</th>
                 </tr>
               </thead>
@@ -339,10 +340,41 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
                       )}
                     </td>
                     <td className="flex justify-between items-center md:table-cell md:p-4">
+                      <span className="text-sm font-semibold text-slate-400 md:hidden">Status Scan</span>
+                      {user.email === 'Belum terdaftar' ? (
+                        <span className="px-3 py-1 text-xs font-semibold rounded-full bg-slate-700 text-slate-300">—</span>
+                      ) : (
+                        user.qrScanEnabled === false ? (
+                          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-500/20 text-red-300 border border-red-500/30">Nonaktif</span>
+                        ) : (
+                          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Aktif</span>
+                        )
+                      )}
+                    </td>
+                    <td className="flex justify-between items-center md:table-cell md:p-4">
                       <span className="text-sm font-semibold text-slate-400 md:hidden">Aksi</span>
                       <div className="flex items-center space-x-4">
                         <button onClick={() => handleOpenMessageModal(user)} className="text-emerald-400 hover:underline text-sm font-medium disabled:text-slate-500 disabled:no-underline disabled:cursor-not-allowed" disabled={user.email === 'Belum terdaftar'}>Kirim Pesan</button>
                         <button onClick={() => handleOpenResetDeviceModal(user)} className="text-sky-400 hover:underline text-sm font-medium disabled:text-slate-500 disabled:no-underline disabled:cursor-not-allowed" disabled={user.email === 'Belum terdaftar'}>Reset Perangkat</button>
+                        <button onClick={async () => {
+                          // Toggle per-user QR scan permission
+                          if (user.email === 'Belum terdaftar') return;
+                          clearMessages();
+                          setIsSubmitting(true);
+                          try {
+                            const currently = user.qrScanEnabled === false ? false : true;
+                            await updateUserProfile(user.id, { qrScanEnabled: !currently });
+                            setSuccess(`Pengaturan Scan QR untuk ${user.name} diperbarui.`);
+                            await fetchUsers();
+                            setTimeout(() => setSuccess(''), 2000);
+                          } catch (err: any) {
+                            setError(err instanceof Error ? err.message : 'Gagal memperbarui pengaturan.');
+                          } finally {
+                            setIsSubmitting(false);
+                          }
+                        }} className="text-amber-400 hover:underline text-sm font-medium disabled:text-slate-500 disabled:no-underline disabled:cursor-not-allowed" disabled={user.email === 'Belum terdaftar'}>
+                          {user.qrScanEnabled === false ? 'Aktifkan Scan' : 'Nonaktifkan Scan'}
+                        </button>
                         <button onClick={() => handleOpenDeleteModal(user)} className="text-red-400 hover:underline text-sm font-medium disabled:text-slate-500 disabled:no-underline disabled:cursor-not-allowed" disabled={user.email === 'Belum terdaftar'}>Hapus</button>
                       </div>
                     </td>

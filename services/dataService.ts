@@ -1,6 +1,6 @@
 import { Class, Eskul, LessonSchedule, EskulSchedule, StudentAbsenceRecord, User, MasterSchedule, Message, Role, Announcement, MasterStaff, MasterCoach } from '../types';
 // FIX: Import `DocumentSnapshot` from firestore to resolve missing type error.
-import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch, serverTimestamp, onSnapshot, Timestamp, getDoc, DocumentSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch, serverTimestamp, onSnapshot, Timestamp, getDoc, DocumentSnapshot, setDoc } from 'firebase/firestore';
 import { db, storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
@@ -836,4 +836,109 @@ export const getAnnouncements = (callback: (announcements: Announcement[]) => vo
     });
 
     return unsubscribe;
+};
+
+// ========================================================================
+// QR SCAN SETTINGS (GLOBAL / ROLE / PER-USER)
+// ========================================================================
+
+export interface QRScanSettings {
+    globalEnabled: boolean;
+    roles: {
+        Teacher: boolean;
+        Coach: boolean;
+        AdministrativeStaff: boolean;
+    };
+}
+
+export const getQRScanSettings = async (): Promise<QRScanSettings> => {
+    try {
+        const settingsRef = doc(db, 'settings', 'qrScan');
+        const snap = await getDoc(settingsRef);
+        if (!snap.exists()) {
+            // Defaults: enabled for all
+            return {
+                globalEnabled: true,
+                roles: { Teacher: true, Coach: true, AdministrativeStaff: true }
+            };
+        }
+        const data = snap.data() as Partial<QRScanSettings>;
+        return {
+            globalEnabled: data.globalEnabled ?? true,
+            roles: {
+                Teacher: data.roles?.Teacher ?? true,
+                Coach: data.roles?.Coach ?? true,
+                AdministrativeStaff: data.roles?.AdministrativeStaff ?? true,
+            }
+        };
+    } catch (error) {
+        console.error('Error reading QR scan settings:', error);
+        return {
+            globalEnabled: true,
+            roles: { Teacher: true, Coach: true, AdministrativeStaff: true }
+        };
+    }
+};
+
+export const setQRScanSettings = async (settings: Partial<QRScanSettings>): Promise<void> => {
+    try {
+        const settingsRef = doc(db, 'settings', 'qrScan');
+        await setDoc(settingsRef, settings, { merge: true });
+    } catch (error) {
+        console.error('Error updating QR scan settings:', error);
+        throw new Error('Gagal memperbarui pengaturan QR scan.');
+    }
+};
+
+export const isScanEnabledForUser = async (userId: string, role?: string): Promise<boolean> => {
+    try {
+        const [settingsSnap, userSnap] = await Promise.all([
+            getDoc(doc(db, 'settings', 'qrScan')),
+            getDoc(doc(db, 'users', userId)),
+        ]);
+
+        const settings = settingsSnap.exists() ? (settingsSnap.data() as Partial<QRScanSettings>) : undefined;
+        const userData = userSnap.exists() ? userSnap.data() as any : undefined;
+
+        // If user has explicit qrScanEnabled === false, deny immediately
+        if (userData && typeof userData.qrScanEnabled === 'boolean') {
+            return !!userData.qrScanEnabled;
+        }
+
+        // If no settings stored, default to enabled
+        const globalEnabled = settings?.globalEnabled ?? true;
+        if (!globalEnabled) return false;
+
+        // Role-level check
+        if (role) {
+            // Map incoming role strings to our role keys
+            const roleKey = role === 'Guru' || role === 'Teacher' ? 'Teacher' : (role === 'Pembina Ekstrakurikuler' || role === 'Coach' ? 'Coach' : 'AdministrativeStaff');
+            const roleEnabled = settings?.roles ? (settings.roles as any)[roleKey] : true;
+            return !!roleEnabled;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error checking if scan enabled for user:', error);
+        return true;
+    }
+};
+
+/**
+ * Log an audit entry when QR settings are changed by an admin.
+ * Stores a record in top-level collection `settingsAudit` for easier querying.
+ */
+export const logQRSettingsChange = async (adminId: string, adminName: string, changes: Partial<QRScanSettings>): Promise<void> => {
+    try {
+        const auditCol = collection(db, 'settingsAudit');
+        await addDoc(auditCol, {
+            settingKey: 'qrScan',
+            changes,
+            adminId,
+            adminName,
+            timestamp: serverTimestamp(),
+        });
+    } catch (error) {
+        console.error('Error logging QR settings change:', error);
+    }
 };

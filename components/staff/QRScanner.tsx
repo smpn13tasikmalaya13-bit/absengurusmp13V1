@@ -3,6 +3,8 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { isWithinSchoolRadius, getCurrentPosition } from '../../services/locationService';
 import { Spinner } from '../ui/Spinner';
+import { useAuth } from '../../context/AuthContext';
+import { isScanEnabledForUser } from '../../services/dataService';
 
 declare const jsQR: any;
 
@@ -19,6 +21,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameId = useRef<number | null>(null);
+  const { user } = useAuth();
 
   const stopCamera = useCallback(() => {
     if (animationFrameId.current !== null) {
@@ -82,6 +85,21 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) => {
   
   useEffect(() => {
     const startCamera = async () => {
+      // Check global/role/user-level setting first
+      if (user) {
+        try {
+          const enabled = await isScanEnabledForUser(user.id, user.role as any);
+          if (!enabled) {
+            setStatusMessage('Scan QR saat ini dinonaktifkan untuk Anda atau oleh admin.');
+            setMessageType('error');
+            setIsLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error('Error checking QR scan status:', err);
+        }
+      }
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         streamRef.current = stream;
