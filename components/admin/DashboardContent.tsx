@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
 import { AttendanceRecord, MasterSchedule, Role, User } from '../../types';
 import { getFullReport, getFilteredAttendanceReport } from '../../services/attendanceService';
-import { getQRScanSettings, setQRScanSettings, QRScanSettings } from '../../services/dataService';
+import { getQRScanSettings, setQRScanSettings, QRScanSettings, logQRSettingsChange } from '../../services/dataService';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../ui/Modal';
 import { getAllUsers } from '../../services/authService';
@@ -53,6 +54,7 @@ const DashboardContent: React.FC = () => {
   const [letterText, setLetterText] = useState('');
   const addToast = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
   const [qrSettings, setQrSettings] = useState<QRScanSettings | null>(null);
   const [isSavingQrSettings, setIsSavingQrSettings] = useState(false);
   const [isSystemEmpty, setIsSystemEmpty] = useState(true);
@@ -315,9 +317,17 @@ const DashboardContent: React.FC = () => {
                       <button className="px-4 py-2 bg-indigo-600 text-white rounded" disabled={isSavingQrSettings} onClick={async () => {
                         setIsSavingQrSettings(true);
                         try {
-                          if (qrSettings) await setQRScanSettings(qrSettings);
+                          if (qrSettings) {
+                            await setQRScanSettings(qrSettings);
+                            if (user) {
+                              // best-effort audit log
+                              await logQRSettingsChange(user.id, user.name, qrSettings);
+                            }
+                            addToast('Pengaturan QR scan disimpan.', 'success');
+                          }
                         } catch (err) {
                           console.error('Failed to save QR settings', err);
+                          addToast('Gagal menyimpan pengaturan QR scan.', 'error');
                         } finally {
                           setIsSavingQrSettings(false);
                         }

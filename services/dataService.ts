@@ -923,3 +923,22 @@ export const isScanEnabledForUser = async (userId: string, role?: string): Promi
         return true;
     }
 };
+
+/**
+ * Log an audit entry when QR settings are changed by an admin.
+ * Stores a record in top-level collection `settingsAudit` for easier querying.
+ */
+export const logQRSettingsChange = async (adminId: string, adminName: string, changes: Partial<QRScanSettings>): Promise<void> => {
+    try {
+        const auditCol = collection(db, 'settingsAudit');
+        await addDoc(auditCol, {
+            settingKey: 'qrScan',
+            changes,
+            adminId,
+            adminName,
+            timestamp: serverTimestamp(),
+        });
+    } catch (error) {
+        console.error('Error logging QR settings change:', error);
+    }
+};
