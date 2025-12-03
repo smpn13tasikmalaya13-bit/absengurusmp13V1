@@ -19,6 +19,7 @@ import UploadMasterCoach from './UploadMasterCoach';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import StaffQRCodeGenerator from './StaffQRCodeGenerator';
+import GuidePage from './GuidePage';
 import { Conversation, getAllConversations, sendMessage, deleteMessage, deleteConversation, markMessagesAsRead } from '../../services/dataService';
 import { Spinner } from '../ui/Spinner';
 import { Modal } from '../ui/Modal';
@@ -270,8 +271,10 @@ const AdminDashboard: React.FC = () => {
         return <ManageClasses />;
       case 'manage-eskuls':
         return <ManageExtracurriculars />;
-      case 'staff-qr-code':
-        return <StaffQRCodeGenerator />;
+            case 'staff-qr-code':
+                return <StaffQRCodeGenerator />;
+            case 'guide':
+                return <GuidePage />;
       default:
         return <DashboardContent />;
     }

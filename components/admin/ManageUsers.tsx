@@ -312,6 +312,7 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
                   <th className="p-4 text-sm font-semibold text-slate-200">Nama</th>
                   <th className="p-4 text-sm font-semibold text-slate-200">ID Pengguna (Email)</th>
                   <th className="p-4 text-sm font-semibold text-slate-200">Peran</th>
+                  <th className="p-4 text-sm font-semibold text-slate-200">Status Scan</th>
                   <th className="p-4 text-sm font-semibold text-slate-200">Aksi</th>
                 </tr>
               </thead>
@@ -336,6 +337,18 @@ const ManageUsers: React.FC<ManageUsersProps> = ({ mode }) => {
                           <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getRoleBadgeClass(user.role)}`}>
                               {user.role}
                           </span>
+                      )}
+                    </td>
+                    <td className="flex justify-between items-center md:table-cell md:p-4">
+                      <span className="text-sm font-semibold text-slate-400 md:hidden">Status Scan</span>
+                      {user.email === 'Belum terdaftar' ? (
+                        <span className="px-3 py-1 text-xs font-semibold rounded-full bg-slate-700 text-slate-300">—</span>
+                      ) : (
+                        user.qrScanEnabled === false ? (
+                          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-500/20 text-red-300 border border-red-500/30">Nonaktif</span>
+                        ) : (
+                          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Aktif</span>
+                        )
                       )}
                     </td>
                     <td className="flex justify-between items-center md:table-cell md:p-4">
