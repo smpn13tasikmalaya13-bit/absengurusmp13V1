@@ -156,7 +156,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, unreadMessag
                 <NavItem icon={<DataIcon />} label="Data Kelas" view="manage-classes" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<DataIcon />} label="Data Eskul" view="manage-eskuls" currentView={currentView} onNavigate={onNavigate} />
                 <NavItem icon={<QRIcon />} label="QR Code Tendik" view="staff-qr-code" currentView={currentView} onNavigate={onNavigate} />
-                <NavItem icon={<UploadIcon />} label="Panduan Aplikasi" view="guide" currentView={currentView} onNavigate={onNavigate} />
             </div>
         </div>
 
