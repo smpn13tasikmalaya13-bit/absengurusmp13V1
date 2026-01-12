@@ -249,71 +249,71 @@ const DashboardContent: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-white">Dashboard</h1>
       </div>
 
       {isSystemEmpty ? (
         <EmptyStateDashboard />
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             <Card>
               <h4 className="text-sm font-medium text-gray-400 text-center">Total Personil Terdaftar</h4>
-              <p className="text-5xl font-bold text-white text-center py-4">{stats.total}</p>
+              <p className="text-3xl md:text-5xl font-bold text-white text-center py-2 md:py-4">{stats.total}</p>
               <div className="mt-2 pt-2 border-t border-slate-700 grid grid-cols-3 gap-1 text-center">
                   <div>
-                      <p className="font-bold text-lg text-slate-200">{stats.teachers}</p>
+                      <p className="font-bold text-base md:text-lg text-slate-200">{stats.teachers}</p>
                       <p className="text-xs text-slate-400">Guru</p>
                   </div>
                   <div>
-                      <p className="font-bold text-lg text-slate-200">{stats.staff}</p>
+                      <p className="font-bold text-base md:text-lg text-slate-200">{stats.staff}</p>
                       <p className="text-xs text-slate-400">Tendik</p>
                   </div>
                   <div>
-                      <p className="font-bold text-lg text-slate-200">{stats.coaches}</p>
+                      <p className="font-bold text-base md:text-lg text-slate-200">{stats.coaches}</p>
                       <p className="text-xs text-slate-400">Pembina</p>
                   </div>
               </div>
             </Card>
             <Card>
               <h4 className="text-sm font-medium text-gray-400 text-center">Personil Hadir Hari Ini</h4>
-              <p className="text-5xl font-bold text-emerald-400 text-center py-4">{stats.present}</p>
+              <p className="text-3xl md:text-5xl font-bold text-emerald-400 text-center py-2 md:py-4">{stats.present}</p>
               <div className="mt-2 pt-2 border-t border-slate-700 grid grid-cols-3 gap-1 text-center">
                   <div>
-                      <p className="font-bold text-lg text-slate-200">{presentBreakdown.teachers}</p>
+                      <p className="font-bold text-base md:text-lg text-slate-200">{presentBreakdown.teachers}</p>
                       <p className="text-xs text-slate-400">Guru</p>
                   </div>
                   <div>
-                      <p className="font-bold text-lg text-slate-200">{presentBreakdown.staff}</p>
+                      <p className="font-bold text-base md:text-lg text-slate-200">{presentBreakdown.staff}</p>
                       <p className="text-xs text-slate-400">Tendik</p>
                   </div>
                   <div>
-                      <p className="font-bold text-lg text-slate-200">{presentBreakdown.coaches}</p>
+                      <p className="font-bold text-base md:text-lg text-slate-200">{presentBreakdown.coaches}</p>
                       <p className="text-xs text-slate-400">Pembina</p>
                   </div>
               </div>
             </Card>
             <Card>
               <h4 className="text-sm font-medium text-gray-400 text-center">Personil Absen Hari Ini</h4>
-              <p className="text-5xl font-bold text-red-400 text-center py-4">{stats.absent}</p>
+              <p className="text-3xl md:text-5xl font-bold text-red-400 text-center py-2 md:py-4">{stats.absent}</p>
               <div className="mt-2 pt-2 border-t border-slate-700 grid grid-cols-3 gap-1 text-center">
                   <div>
-                      <p className="font-bold text-lg text-slate-200">{absentBreakdown.teachers}</p>
+                      <p className="font-bold text-base md:text-lg text-slate-200">{absentBreakdown.teachers}</p>
                       <p className="text-xs text-slate-400">Guru</p>
                   </div>
                   <div>
-                      <p className="font-bold text-lg text-slate-200">{absentBreakdown.staff}</p>
+                      <p className="font-bold text-base md:text-lg text-slate-200">{absentBreakdown.staff}</p>
                       <p className="text-xs text-slate-400">Tendik</p>
                   </div>
                   <div>
-                      <p className="font-bold text-lg text-slate-200">{absentBreakdown.coaches}</p>
+                      <p className="font-bold text-base md:text-lg text-slate-200">{absentBreakdown.coaches}</p>
                       <p className="text-xs text-slate-400">Pembina</p>
                   </div>
               </div>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
             <div className="lg:col-span-2 flex flex-col gap-6">
                 <Card title="Ringkasan Absensi Hari Ini">
                     <AttendancePieChart present={stats.present} absent={stats.absent} />
@@ -328,7 +328,7 @@ const DashboardContent: React.FC = () => {
                       ) : (
                         <ul className="space-y-3">
                           {repeatOffenders.map(item => (
-                            <li key={item.user.id} className="flex items-start justify-between bg-slate-800/50 border border-slate-700 p-3 rounded-lg">
+                            <li key={item.user.id} className="flex items-start justify-between bg-slate-800/50 border border-slate-700 p-2 md:p-3 rounded-lg">
                               <div>
                                 <p className="text-sm font-semibold text-white">{item.user.name}</p>
                                 <p className="text-xs text-slate-400">{item.user.email || '—'}</p>

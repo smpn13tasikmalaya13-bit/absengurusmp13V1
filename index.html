@@ -16,6 +16,17 @@
       body {
         font-family: 'Inter', sans-serif;
       }
+      /* Responsive typography adjustments for small screens (mobile) */
+      @media (max-width: 640px) {
+        /* reduce base font-size slightly to keep layout proportional */
+        html { font-size: 14px; }
+        /* make larger text classes scale down on small screens */
+        .text-lg { font-size: 1rem !important; }
+        .text-xl { font-size: 1.125rem !important; }
+        .text-2xl { font-size: 1.25rem !important; }
+        /* reduce heading spacing if needed */
+        h1, h2, h3, h4, h5, h6 { line-height: 1.2; }
+      }
     </style>
   <script type="importmap">
 {

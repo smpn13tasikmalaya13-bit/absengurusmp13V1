@@ -19,10 +19,10 @@ const StudentHistoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" classNa
 const ProfileIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
 const MessageIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-emerald-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>;
-const ScanIcon = () => <svg className="h-12 w-12 text-indigo-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H4C3.44772 3 3 3.44772 3 4V7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M17 3H20C20.5523 3 21 3.44772 21 4V7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 21H4C3.44772 21 3 20.5523 3 20V17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M17 21H20C20.5523 21 21 20.5523 21 20V17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 8V16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 12H16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const ScheduleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
-const ReportIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
-const StudentIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
+const ScanIcon = () => <svg className="h-8 w-8 sm:h-12 sm:w-12 text-indigo-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H4C3.44772 3 3 3.44772 3 4V7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M17 3H20C20.5523 3 21 3.44772 21 4V7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 21H4C3.44772 21 3 20.5523 3 20V17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M17 21H20C20.5523 21 21 20.5523 21 20V17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 8V16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 12H16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const ScheduleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 sm:h-12 sm:w-12 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
+const ReportIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 sm:h-12 sm:w-12 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
+const StudentIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 sm:h-12 sm:w-12 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
 const EmptyHistoryIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="4 4"/></svg>;
 const EmptyScheduleIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 const EmptyReportIcon = () => <svg className="h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
@@ -811,28 +811,36 @@ const TeacherDashboard: React.FC = () => {
                 <div className="md:col-span-2 lg:col-span-4">
                     <Announcements />
                 </div>
-        <button onClick={() => setShowScanner(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-indigo-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed group" disabled={isWithinRadius !== true}>
-          <ScanIcon/>
-          <h3 className="font-bold text-lg mt-4 text-white">Scan QR Code</h3>
-          <p className="text-sm text-slate-400 mt-1">Scan QR Code kelas untuk absensi</p>
-          <p className={`text-sm mt-2 font-semibold ${locationStatus.color}`}>{locationStatus.text}</p>
+        <button onClick={() => setShowScanner(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-indigo-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed group flex items-center sm:flex-col sm:items-start" disabled={isWithinRadius !== true}>
+          <div className="p-3 bg-slate-700 rounded-lg mr-4 sm:mr-0 sm:mb-4 text-slate-300"><ScanIcon/></div>
+          <div>
+            <h3 className="font-bold text-lg text-white sm:mt-4">Scan QR Code</h3>
+            <p className="text-sm text-slate-400 mt-1 sm:mt-1">Scan QR Code kelas untuk absensi</p>
+            <p className={`text-sm mt-2 sm:mt-2 font-semibold ${locationStatus.color}`}>{locationStatus.text}</p>
+          </div>
         </button>
-        <button onClick={() => setIsScheduleModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-blue-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <ScheduleIcon/>
-          <h3 className="font-bold text-lg mt-4 text-white">Jadwal Mengajar</h3>
-          <p className="text-sm text-slate-400 mt-1">Lihat jadwal mengajar lengkap Anda</p>
+        <button onClick={() => setIsScheduleModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-blue-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center sm:flex-col sm:items-start">
+          <div className="p-3 bg-slate-700 rounded-lg mr-4 sm:mr-0 sm:mb-4 text-slate-300"><ScheduleIcon/></div>
+          <div>
+            <h3 className="font-bold text-lg text-white sm:mt-4">Jadwal Mengajar</h3>
+            <p className="text-sm text-slate-400 mt-1 sm:mt-1">Lihat jadwal mengajar lengkap Anda</p>
+          </div>
         </button>
-        <button onClick={() => setIsReportAbsenceModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-yellow-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-          <ReportIcon/>
-          <h3 className="font-bold text-lg mt-4 text-white">Lapor Ketidakhadiran</h3>
-          <p className="text-sm text-slate-400 mt-1">Laporkan jika tidak dapat hadir hari ini.</p>
-          <p className="text-xs text-slate-500 mt-2">Fitur ini tidak memerlukan lokasi.</p>
+        <button onClick={() => setIsReportAbsenceModalOpen(true)} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-yellow-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-500 flex items-center sm:flex-col sm:items-start">
+          <div className="p-3 bg-slate-700 rounded-lg mr-4 sm:mr-0 sm:mb-4 text-slate-300"><ReportIcon/></div>
+          <div>
+            <h3 className="font-bold text-lg text-white sm:mt-4">Lapor Ketidakhadiran</h3>
+            <p className="text-sm text-slate-400 mt-1 sm:mt-1">Laporkan jika tidak dapat hadir hari ini.</p>
+            <p className="text-xs text-slate-500 mt-2 sm:mt-2">Fitur ini tidak memerlukan lokasi.</p>
+          </div>
         </button>
-        <button onClick={() => { if (todaysSchedule.length > 0) setIsReportStudentModalOpen(true) }} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-orange-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled={todaysSchedule.length === 0}>
-          <StudentIcon/>
-          <h3 className="font-bold text-lg mt-4 text-white">Lapor Siswa Absen</h3>
-          <p className="text-sm text-slate-400 mt-1">Input siswa yang tidak hadir hari ini</p>
-          {isLoadingSchedule ? <p className="text-xs mt-2 font-semibold text-gray-400">Memuat jadwal...</p> : todaysSchedule.length === 0 && <p className="text-xs mt-2 font-semibold text-yellow-400">Tidak ada jadwal hari ini</p>}
+        <button onClick={() => { if (todaysSchedule.length > 0) setIsReportStudentModalOpen(true) }} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 rounded-xl text-left hover:border-orange-500 hover:bg-slate-800/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center sm:flex-col sm:items-start" disabled={todaysSchedule.length === 0}>
+          <div className="p-3 bg-slate-700 rounded-lg mr-4 sm:mr-0 sm:mb-4 text-slate-300"><StudentIcon/></div>
+          <div>
+            <h3 className="font-bold text-lg text-white sm:mt-4">Lapor Siswa Absen</h3>
+            <p className="text-sm text-slate-400 mt-1 sm:mt-1">Input siswa yang tidak hadir hari ini</p>
+            {isLoadingSchedule ? <p className="text-xs mt-2 font-semibold text-gray-400 sm:mt-2">Memuat jadwal...</p> : todaysSchedule.length === 0 && <p className="text-xs mt-2 font-semibold text-yellow-400 sm:mt-2">Tidak ada jadwal hari ini</p>}
+          </div>
         </button>
       </div>
         
